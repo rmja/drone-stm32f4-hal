@@ -1,0 +1,46 @@
+cargo-features = ["resolver"]
+
+[workspace]
+members = [
+    "src/gpio",
+    "src/uart",
+]
+
+[package]
+name = "drone-stm32f4-hal"
+version = "0.1.0"
+authors = ["Rasmus Melchior Jacobsen <rmja@laesoe.org>"]
+edition = "2018"
+resolver = "2"
+repository = "https://github.com/rmja/drone-stm32f4-hal"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+description = """
+Drone OS peripheral drivers for STM32F4 micro-controllers.
+"""
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[features]
+default = []
+std = [
+    "drone-core/std",
+    "drone-cortexm/std",
+]
+gpio = ["drone-stm32f4-gpio-drv"]
+uart = ["drone-stm32f4-uart-drv"]
+
+[dependencies]
+drone-core = { version = "0.13.0", path = "../drone-core" }
+drone-cortexm = { version = "0.13.0", path = "../drone-cortexm" }
+
+[dependencies.drone-stm32f4-gpio-drv]
+version = "=0.1.0"
+path = "src/gpio"
+optional = true
+
+[dependencies.drone-stm32f4-uart-drv]
+version = "=0.1.0"
+path = "src/uart"
+optional = true
