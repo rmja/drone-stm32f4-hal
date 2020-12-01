@@ -237,10 +237,11 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
 
     /// Write a buffer using DMA to the uart peripheral.
     ///
-    /// The write future completes when the DMA transfer has completed, at which time the peripheral is ready for another invokation of write().
-    pub async fn write(&mut self, buf: Box<[u8]>) {
+    /// The write future completes when the DMA transfer has completed,
+    /// at which time the peripheral is ready for another invokation of write().
+    pub async fn write(&mut self, buf: &[u8]) {
         unsafe {
-            self.write_unsafe(&buf).await;
+            self.write_unsafe(buf).await;
         }
     }
 
@@ -263,7 +264,7 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         // The transfer completes just after the second last byte is being sent on the wire.
         let dma_isr_tcif = self.dma_tx.dma_isr_tcif;
         let dma_ifcr_ctcif = self.dma_tx.dma_ifcr_ctcif;
-        let future = self.dma_tx_int.add_future(fib::new_fn(move || {
+        let dma_tc = self.dma_tx_int.add_future(fib::new_fn(move || {
             if dma_isr_tcif.read_bit() {
                 // Clear transfer completed interrupt flag.
                 dma_ifcr_ctcif.set_bit();
@@ -276,7 +277,11 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         // The uart transmission complete flag (TC) is cleared
         // by the sequence: Read status register (SR) and write data register (DR).
         // We read the status register here, and the dma writes the DR.
-        self.uart.uart_sr.load_val();
+        // self.uart.uart_sr.load_val();
+        self.uart.uart_sr.tc().clear_bit();
+
+        // Clear any outstanding fifo error interrupt flag by settings its clear register.
+        self.dma_tx.dma_ifcr_cfeif.set_bit();
 
         // Start transfer on DMA channel.
         self.uart.uart_cr3.modify_reg(|r, v| {
@@ -284,41 +289,41 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         });
 
         // Wait for DMA transfer to complete.
-        future
+        dma_tc
 
         // The peripheral automatically disables the DMA stream on completion without error.
     }
 
     /// Wait for the uart peripheral to actually complete the transfer.
     pub async fn flush(&mut self) {
-        // Wait for
-        // 1) transmit buffer to become empty (TXE), and
-        // 2) transmission to complete (TC).
-
-        // Setup transmission complete interrupt.
-        self.uart.uart_cr1.modify_reg(|r, v| {
-            // Enable transmission-complete interrupt.
-            r.tcie().set(v);
-        });
-
+        // The transfor is completed when:
+        // 1) transmit buffer to become empty (TXE) is asserted, and
+        // 2) transmission complete (TC) is asserted.
         let uart_sr = self.uart.uart_sr;
-        let future = self.uart_int.add_future(fib::new_fn(move || {
+        let uart_tc = self.uart_int.add_future(fib::new_fn(move || {
             let sr_val = uart_sr.load_val();
             if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
-                // TXE is cleared by hardware before next write()
-                // TC is also cleared by hardware before next write()
+                // The TXE flag is automatically cleared
+                uart_sr.tc().clear_bit();
                 fib::Complete(())
             } else {
                 fib::Yielded(())
             }
         }));
 
-        let sr_val = uart_sr.load_val();
-        if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
-            return;
-        }
+        // Enable transmission complete interrupt.
+        // This may fire immediately if the transmission is already completed.
+        self.uart.uart_cr1.modify_reg(|r, v| {
+            r.tcie().set(v);
+        });
 
-        future.await;
+        // Wait for transfer to complete.
+        uart_tc.await;
+
+        // Disable transmission complete interrupt.
+        self.uart.uart_cr1.modify_reg(|r, v| {
+            r.tcie().clear(v);
+        });
     }
 
     unsafe fn setup_dma(&mut self, buf_tx: &[u8]) {
@@ -347,7 +352,9 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
     ///
     /// It is preferred that flush() is called before drop so that this will not actually block until transmission completes.
     fn drop(&mut self) {
-        // Wait for 1) transmit buffer to become empty (TXE), and 2) for transmission to complete (TC).
+        // Wait for
+        // 1) transmit buffer to become empty (TXE), and
+        // 2) for transmission to complete (TC).
         let uart_sr = self.uart.uart_sr;
         loop {
             let sr_val = uart_sr.load_val();
