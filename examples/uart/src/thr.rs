@@ -26,5 +26,11 @@ thr! {
             /// All classes of faults.
             pub hard_fault;
         };
+        interrupts => {
+            5: pub rcc;
+            14: pub dma1_ch3; // USART3_TX: DMA1, stream 3, channel 4.
+            // TODO: USART3_RX: DMA1, stream 1, channel 4.
+            39: pub usart3;
+        }
     };
 }
