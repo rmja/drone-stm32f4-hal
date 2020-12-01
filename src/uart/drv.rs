@@ -160,8 +160,6 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         self.uart.uart_cr1.modify_reg(|r, v| {
             // Enable parity error interrupt
             r.peie().set(v);
-            // Enable transmission-complete interrupt
-            r.tcie().set(v);
             // Enable ORE or RXNE interrupt
             r.rxneie().set(v);
             // Enable uart after being fully configured.
@@ -244,7 +242,7 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         unsafe { self.write_unsafe(&buf).await; }
     }
 
-    async unsafe fn write_unsafe(&mut self, buf: &[u8]) {
+    unsafe fn write_unsafe(&mut self, buf: &[u8]) -> impl Future<()> {
         // PE (Parity error),
         // FE (Framing error),
         // NE (Noise error),
@@ -256,10 +254,11 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         self.uart.uart_sr.load_val();
         self.uart.uart_dr.load_val();
 
-        // Setup DMA
+        // Setup DMA transfer parameters.
         self.setup_dma(buf);
 
         // Start listen for DMA transfer to complete.
+        // The transfer completes just after the second last byte is being sent on the wire.
         let dma_isr_tcif = self.dma_tx.dma_isr_tcif;
         let dma_ifcr_ctcif = self.dma_tx.dma_ifcr_ctcif;
         let future = self.dma_tx_int.add_future(fib::new_fn(move || {
@@ -272,30 +271,41 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
             }
         }));
 
-        // Start transfer on DMA channel
+        // The uart transmission complete flag (TC) is cleared
+        // by the sequence: Read status register (SR) and write data register (DR).
+        // We read the status register here, and the dma writes the DR.
+        self.uart.uart_sr.load_val();
+
+        // Start transfer on DMA channel.
         self.uart.uart_cr3.modify_reg(|r, v| {
             r.dmat().set(v);
         });
 
-        // Wait for DMA transfer to complete by returning future.
-        future.await;
+        // Wait for DMA transfer to complete.
+        future
 
-        self.uart.uart_cr3.modify_reg(|r, v| {
-            r.dmat().clear(v);
-        });
-
-        // The peripheral disables the DMA stream on completion without error.
-        // self.dma_tx.dma_ccr.modify_reg(|r, v| r.en().set(v));
+        // The peripheral automatically disables the DMA stream on completion without error.
     }
 
-    /// Wait for the uart peripheral to complete its transfer
+    /// Wait for the uart peripheral to actually complete the transfer.
     pub async fn flush(&mut self) {
-        // Wait for 1) transmit buffer to become empty (TXE), and 2) for transmission to complete (TC).
+        // Wait for
+        // 1) transmit buffer to become empty (TXE), and
+        // 2) transmission to complete (TC).
+
+        // Setup transmission complete interrupt.
+        self.uart.uart_cr1.modify_reg(|r, v| {
+            // Enable transmission-complete interrupt.
+            r.tcie().set(v);
+        });
+
         let uart_sr = self.uart.uart_sr;
         let future = self.uart_int
             .add_future(fib::new_fn(move || {
                 let sr_val = uart_sr.load_val();
                 if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
+                    // TXE is cleared by hardware before next write()
+                    // TC is also cleared by hardware before next write()
                     fib::Complete(())
                 } else {
                     fib::Yielded(())
