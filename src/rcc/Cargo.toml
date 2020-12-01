@@ -1,0 +1,25 @@
+cargo-features = ["resolver"]
+
+[package]
+name = "drone-stm32f4-rcc-drv"
+version = "0.1.0"
+authors = ["Rasmus Melchior Jacobsen <rmja@laesoe.org>"]
+edition = "2018"
+resolver = "2"
+repository = "https://github.com/rmja/drone-stm32f4-hal"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+description = """
+RCC Drone OS driver for STM32F4 micro-controllers.
+"""
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+drone-core = { version = "0.13.0", path = "../../../drone-core" }
+drone-cortexm = { version = "0.13.0", path = "../../../drone-cortexm" }
+drone-stm32-map = { version = "0.13.0", path = "../../../drone-stm32-map"  }
