@@ -8,5 +8,8 @@
 #[cfg(feature = "gpio")]
 pub extern crate drone_stm32f4_gpio_drv as gpio;
 
+#[cfg(feature = "rcc")]
+pub extern crate drone_stm32f4_rcc_drv as rcc;
+
 #[cfg(feature = "uart")]
 pub extern crate drone_stm32f4_uart_drv as uart;

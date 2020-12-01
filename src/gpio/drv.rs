@@ -101,12 +101,24 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
 
     // Set pin into alternate function mode, function 7.
     pub fn into_af7(self) -> GpioPinCfg<Pin, Alternate<AF7, DontCare>> {
-        self.pin.gpio_afr_afr.write_bits(0);
+        self.pin.gpio_afr_afr.write_bits(7);
         self.pin.gpio_moder_moder.write_bits(0b10);
         GpioPinCfg {
             pin: self.pin,
             _mode: PhantomData,
         }
+    }
+}
+
+impl GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC10, DontCare> {
+    pub fn into_af7_usart_1_2_3(self) -> GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC10, Alternate<AF7, DontCare>> {
+        self.into_af7()
+    }
+}
+
+impl GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC11, DontCare> {
+    pub fn into_af7_usart_1_2_3(self) -> GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC11, Alternate<AF7, DontCare>> {
+        self.into_af7()
     }
 }
 
