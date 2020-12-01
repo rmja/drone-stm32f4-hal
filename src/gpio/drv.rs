@@ -52,7 +52,7 @@ pub enum GpioPinSpeed {
     LowSpeed,
     MediumSpeed,
     HighSpeed,
-    VeryHighSpeed
+    VeryHighSpeed,
 }
 
 impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
@@ -93,14 +93,20 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
     /// Set pin into general purpose output mode.
     pub fn into_output(self) -> GpioPinCfg<Pin, Output<DontCare>> {
         self.pin.gpio_moder_moder.write_bits(0b01);
-        GpioPinCfg { pin: self.pin, _mode: PhantomData }
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
     }
 
     // Set pin into alternate function mode, function 7.
     pub fn into_af7(self) -> GpioPinCfg<Pin, Alternate<AF7, DontCare>> {
         self.pin.gpio_afr_afr.write_bits(0);
         self.pin.gpio_moder_moder.write_bits(0b10);
-        GpioPinCfg { pin: self.pin, _mode: PhantomData }
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
     }
 }
 

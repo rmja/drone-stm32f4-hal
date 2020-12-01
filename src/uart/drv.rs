@@ -239,10 +239,12 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
     ///
     /// The write future completes when the DMA transfer has completed, at which time the peripheral is ready for another invokation of write().
     pub async fn write(&mut self, buf: Box<[u8]>) {
-        unsafe { self.write_unsafe(&buf).await; }
+        unsafe {
+            self.write_unsafe(&buf).await;
+        }
     }
 
-    unsafe fn write_unsafe(&mut self, buf: &[u8]) -> impl Future<()> {
+    unsafe fn write_unsafe(&mut self, buf: &[u8]) -> impl Future<Output = ()> {
         // PE (Parity error),
         // FE (Framing error),
         // NE (Noise error),
@@ -300,21 +302,20 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         });
 
         let uart_sr = self.uart.uart_sr;
-        let future = self.uart_int
-            .add_future(fib::new_fn(move || {
-                let sr_val = uart_sr.load_val();
-                if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
-                    // TXE is cleared by hardware before next write()
-                    // TC is also cleared by hardware before next write()
-                    fib::Complete(())
-                } else {
-                    fib::Yielded(())
-                }
-            }));
+        let future = self.uart_int.add_future(fib::new_fn(move || {
+            let sr_val = uart_sr.load_val();
+            if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
+                // TXE is cleared by hardware before next write()
+                // TC is also cleared by hardware before next write()
+                fib::Complete(())
+            } else {
+                fib::Yielded(())
+            }
+        }));
 
         let sr_val = uart_sr.load_val();
         if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
-            return
+            return;
         }
 
         future.await;
