@@ -16,10 +16,10 @@ pub struct Output<Type> {
 }
 
 /// Output open-drain type.
-pub struct OutOpenDrain;
+pub struct OpenDrain;
 
-/// Output push/pull type.
-pub struct OutPushPull;
+/// Push/pull type.
+pub struct PushPull;
 
 /// Alternate function mode.
 pub struct Alternate<Af, Type> {
@@ -112,8 +112,9 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
 
 impl<Pin: GpioPinMap> GpioPinCfg<Pin, Output<DontCare>> {
     /// Let pin output type be push/pull.
-    pub fn into_pp(self) -> GpioPinCfg<Pin, Output<OutPushPull>> {
+    pub fn into_pp(self) -> GpioPinCfg<Pin, Output<PushPull>> {
         self.pin.gpio_otyper_ot.clear_bit();
+        self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
         GpioPinCfg {
             pin: self.pin,
             _mode: PhantomData,
@@ -121,8 +122,28 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, Output<DontCare>> {
     }
 
     /// Let pin output type be open-drain.
-    pub fn into_od(self) -> GpioPinCfg<Pin, Output<OutOpenDrain>> {
+    pub fn into_od(self) -> GpioPinCfg<Pin, Output<OpenDrain>> {
         self.pin.gpio_otyper_ot.set_bit();
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
+    }
+}
+
+impl<Pin: GpioPinMap> GpioPinCfg<Pin, Output<PushPull>> {
+    /// Let pin be pulled-up.
+    pub fn pull_up(self) -> GpioPinCfg<Pin, Output<PushPull>> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b01);
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
+    }
+
+    /// Let pin be pulled-down.
+    pub fn pull_down(self) -> GpioPinCfg<Pin, Output<PushPull>> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b10);
         GpioPinCfg {
             pin: self.pin,
             _mode: PhantomData,
@@ -152,5 +173,57 @@ impl<Pin: GpioPinMap, Mode> GpioPinCfg<Pin, Output<Mode>> {
     pub fn clear(&mut self) {
         // Clear output pin by writing BR (bit reset) to the bit set/reset register.
         self.pin.gpio_bsrr_br.set_bit();
+    }
+}
+
+impl<Pin: GpioPinMap, Af, Mode> GpioPinCfg<Pin, Alternate<Af, Mode>> {
+    /// Let pin type be push/pull.
+    pub fn into_pp(self) -> GpioPinCfg<Pin, Alternate<Af, PushPull>> {
+        self.pin.gpio_otyper_ot.clear_bit();
+        self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
+    }
+
+    /// Let pin type be open-drain.
+    pub fn into_od(self) -> GpioPinCfg<Pin, Alternate<Af, OpenDrain>> {
+        self.pin.gpio_otyper_ot.set_bit();
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
+    }
+
+    /// Set pin speed.
+    pub fn with_speed(self, speed: GpioPinSpeed) -> GpioPinCfg<Pin, Alternate<Af, Mode>> {
+        self.pin.gpio_ospeedr_ospeedr.write_bits(match speed {
+            GpioPinSpeed::LowSpeed => 0,
+            GpioPinSpeed::MediumSpeed => 1,
+            GpioPinSpeed::HighSpeed => 2,
+            GpioPinSpeed::VeryHighSpeed => 3,
+        });
+        self
+    }
+}
+
+impl<Pin: GpioPinMap, Af> GpioPinCfg<Pin, Alternate<Af, PushPull>> {
+    /// Let pin be pulled-up.
+    pub fn pull_up(self) -> GpioPinCfg<Pin, Alternate<Af, PushPull>> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b01);
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
+    }
+
+    /// Let pin be pulled-down.
+    pub fn pull_down(self) -> GpioPinCfg<Pin, Alternate<Af, PushPull>> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b10);
+        GpioPinCfg {
+            pin: self.pin,
+            _mode: PhantomData,
+        }
     }
 }
