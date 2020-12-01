@@ -26,6 +26,10 @@ lint:
 build:
 	drone env {{target}} -- cargo build --features "{{features}}" --release
 
+# Build the binary with debug symbols
+build-debug:
+	drone env {{target}} -- cargo build --features "{{features}}"
+
 # Build the documentation
 doc:
 	drone env {{target}} -- cargo doc --features "{{features}}"
