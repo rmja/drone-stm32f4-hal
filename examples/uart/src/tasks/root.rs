@@ -3,21 +3,19 @@
 use crate::{thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
-use drone_stm32_map::{
-    periph::{
-        gpio::{
-            periph_gpio_b2,
-            periph_gpio_b10,
-            periph_gpio_b_head,
-            periph_gpio_c_head,
-            periph_gpio_c10,
-            periph_gpio_c11,
-        },
-        dma::{periph_dma1, periph_dma1_ch3},
-        uart::periph_usart3,
-    }
+use drone_stm32_map::periph::{
+    dma::{periph_dma1, periph_dma1_ch3},
+    gpio::{
+        periph_gpio_b10, periph_gpio_b2, periph_gpio_b_head, periph_gpio_c10, periph_gpio_c11,
+        periph_gpio_c_head,
+    },
+    uart::periph_usart3,
 };
-use drone_stm32f4_hal:: {rcc::RccSetup, gpio::{GpioPinCfg, GpioPinSpeed}, uart::{UartDrv, UartParity, UartSetup, UartStop}};
+use drone_stm32f4_hal::{
+    gpio::{GpioPinCfg, GpioPinSpeed},
+    rcc::RccSetup,
+    uart::{UartDrv, UartParity, UartSetup, UartStop},
+};
 
 /// The root task handler.
 #[inline(never)]
@@ -69,9 +67,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let dma1 = periph_dma1!(reg);
     dma1.rcc_busenr_dmaen.set_bit();
 
-
-
-
     let rcc = RccSetup {
         rcc_cr: reg.rcc_cr,
         rcc_pllcfgr: reg.rcc_pllcfgr,
@@ -90,7 +85,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     rcc.apply().root_wait();
 
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
-
 
     let setup = UartSetup {
         uart: periph_usart3!(reg),
