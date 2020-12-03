@@ -29,6 +29,7 @@ pub mod config
     }
 
     impl<Uart: UartMap, UartInt: IntToken> UartSetup<Uart, UartInt> {
+        /// Create a new uart setup with sensible defaults.
         pub fn default(uart: UartPeriph<Uart>, uart_int: UartInt) -> UartSetup<Uart, UartInt> {
             UartSetup {
                 uart,
@@ -39,6 +40,14 @@ pub mod config
                 stop_bits: StopBits::One,
                 oversampling: Oversampling::By16,
             }
+        }
+
+        pub fn at(mut self, baud_rate: u32, data_bits: DataBits, parity: Parity, stop_bits: StopBits) -> Self {
+            self.baud_rate = baud_rate;
+            self.data_bits = data_bits;
+            self.parity = parity;
+            self.stop_bits = stop_bits;
+            self
         }
     }
 
@@ -253,7 +262,6 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
         });
         self.uart.uart_brr.store_reg(|r, v| {
             // Baud rate.
-            // TODO: How to obtain correct clock instead of using hardcoded value?
             let (div_man, div_frac) = clk.compute_brr(oversampling, baud_rate);
             r.div_mantissa().write(v, div_man);
             r.div_fraction().write(v, div_frac);

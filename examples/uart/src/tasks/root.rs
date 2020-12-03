@@ -18,7 +18,7 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::{UartDrv, config::{UartDmaSetup, UartSetup, UartClk}}};
+use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::config::DataBits, uart::{UartDrv, config::{Parity, StopBits, UartClk, UartDmaSetup, UartSetup}}};
 
 struct Adapters;
 
@@ -111,7 +111,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
 
-    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2);
+    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2)
+        .at(9_600, DataBits::Eight, Parity::None, StopBits::One);
     let tx_setup = UartDmaSetup {
         dma: periph_dma1_ch6!(reg),
         dma_int: thr.dma_1_ch_6,
