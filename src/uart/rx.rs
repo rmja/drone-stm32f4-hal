@@ -18,6 +18,12 @@ pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, Dma
     drv: &'sess UartRxDrv<'sess, Uart, UartInt, DmaRx, DmaRxInt>,
     ring_buf: Box<[u8]>,
     first: usize,
+    last_read_wrapped: bool,
+}
+#[derive(Copy, Clone)]
+pub enum RxError {
+    PossibleOverflow,
+    Overflow,
 }
 
 impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
@@ -54,7 +60,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
         });
     }
 
-    pub fn sess<'sess>(&'sess mut self, buf: Box<[u8]>) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
+    pub fn sess<'sess>(&'sess mut self, ring_buf: Box<[u8]>) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
         // Enable receiver.
         self.uart.uart_cr1.modify_reg(|r, v| {
             r.re().set(v);
@@ -62,8 +68,9 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
 
         let mut rx = RxGuard {
             drv: self,
-            ring_buf: buf,
+            ring_buf,
             first: 0,
+            last_read_wrapped: false
         };
 
         unsafe {
@@ -78,7 +85,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
     RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt>
 {
     /// Read into buffer using DMA to the uart peripheral.
-    pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+    pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, RxError> {
         let drv = self.drv;
         // RX Buffer layout:
         //
@@ -102,73 +109,97 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         // We use this to 
 
         let ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
-        let end = buf.len() - ndtr;
+        let mut end = buf.len() - ndtr;
 
-        let read = if self.first == end {
+        if self.first == end {
             // There currently no bytes available in the buffer.
+
+            // Return a buffer overflow error if TCIF is asserted
+            // as the DMA controller in that case has wrapped.
+            // This is the special case where n*ring_buf.len(), n > 0, bytes have been written since last read.
+            if drv.dma.dma_isr_tcif.read_bit() {
+                // Clear transfer completed interrupt flag.
+                drv.dma.dma_ifcr_ctcif.set_bit();
+
+                return Err(RxError::Overflow);
+            }
+
+            let dma_cndtr = self.drv.dma.dma_cndtr;
+            let any_rx = drv.uart_int.add_future(fib::new_fn(move || {
+                // Note that we cannot clear the RXNE flag as it is automatically cleared by the DMA controller.
+                let new_ndtr = dma_cndtr.ndt().read_bits() as usize;
+                if new_ndtr != ndtr {
+                    fib::Complete(new_ndtr)
+                } else {
+                    fib::Yielded(())
+                }
+            }));
+
+            // Listen for any rx activity.
+            drv.uart.uart_cr1.modify_reg(|r, v| {
+                r.rxneie().set(v);
+            });
+
+            let mut new_ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
+            if new_ndtr == ndtr {
+                // Wait for actitivy.
+                new_ndtr = any_rx.await;
+            }
+
+            // Stop listen activity.
+            drv.uart.uart_cr1.modify_reg(|r, v| {
+                r.rxneie().clear(v);
+            });
+
+            end = buf.len() - new_ndtr;
+        }
+
+        // There are bytes readily available in the buffer at this time.
+
+        if self.first < end {
+            // The available portion _does not_ wrap.
 
             // Return a buffer overflow error if TCIF is asserted
             // as the DMA controller in that case has wrapped.
             if drv.dma.dma_isr_tcif.read_bit() {
                 // Clear transfer completed interrupt flag.
                 drv.dma.dma_ifcr_ctcif.set_bit();
-
-                return Err(123);
+                return Err(RxError::Overflow);
             }
+            self.last_read_wrapped = false;
 
-            // Listen for 
-            // drv.uart_cr1.modify_reg(|r, v| {
-            //     r.tcie().set(v);
-            // });
+            let src = self.first..end;
+            let dst = 0..buf.len();
+            let cnt = core::cmp::min(src.len(), dst.len());
+            buf[dst].copy_from_slice(&self.ring_buf[src]);
+            self.first += cnt;
 
-            0
+            Ok(cnt)
         }
         else {
-            // There are bytes readily available in the buffer.
+            // The available portion _does_ wrap.
 
-            if self.first < end {
-                // The available portion _does not_ wrap.
-
-                // Return a buffer overflow error if TCIF is asserted
-                // as the DMA controller in that case has wrapped.
-                if drv.dma.dma_isr_tcif.read_bit() {
-                    // Clear transfer completed interrupt flag.
-                    drv.dma.dma_ifcr_ctcif.set_bit();
-
-                    return Err(123);
-                }
-
-                let src = self.first..end;
-                let dst = 0..buf.len();
-                let cnt = core::cmp::min(src.len(), dst.len());
-                buf[dst].copy_from_slice(&self.ring_buf[src]);
-                self.first += cnt;
-
-                cnt
+            // Clear transfer completed interrupt flag.
+            drv.dma.dma_ifcr_ctcif.set_bit();
+            if self.last_read_wrapped {
+                return Err(RxError::PossibleOverflow);
             }
-            else {
-                // The available portion _does_ wrap.
+            self.last_read_wrapped = true;
 
-                // Clear transfer completed interrupt flag.
-                drv.dma.dma_ifcr_ctcif.set_bit();
+            // Copy the tail.
+            let src = self.first..self.ring_buf.len();
+            let dst = 0..buf.len();
+            let cnt_tail = core::cmp::min(src.len(), dst.len());
+            buf[dst].copy_from_slice(&self.ring_buf[src]);
 
-                // Copy the tail.
-                let src = self.first..self.ring_buf.len();
-                let dst = 0..buf.len();
-                let cnt_tail = core::cmp::min(src.len(), dst.len());
-                buf[dst].copy_from_slice(&self.ring_buf[src]);
+            // Copy the head.
+            let src = 0..end;
+            let dst = cnt_tail..buf.len();
+            let cnt_head = core::cmp::min(src.len(), dst.len());
+            buf[dst].copy_from_slice(&self.ring_buf[src]);
 
-                // Copy the head.
-                let src = 0..end;
-                let dst = cnt_tail..buf.len();
-                let cnt_head = core::cmp::min(src.len(), dst.len());
-                buf[dst].copy_from_slice(&self.ring_buf[src]);
-
-                cnt_tail + cnt_head
-            }
-        };
-
-        Ok(read)
+            Ok(cnt_tail + cnt_head)
+        }
     }
 
     unsafe fn setup_dma(&mut self) {

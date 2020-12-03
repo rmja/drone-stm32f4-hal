@@ -100,7 +100,7 @@ pub mod config
     }
 
     /// Uart data bits.
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Copy, Clone, PartialEq)]
     pub enum DataBits {
         #[doc = "8 data bits."]
         Eight,
@@ -109,7 +109,7 @@ pub mod config
     }
 
     /// Uart parity.
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Copy, Clone, PartialEq)]
     pub enum Parity {
         None,
         Even,
@@ -117,7 +117,7 @@ pub mod config
     }
 
     /// Uart stop bits.
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Copy, Clone, PartialEq)]
     pub enum StopBits {
         #[doc = "½ stop bit."]
         Half,
@@ -129,7 +129,7 @@ pub mod config
         Two,
     }
 
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Copy, Clone, PartialEq)]
     pub enum Oversampling {
         By8,
         By16,
@@ -193,7 +193,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
     }
 
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>, buf: Box<[u8]>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
+    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
         let config::UartDmaSetup {
             dma,
             dma_int,
