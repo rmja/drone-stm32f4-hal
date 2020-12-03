@@ -21,8 +21,16 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::RccSetup,
-    uart::{UartDrv, UartParity, UartSetup, UartStop},
+    uart::{UartClk, UartDrv, UartParity, UartSetup, UartStop},
 };
+
+struct Adapters;
+
+impl UartClk for Adapters {
+    fn clock(&self) -> u32 {
+        90_000_000
+    }
+}
 
 /// The root task handler.
 #[inline(never)]
@@ -131,7 +139,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         dma_rx_pl: 1, // Priority level: medium
     };
 
-    let uart_drv = UartDrv::init(setup);
+    let adapters = Adapters{};
+    let uart_drv = UartDrv::init(setup, adapters);
 
 
     // let rx_buf = Vec::with_capacity(128).into_boxed_slice();

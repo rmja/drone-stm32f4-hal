@@ -3,11 +3,47 @@ use crate::{
     rx::RxGuard,
     tx::TxGuard,
 };
+use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap, DmaChPeriph},
     uart::{traits::*, UartMap, UartPeriph},
 };
+
+pub trait UartClk {
+    /// The uart clock frequency.
+    fn clock(&self) -> u32;
+
+    /// Computes the uart divider for use by the baud rate register
+    /// according to eqn. 1 in PM0090 §30.3.4 page 978.
+    fn compute_brr(&self, over8: bool, baud_rate: u32) -> (u32, u32) {
+        let f_ck = self.clock();
+        let over8 = over8 as u32;
+        // The computation of the divisor is as follows:
+        //
+        //                             f_ck
+        //       USARTDIV = ---------------------------
+        //                  8 * (2 - over8) * baud_rate
+        //                |
+        //                V         25 * f_ck
+        // 100 * USARTDIV = ---------------------------
+        //                  2 * (2 - over8) * baud_rate
+        //
+        // Note that 25 * f_ck fits safely in a u32 as max f_ck = 90_000_000.
+        let div100 = (25 * f_ck) / (2 * (2 - over8) * baud_rate);
+        let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
+        let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
+        let div_frac = if over8 == 1 {
+            // The frac field has 3 bits, 0..15
+            (rem100 * 16 + 50) / 100
+        } else {
+            // The frac field has 4 bits, 0..31
+            (rem100 * 32 + 50) / 100
+        };
+
+        (div_man, div_frac)
+    }
+}
 
 /// Uart setup.
 pub struct UartSetup<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
@@ -67,21 +103,22 @@ pub enum UartParity {
 }
 
 /// Uart driver.
-pub struct UartDrv<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
     uart: UartDiverged<Uart>,
     uart_int: UartInt,
+    uart_clk: PhantomData<Clk>,
     dma_tx: DmaChDiverged<DmaTx>,
     dma_tx_int: DmaTxInt,
     dma_rx: DmaChDiverged<DmaRx>,
     dma_rx_int: DmaRxInt,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
-    UartDrv<Uart, UartInt, DmaTx, DmaTxInt, DmaRx, DmaRxInt>
+impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
+    UartDrv<Uart, UartInt, Clk, DmaTx, DmaTxInt, DmaRx, DmaRxInt>
 {
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
-    pub fn init(setup: UartSetup<Uart, UartInt, DmaTx, DmaTxInt, DmaRx, DmaRxInt>) -> Self {
+    pub fn init(setup: UartSetup<Uart, UartInt, DmaTx, DmaTxInt, DmaRx, DmaRxInt>, clk: Clk) -> Self {
         let UartSetup {
             uart,
             uart_int,
@@ -102,12 +139,14 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaR
         let mut drv = Self {
             uart: uart.into(),
             uart_int,
+            uart_clk: PhantomData,
             dma_tx: dma_tx.into(),
             dma_tx_int,
             dma_rx: dma_rx.into(),
             dma_rx_int,
         };
         drv.init_uart(
+            clk,
             uart_baud_rate,
             uart_word_length,
             uart_stop_bits,
@@ -129,6 +168,7 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaR
 
     fn init_uart(
         &mut self,
+        clk: Clk,
         baud_rate: u32,
         word_length: u8,
         stop_bits: UartStop,
@@ -177,7 +217,7 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaR
         self.uart.uart_brr.store_reg(|r, v| {
             // Baud rate.
             // TODO: How to obtain correct clock instead of using hardcoded value?
-            let (div_man, div_frac) = compute_brr(90_000_000, oversampling == 8, baud_rate);
+            let (div_man, div_frac) = clk.compute_brr(oversampling == 8, baud_rate);
             r.div_mantissa().write(v, div_man);
             r.div_fraction().write(v, div_frac);
         });
@@ -261,24 +301,6 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaR
             fib::Yielded::<(), !>(())
         });
     }
-}
-
-fn compute_brr(clock: u32, over8: bool, baud_rate: u32) -> (u32, u32) {
-    // see PM0090 §30.3.4 Fractional baud rate generation page 978
-    let over8 = over8 as u32;
-    // (25*clock) / 2*(2-over8)*baud_rate) === (100*clock) / (8*(2-over8)*baud_rate).
-    // But we take the 25 version to ensure that 25 * clock can fit in a u32.
-    let div100 = (25 * clock) / (2 * (2 - over8) * baud_rate);
-    let div_man = div100 / 100;
-    let div_frac = if over8 == 1 {
-        // The frac field has 3 bits, 0..15
-        ((div100 - div_man * 100) * 16 + 50) / 100
-    } else {
-        // The frac field has 4 bits
-        ((div100 - div_man * 100) * 32 + 50) / 100
-    };
-
-    (div_man, div_frac)
 }
 
 fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
