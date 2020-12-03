@@ -6,114 +6,148 @@ use drone_stm32_map::periph::{
     uart::{traits::*, UartMap, UartPeriph},
 };
 
-/// Uart clock configuration to be implemented by app adapter.
-pub trait UartClk {
-    /// The uart clock frequency.
-    fn clock(&self) -> u32;
+pub mod config
+{
+    use super::*;
 
-    /// Computes the uart divider for use by the baud rate register
-    /// according to eqn. 1 in PM0090 §30.3.4 page 978.
-    fn compute_brr(&self, over8: bool, baud_rate: u32) -> (u32, u32) {
-        let f_ck = self.clock();
-        let over8 = over8 as u32;
-        // The computation of the divisor is as follows:
-        //
-        //                             f_ck
-        //       USARTDIV = ---------------------------
-        //                  8 * (2 - over8) * baud_rate
-        //                |
-        //                V         25 * f_ck
-        // 100 * USARTDIV = ---------------------------
-        //                  2 * (2 - over8) * baud_rate
-        //
-        // Note that 25 * f_ck fits safely in a u32 as max f_ck = 90_000_000.
-        let div100 = (25 * f_ck) / (2 * (2 - over8) * baud_rate);
-        let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
-        let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
-        let div_frac = if over8 == 1 {
-            // The frac field has 3 bits, 0..15
-            (rem100 * 16 + 50) / 100
-        } else {
-            // The frac field has 4 bits, 0..31
-            (rem100 * 32 + 50) / 100
-        };
+    /// Uart setup.
+    pub struct UartSetup<Uart: UartMap, UartInt: IntToken> {
+        /// Uart peripheral.
+        pub uart: UartPeriph<Uart>,
+        /// Uart global interrupt.
+        pub uart_int: UartInt,
+        /// Baud rate.
+        pub baud_rate: u32,
+        /// Data bits.
+        pub data_bits: DataBits,
+        /// Parity.
+        pub parity: Parity,
+        /// Stop bits.
+        pub stop_bits: StopBits,
+        /// Oversampling mode.
+        pub oversampling: Oversampling,
+    }
 
-        (div_man, div_frac)
+    impl<Uart: UartMap, UartInt: IntToken> UartSetup<Uart, UartInt> {
+        pub fn default(uart: UartPeriph<Uart>, uart_int: UartInt) -> UartSetup<Uart, UartInt> {
+            UartSetup {
+                uart,
+                uart_int,
+                baud_rate: 9_600,
+                data_bits: DataBits::Eight,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+                oversampling: Oversampling::By16,
+            }
+        }
+    }
+
+    /// Uart tx/rx dma channel setup.
+    pub struct UartDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
+        /// DMA channel peripheral.
+        pub dma: DmaChPeriph<DmaCh>,
+        /// DMA channel interrupt.
+        pub dma_int: DmaInt,
+        /// DMA channel number.
+        pub dma_ch: u32,
+        /// DMA channel priority level.
+        pub dma_pl: u32,
+    }
+
+    /// Uart clock configuration to be implemented by app adapter.
+    pub trait UartClk {
+        /// The uart clock frequency.
+        fn clock(&self) -> u32;
+
+        /// Computes the uart divider for use by the baud rate register
+        /// according to eqn. 1 in PM0090 §30.3.4 page 978.
+        fn compute_brr(&self, oversampling: Oversampling, baud_rate: u32) -> (u32, u32) {
+            let f_ck = self.clock();
+            let over8 = (oversampling == Oversampling::By8) as u32;
+            // The computation of the divisor is as follows:
+            //
+            //                             f_ck
+            //       USARTDIV = ---------------------------
+            //                  8 * (2 - over8) * baud_rate
+            //                |
+            //                V         25 * f_ck
+            // 100 * USARTDIV = ---------------------------
+            //                  2 * (2 - over8) * baud_rate
+            //
+            // Note that 25 * f_ck fits safely in a u32 as max f_ck = 90_000_000.
+            let div100 = (25 * f_ck) / (2 * (2 - over8) * baud_rate);
+            let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
+            let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
+            let div_frac = if over8 == 1 {
+                // The frac field has 3 bits, 0..15
+                (rem100 * 16 + 50) / 100
+            } else {
+                // The frac field has 4 bits, 0..31
+                (rem100 * 32 + 50) / 100
+            };
+
+            (div_man, div_frac)
+        }
+    }
+
+    /// Uart data bits.
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum DataBits {
+        #[doc = "8 data bits."]
+        Eight,
+        #[doc = "9 data bits."]
+        Nine
+    }
+
+    /// Uart parity.
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum Parity {
+        None,
+        Even,
+        Odd,
+    }
+
+    /// Uart stop bits.
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum StopBits {
+        #[doc = "½ stop bit."]
+        Half,
+        #[doc = "1 stop bit."]
+        One,
+        #[doc = "1½ stop bit."]
+        OneHalf,
+        #[doc = "2 stop bits."]
+        Two,
+    }
+
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum Oversampling {
+        By8,
+        By16,
     }
 }
 
-/// Uart setup.
-pub struct UartSetup<Uart: UartMap, UartInt: IntToken> {
-    /// Uart peripheral.
-    pub uart: UartPeriph<Uart>,
-    /// Uart global interrupt.
-    pub uart_int: UartInt,
-    /// Uart baud rate.
-    pub uart_baud_rate: u32,
-    /// Uart word length in bits.
-    ///
-    /// Valid values are 8 or 9.
-    pub uart_word_length: u8,
-    /// Uart stop bits.
-    pub uart_stop_bits: UartStop,
-    /// Uart parity.
-    pub uart_parity: UartParity,
-    /// Uart oversampling
-    ///
-    /// Valid values are 8 or 16.
-    pub uart_oversampling: u8,
-}
-
-/// Uart tx/rx dma channel setup.
-pub struct UartDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
-    /// DMA channel peripheral.
-    pub dma: DmaChPeriph<DmaCh>,
-    /// DMA channel interrupt.
-    pub dma_int: DmaInt,
-    /// DMA channel number.
-    pub dma_ch: u32,
-    /// DMA channel priority level.
-    pub dma_pl: u32,
-}
-
-/// Uart stop bits.
-#[derive(Clone, Copy, PartialEq)]
-pub enum UartStop {
-    Half,
-    One,
-    OneHalf,
-    Two,
-}
-
-/// Uart parity.
-#[derive(Clone, Copy, PartialEq)]
-pub enum UartParity {
-    None,
-    Even,
-    Odd,
-}
-
 /// Uart driver.
-pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: UartClk> {
+pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> {
     uart: UartDiverged<Uart>,
     uart_int: UartInt,
     uart_clk: PhantomData<Clk>,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
+impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
     UartDrv<Uart, UartInt, Clk>
-{
+{    
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
-    pub fn init(setup: UartSetup<Uart, UartInt>, clk: Clk) -> Self {
-        let UartSetup {
+    pub fn init(setup: config::UartSetup<Uart, UartInt>, clk: Clk) -> Self {
+        let config::UartSetup {
             uart,
             uart_int,
-            uart_baud_rate,
-            uart_word_length,
-            uart_stop_bits,
-            uart_parity,
-            uart_oversampling,
+            baud_rate,
+            data_bits,
+            stop_bits,
+            parity,
+            oversampling,
         } = setup;
         let mut drv = Self {
             uart: uart.into(),
@@ -122,18 +156,18 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
         };
         drv.init_uart(
             clk,
-            uart_baud_rate,
-            uart_word_length,
-            uart_stop_bits,
-            uart_parity,
-            uart_oversampling,
+            baud_rate,
+            data_bits,
+            parity,
+            stop_bits,
+            oversampling,
         );
         drv
     }
 
     /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
-    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: UartDmaSetup<DmaCh, DmaInt>) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let UartDmaSetup {
+    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
+        let config::UartDmaSetup {
             dma,
             dma_int,
             dma_ch,
@@ -150,8 +184,8 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
     }
 
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: UartDmaSetup<DmaCh, DmaInt>, buf: Box<[u8]>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let UartDmaSetup {
+    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>, buf: Box<[u8]>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
+        let config::UartDmaSetup {
             dma,
             dma_int,
             dma_ch,
@@ -171,11 +205,13 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
         &mut self,
         clk: Clk,
         baud_rate: u32,
-        word_length: u8,
-        stop_bits: UartStop,
-        parity: UartParity,
-        oversampling: u8,
+        data_bits: config::DataBits,
+        parity: config::Parity,
+        stop_bits: config::StopBits,
+        oversampling: config::Oversampling,
     ) {
+        use self::config::*;
+
         // Enable uart clock.
         self.uart.rcc_busenr_uarten.set_bit();
 
@@ -184,22 +220,22 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
             // Do not enable uart before it is fully configured.
 
             // Word length.
-            if word_length == 9 {
+            if data_bits == DataBits::Nine {
                 r.m().set(v);
             }
 
             // Parity.
-            if parity != UartParity::None {
+            if parity != Parity::None {
                 // Enable parity.
                 r.pce().set(v);
-                if parity == UartParity::Odd {
+                if parity == Parity::Odd {
                     // Parity selection: odd.
                     r.ps().set(v);
                 }
             }
 
             // Oversampling.
-            if oversampling == 8 {
+            if oversampling == Oversampling::By8 {
                 r.over8().set(v);
             }
         });
@@ -208,17 +244,17 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
             r.stop().write(
                 v,
                 match stop_bits {
-                    UartStop::One => 0,
-                    UartStop::Half => 1,
-                    UartStop::Two => 2,
-                    UartStop::OneHalf => 3,
+                    StopBits::One => 0,
+                    StopBits::Half => 1,
+                    StopBits::Two => 2,
+                    StopBits::OneHalf => 3,
                 },
             );
         });
         self.uart.uart_brr.store_reg(|r, v| {
             // Baud rate.
             // TODO: How to obtain correct clock instead of using hardcoded value?
-            let (div_man, div_frac) = clk.compute_brr(oversampling == 8, baud_rate);
+            let (div_man, div_frac) = clk.compute_brr(oversampling, baud_rate);
             r.div_mantissa().write(v, div_man);
             r.div_fraction().write(v, div_frac);
         });

@@ -18,7 +18,7 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::{UartClk, UartDmaSetup, UartDrv, UartParity, UartSetup, UartStop}};
+use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::{UartDrv, config::{UartDmaSetup, UartSetup, UartClk}}};
 
 struct Adapters;
 
@@ -111,33 +111,33 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
 
-    let setup = UartSetup {
-        uart: periph_usart2!(reg),
-        uart_int: thr.usart_2,
-        // uart: periph_usart3!(reg),
-        // uart_int: thr.usart_3,
-        uart_baud_rate: 9600,
-        uart_word_length: 8,
-        uart_stop_bits: UartStop::One,
-        uart_parity: UartParity::None,
-        uart_oversampling: 16,
-    };
+    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2);
     let tx_setup = UartDmaSetup {
         dma: periph_dma1_ch6!(reg),
         dma_int: thr.dma_1_ch_6,
-        // dma: periph_dma1_ch3!(reg),
-        // dma_int: thr.dma_1_ch_3,
         dma_ch: 4,
         dma_pl: 1, // Priority level: medium
     };
     let rx_setup = UartDmaSetup {
         dma: periph_dma1_ch5!(reg),
         dma_int: thr.dma_1_ch_5,
-        // dma: periph_dma1_ch1!(reg),
-        // dma_int: thr.dma_1_ch_1,
         dma_ch: 4,
         dma_pl: 1, // Priority level: medium
     };
+
+    // let setup = UartSetup::default(periph_usart3!(reg), thr.usart_3);
+    // let tx_setup = UartDmaSetup {
+    //     dma: periph_dma1_ch3!(reg),
+    //     dma_int: thr.dma_1_ch_3,
+    //     dma_ch: 4,
+    //     dma_pl: 1, // Priority level: medium
+    // };
+    // let rx_setup = UartDmaSetup {
+    //     dma: periph_dma1_ch1!(reg),
+    //     dma_int: thr.dma_1_ch_1,
+    //     dma_ch: 4,
+    //     dma_pl: 1, // Priority level: medium
+    // };
 
     let adapters = Adapters{};
     let uart_drv = UartDrv::init(setup, adapters);
