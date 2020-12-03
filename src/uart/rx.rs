@@ -7,32 +7,61 @@ use drone_stm32_map::periph::{
     uart::{traits::*, UartMap},
 };
 
-pub struct RxGuard<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken> {
-    uart: &'a UartDiverged<Uart>,
-    dma_rx: &'a DmaChDiverged<DmaRx>,
-    dma_rx_int: &'a DmaRxInt,
+pub struct UartRxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+    pub(crate) uart: &'drv UartDiverged<Uart>,
+    pub(crate) uart_int: &'drv UartInt,
+    pub(crate) dma: DmaChDiverged<DmaRx>,
+    pub(crate) dma_int: DmaRxInt,
+}
+
+pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+    drv: &'sess UartRxDrv<'sess, Uart, UartInt, DmaRx, DmaRxInt>,
     ring_buf: Box<[u8]>,
     first: usize,
 }
 
-impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
-    RxGuard<'a, Uart, DmaRx, DmaRxInt>
+impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
+    UartRxDrv<'drv, Uart, UartInt, DmaRx, DmaRxInt>
 {
-    pub(crate) fn new(
-        uart: &'a UartDiverged<Uart>,
-        dma_rx: &'a DmaChDiverged<DmaRx>,
-        dma_rx_int: &'a DmaRxInt,
-        buf: Box<[u8]>,
-    ) -> Self {
+    pub(crate) fn init_dma_rx(&mut self, channel: u32, priority: u32) {
+        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
+        self.dma.dma_cpar.store_reg(|r, v| {
+            r.pa().write(v, address as u32); // peripheral address
+        });
+        self.dma.dma_ccr.store_reg(|r, v| {
+            r.chsel().write(v, channel); // channel selection
+            r.pl().write(v, priority); // priority level
+            r.msize().write(v, 0b00); // byte (8-bit)
+            r.psize().write(v, 0b00); // byte (8-bit)
+            r.minc().set(v); // memory address pointer is incremented after each data transfer
+            r.pinc().clear(v); // peripheral address pointer is fixed
+            r.circ().set(v); // circular mode.
+            r.dir().write(v, 0b00); // peripheral-to-memory
+            r.tcie().clear(v); // transfer complete interrupt disable
+            r.teie().set(v); // transfer error interrupt enable
+        });
+
+        // Attach dma error handler
+        let dma_isr_dmeif = self.dma.dma_isr_dmeif;
+        let dma_isr_feif = self.dma.dma_isr_feif;
+        let dma_isr_teif = self.dma.dma_isr_teif;
+        self.dma_int.add_fn(move || {
+            // Load _entire_ interrupt status register.
+            // The value is not masked to TEIF.
+            let val = dma_isr_teif.load_val();
+            crate::drv::handle_dma_err::<DmaRx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
+            fib::Yielded::<(), !>(())
+        });
+    }
+
+    pub fn sess<'sess>(&'sess mut self, buf: Box<[u8]>) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
         // Enable receiver.
-        uart.uart_cr1.modify_reg(|r, v| {
+        self.uart.uart_cr1.modify_reg(|r, v| {
             r.re().set(v);
         });
-        
-        let mut rx = Self {
-            uart,
-            dma_rx,
-            dma_rx_int,
+
+        let mut rx = RxGuard {
+            drv: self,
             ring_buf: buf,
             first: 0,
         };
@@ -43,9 +72,14 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
 
         rx
     }
+}
 
+impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
+    RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt>
+{
     /// Read into buffer using DMA to the uart peripheral.
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+        let drv = self.drv;
         // RX Buffer layout:
         //
         // Without wraparound:                             With wraparound:
@@ -67,7 +101,7 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
         // The transfer completed interrupt flag (TCIF) is asserted when this happens.
         // We use this to 
 
-        let ndtr = self.dma_rx.dma_cndtr.ndt().read_bits() as usize;
+        let ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
         let end = buf.len() - ndtr;
 
         let read = if self.first == end {
@@ -75,15 +109,15 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
 
             // Return a buffer overflow error if TCIF is asserted
             // as the DMA controller in that case has wrapped.
-            if self.dma_rx.dma_isr_tcif.read_bit() {
+            if drv.dma.dma_isr_tcif.read_bit() {
                 // Clear transfer completed interrupt flag.
-                self.dma_rx.dma_ifcr_ctcif.set_bit();
+                drv.dma.dma_ifcr_ctcif.set_bit();
 
                 return Err(123);
             }
 
             // Listen for 
-            // self.uart_cr1.modify_reg(|r, v| {
+            // drv.uart_cr1.modify_reg(|r, v| {
             //     r.tcie().set(v);
             // });
 
@@ -97,9 +131,9 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
 
                 // Return a buffer overflow error if TCIF is asserted
                 // as the DMA controller in that case has wrapped.
-                if self.dma_rx.dma_isr_tcif.read_bit() {
+                if drv.dma.dma_isr_tcif.read_bit() {
                     // Clear transfer completed interrupt flag.
-                    self.dma_rx.dma_ifcr_ctcif.set_bit();
+                    drv.dma.dma_ifcr_ctcif.set_bit();
 
                     return Err(123);
                 }
@@ -116,7 +150,7 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
                 // The available portion _does_ wrap.
 
                 // Clear transfer completed interrupt flag.
-                self.dma_rx.dma_ifcr_ctcif.set_bit();
+                drv.dma.dma_ifcr_ctcif.set_bit();
 
                 // Copy the tail.
                 let src = self.first..self.ring_buf.len();
@@ -138,27 +172,30 @@ impl<'a, Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken>
     }
 
     unsafe fn setup_dma(&mut self) {
+        let drv = self.drv;
+
         // Set buffer memory addres
-        self.dma_rx.dma_cm0ar.store_reg(|r, v| {
+        drv.dma.dma_cm0ar.store_reg(|r, v| {
             r.m0a().write(v, self.ring_buf.as_ptr() as u32);
         });
 
         // Set number of bytes to transfer
-        self.dma_rx.dma_cndtr.store_reg(|r, v| {
+        drv.dma.dma_cndtr.store_reg(|r, v| {
             r.ndt().write(v, self.ring_buf.len() as u32);
         });
 
         // Enable stream
-        self.dma_rx.dma_ccr.modify_reg(|r, v| r.en().set(v));
+        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
     }
 }
 
-impl<Uart: UartMap, DmaRx: DmaChMap, DmaRxInt: IntToken> Drop
-    for RxGuard<'_, Uart, DmaRx, DmaRxInt>
+impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> Drop
+    for RxGuard<'_, Uart, UartInt, DmaRx, DmaRxInt>
 {
+    /// Stop the receiver.
     fn drop(&mut self) {
         // Disable receiver.
-        self.uart.uart_cr1.modify_reg(|r, v| {
+        self.drv.uart.uart_cr1.modify_reg(|r, v| {
             r.re().clear(v);
         });
     }

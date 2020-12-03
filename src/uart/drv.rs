@@ -1,15 +1,12 @@
-use crate::{
-    diverged::{DmaChDiverged, UartDiverged},
-    rx::RxGuard,
-    tx::TxGuard,
-};
+use crate::{diverged::{DmaChDiverged, UartDiverged}, rx::UartRxDrv, tx::UartTxDrv};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::ch::{traits::*, DmaChMap, DmaChPeriph},
+    dma::ch::{DmaChMap, DmaChPeriph},
     uart::{traits::*, UartMap, UartPeriph},
 };
 
+/// Uart clock configuration to be implemented by app adapter.
 pub trait UartClk {
     /// The uart clock frequency.
     fn clock(&self) -> u32;
@@ -46,7 +43,7 @@ pub trait UartClk {
 }
 
 /// Uart setup.
-pub struct UartSetup<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+pub struct UartSetup<Uart: UartMap, UartInt: IntToken> {
     /// Uart peripheral.
     pub uart: UartPeriph<Uart>,
     /// Uart global interrupt.
@@ -65,24 +62,18 @@ pub struct UartSetup<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt
     ///
     /// Valid values are 8 or 16.
     pub uart_oversampling: u8,
-    
-    /// DMA TX channel peripheral.
-    pub dma_tx: DmaChPeriph<DmaTx>,
-    /// DMA TX channel interrupt.
-    pub dma_tx_int: DmaTxInt,
-    /// DMA TX channel number.
-    pub dma_tx_ch: u32,
-    /// DMA TX channel priority level.
-    pub dma_tx_pl: u32,
+}
 
-    /// DMA RX channel peripheral.
-    pub dma_rx: DmaChPeriph<DmaRx>,
-    /// DMA RX channel interrupt.
-    pub dma_rx_int: DmaRxInt,
-    /// DMA RX channel number.
-    pub dma_rx_ch: u32,
-    /// DMA RX channel priority level.
-    pub dma_rx_pl: u32,
+/// Uart tx/rx dma channel setup.
+pub struct UartDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
+    /// DMA channel peripheral.
+    pub dma: DmaChPeriph<DmaCh>,
+    /// DMA channel interrupt.
+    pub dma_int: DmaInt,
+    /// DMA channel number.
+    pub dma_ch: u32,
+    /// DMA channel priority level.
+    pub dma_pl: u32,
 }
 
 /// Uart stop bits.
@@ -103,22 +94,18 @@ pub enum UartParity {
 }
 
 /// Uart driver.
-pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: UartClk> {
     uart: UartDiverged<Uart>,
     uart_int: UartInt,
     uart_clk: PhantomData<Clk>,
-    dma_tx: DmaChDiverged<DmaTx>,
-    dma_tx_int: DmaTxInt,
-    dma_rx: DmaChDiverged<DmaRx>,
-    dma_rx_int: DmaRxInt,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
-    UartDrv<Uart, UartInt, Clk, DmaTx, DmaTxInt, DmaRx, DmaRxInt>
+impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk>
+    UartDrv<Uart, UartInt, Clk>
 {
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
-    pub fn init(setup: UartSetup<Uart, UartInt, DmaTx, DmaTxInt, DmaRx, DmaRxInt>, clk: Clk) -> Self {
+    pub fn init(setup: UartSetup<Uart, UartInt>, clk: Clk) -> Self {
         let UartSetup {
             uart,
             uart_int,
@@ -127,23 +114,11 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: 
             uart_stop_bits,
             uart_parity,
             uart_oversampling,
-            dma_tx,
-            dma_tx_int,
-            dma_tx_ch,
-            dma_tx_pl,
-            dma_rx,
-            dma_rx_int,
-            dma_rx_ch,
-            dma_rx_pl,
         } = setup;
         let mut drv = Self {
             uart: uart.into(),
             uart_int,
             uart_clk: PhantomData,
-            dma_tx: dma_tx.into(),
-            dma_tx_int,
-            dma_rx: dma_rx.into(),
-            dma_rx_int,
         };
         drv.init_uart(
             clk,
@@ -153,17 +128,43 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: 
             uart_parity,
             uart_oversampling,
         );
-        drv.init_dma_tx(dma_tx_ch, dma_tx_pl);
-        drv.init_dma_rx(dma_rx_ch, dma_rx_pl);
         drv
     }
 
-    pub fn tx(&self) -> TxGuard<Uart, UartInt, DmaTx, DmaTxInt> {
-        TxGuard::new(&self.uart, &self.uart_int, &self.dma_tx, &self.dma_tx_int)
+    /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
+    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: UartDmaSetup<DmaCh, DmaInt>) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
+        let UartDmaSetup {
+            dma,
+            dma_int,
+            dma_ch,
+            dma_pl
+        } = setup;
+        let mut tx = UartTxDrv {
+            uart: &self.uart,
+            uart_int: &self.uart_int,
+            dma: dma.into(),
+            dma_int,
+        };
+        tx.init_dma_tx(dma_ch, dma_pl);
+        tx
     }
 
-    pub fn rx(&self, buf: Box<[u8]>) -> RxGuard<Uart, DmaRx, DmaRxInt> {
-        RxGuard::new(&self.uart, &self.dma_rx, &self.dma_rx_int, buf)
+    /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
+    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: UartDmaSetup<DmaCh, DmaInt>, buf: Box<[u8]>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
+        let UartDmaSetup {
+            dma,
+            dma_int,
+            dma_ch,
+            dma_pl
+        } = setup;
+        let mut rx = UartRxDrv {
+            uart: &self.uart,
+            uart_int: &self.uart_int,
+            dma: dma.into(),
+            dma_int,
+        };
+        rx.init_dma_rx(dma_ch, dma_pl);
+        rx
     }
 
     fn init_uart(
@@ -239,68 +240,6 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: UartClk, DmaTx: DmaChMap, DmaTxInt: 
             fib::Yielded::<(), !>(())
         });
     }
-
-    fn init_dma_tx(&mut self, channel: u32, priority: u32) {
-        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
-        self.dma_tx.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma_tx.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, channel); // channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.circ().clear(v); // normal mode.
-            r.dir().write(v, 0b01); // memory-to-peripheral
-            r.tcie().set(v); // transfer complete interrupt enable
-            r.teie().set(v); // transfer error interrupt enable
-        });
-
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma_tx.dma_isr_dmeif;
-        let dma_isr_feif = self.dma_tx.dma_isr_feif;
-        let dma_isr_teif = self.dma_tx.dma_isr_teif;
-        self.dma_tx_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            handle_dma_err::<DmaTx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
-    }
-
-    fn init_dma_rx(&mut self, channel: u32, priority: u32) {
-        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
-        self.dma_rx.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma_rx.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, channel); // channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.circ().set(v); // circular mode.
-            r.dir().write(v, 0b00); // peripheral-to-memory
-            r.tcie().clear(v); // transfer complete interrupt disable
-            r.teie().set(v); // transfer error interrupt enable
-        });
-
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma_rx.dma_isr_dmeif;
-        let dma_isr_feif = self.dma_rx.dma_isr_feif;
-        let dma_isr_teif = self.dma_rx.dma_isr_teif;
-        self.dma_tx_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            handle_dma_err::<DmaRx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
-    }
 }
 
 fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
@@ -321,7 +260,7 @@ fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
     }
 }
 
-fn handle_dma_err<T: DmaChMap>(
+pub(crate) fn handle_dma_err<T: DmaChMap>(
     val: &T::DmaIsrVal,
     dma_isr_dmeif: T::CDmaIsrDmeif,
     dma_isr_feif: T::CDmaIsrFeif,

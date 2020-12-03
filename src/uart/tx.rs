@@ -8,35 +8,69 @@ use drone_stm32_map::periph::{
 };
 use futures::prelude::*;
 
-pub struct TxGuard<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
-    uart: &'a UartDiverged<Uart>,
-    uart_int: &'a UartInt,
-    dma_tx: &'a DmaChDiverged<DmaTx>,
-    dma_tx_int: &'a DmaTxInt,
+pub struct UartTxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
+    pub(crate) uart: &'drv UartDiverged<Uart>,
+    pub(crate) uart_int: &'drv UartInt,
+    pub(crate) dma: DmaChDiverged<DmaTx>,
+    pub(crate) dma_int: DmaTxInt,
 }
 
-impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
-    TxGuard<'a, Uart, UartInt, DmaTx, DmaTxInt>
+pub struct TxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
+    drv: &'sess UartTxDrv<'sess, Uart, UartInt, DmaTx, DmaTxInt>
+}
+
+impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
+    UartTxDrv<'drv, Uart, UartInt, DmaTx, DmaTxInt>
 {
-    pub(crate) fn new(
-        uart: &'a UartDiverged<Uart>,
-        uart_int: &'a UartInt,
-        dma_tx: &'a DmaChDiverged<DmaTx>,
-        dma_tx_int: &'a DmaTxInt,
-    ) -> Self {
+    pub(crate) fn init_dma_tx(&mut self, channel: u32, priority: u32) {
+        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
+        self.dma.dma_cpar.store_reg(|r, v| {
+            r.pa().write(v, address as u32); // peripheral address
+        });
+        self.dma.dma_ccr.store_reg(|r, v| {
+            r.chsel().write(v, channel); // channel selection
+            r.pl().write(v, priority); // priority level
+            r.msize().write(v, 0b00); // byte (8-bit)
+            r.psize().write(v, 0b00); // byte (8-bit)
+            r.minc().set(v); // memory address pointer is incremented after each data transfer
+            r.pinc().clear(v); // peripheral address pointer is fixed
+            r.circ().clear(v); // normal mode.
+            r.dir().write(v, 0b01); // memory-to-peripheral
+            r.tcie().set(v); // transfer complete interrupt enable
+            r.teie().set(v); // transfer error interrupt enable
+        });
+
+        // Attach dma error handler
+        let dma_isr_dmeif = self.dma.dma_isr_dmeif;
+        let dma_isr_feif = self.dma.dma_isr_feif;
+        let dma_isr_teif = self.dma.dma_isr_teif;
+        self.dma_int.add_fn(move || {
+            // Load _entire_ interrupt status register.
+            // The value is not masked to TEIF.
+            let val = dma_isr_teif.load_val();
+            crate::drv::handle_dma_err::<DmaTx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
+            fib::Yielded::<(), !>(())
+        });
+
+        // let asd = std::cell::RefCell::new("asd");
+        // asd.borrow_mut()
+    }
+
+    pub fn sess<'sess>(&'sess mut self) -> TxGuard<'sess, Uart, UartInt, DmaTx, DmaTxInt> {
         // Enable transmitter.
-        uart.uart_cr1.modify_reg(|r, v| {
+        self.uart.uart_cr1.modify_reg(|r, v| {
             r.te().set(v);
         });
 
-        Self {
-            uart,
-            uart_int,
-            dma_tx,
-            dma_tx_int,
+        TxGuard {
+            drv: self
         }
     }
+}
 
+impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
+    TxGuard<'sess, Uart, UartInt, DmaTx, DmaTxInt>
+{
     /// Write a buffer using DMA to the uart peripheral.
     ///
     /// The write future completes when the DMA transfer has completed,
@@ -48,6 +82,7 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
     }
 
     unsafe fn write_unsafe(&mut self, buf: &[u8]) -> impl Future<Output = ()> {
+        let drv = self.drv;
         // PE (Parity error),
         // FE (Framing error),
         // NE (Noise error),
@@ -56,17 +91,17 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         // 1. a read operation to USART_SR register, followed by
         // 2. a read operation to USART_DR register.
         // See RM0090 page 972.
-        self.uart.uart_sr.load_val();
-        self.uart.uart_dr.load_val();
+        drv.uart.uart_sr.load_val();
+        drv.uart.uart_dr.load_val();
 
         // Setup DMA transfer parameters.
         self.setup_dma(buf);
 
         // Start listen for DMA transfer to complete.
         // The transfer completes just after the second last byte is being sent on the wire.
-        let dma_isr_tcif = self.dma_tx.dma_isr_tcif;
-        let dma_ifcr_ctcif = self.dma_tx.dma_ifcr_ctcif;
-        let dma_tc = self.dma_tx_int.add_future(fib::new_fn(move || {
+        let dma_isr_tcif = drv.dma.dma_isr_tcif;
+        let dma_ifcr_ctcif = drv.dma.dma_ifcr_ctcif;
+        let dma_tc = drv.dma_int.add_future(fib::new_fn(move || {
             if dma_isr_tcif.read_bit() {
                 // Clear transfer completed interrupt flag.
                 dma_ifcr_ctcif.set_bit();
@@ -80,13 +115,13 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         // by the sequence: Read status register (SR) and write data register (DR).
         // We read the status register here, and the dma writes the DR.
         // self.uart.uart_sr.load_val();
-        self.uart.uart_sr.tc().clear_bit();
+        drv.uart.uart_sr.tc().clear_bit();
 
         // Clear any outstanding fifo error interrupt flag by settings its clear register.
-        self.dma_tx.dma_ifcr_cfeif.set_bit();
+        drv.dma.dma_ifcr_cfeif.set_bit();
 
         // Start transfer on DMA channel.
-        self.uart.uart_cr3.modify_reg(|r, v| {
+        drv.uart.uart_cr3.modify_reg(|r, v| {
             r.dmat().set(v);
         });
 
@@ -98,11 +133,12 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
 
     /// Wait for the uart peripheral to actually complete the transfer.
     pub async fn flush(&mut self) {
+        let drv = self.drv;
         // The transfor is completed when:
         // 1) transmit buffer to become empty (TXE) is asserted, and
         // 2) transmission complete (TC) is asserted.
-        let uart_sr = self.uart.uart_sr;
-        let uart_tc = self.uart_int.add_future(fib::new_fn(move || {
+        let uart_sr = drv.uart.uart_sr;
+        let uart_tc = drv.uart_int.add_future(fib::new_fn(move || {
             let sr_val = uart_sr.load_val();
             if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
                 // The TXE flag is automatically cleared
@@ -115,7 +151,7 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
 
         // Enable transmission complete interrupt.
         // This may fire immediately if the transmission is already completed.
-        self.uart.uart_cr1.modify_reg(|r, v| {
+        drv.uart.uart_cr1.modify_reg(|r, v| {
             r.tcie().set(v);
         });
 
@@ -123,27 +159,29 @@ impl<'a, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
         uart_tc.await;
 
         // Disable transmission complete interrupt.
-        self.uart.uart_cr1.modify_reg(|r, v| {
+        drv.uart.uart_cr1.modify_reg(|r, v| {
             r.tcie().clear(v);
         });
     }
 
     unsafe fn setup_dma(&mut self, buf_tx: &[u8]) {
+        let drv = self.drv;
+
         // Set buffer memory addres
-        self.dma_tx.dma_cm0ar.store_reg(|r, v| {
+        drv.dma.dma_cm0ar.store_reg(|r, v| {
             r.m0a().write(v, buf_tx.as_ptr() as u32);
         });
 
         // Set number of bytes to transfer
-        self.dma_tx.dma_cndtr.store_reg(|r, v| {
+        drv.dma.dma_cndtr.store_reg(|r, v| {
             r.ndt().write(v, buf_tx.len() as u32);
         });
 
         // Clear transfer complete interrupt flag
-        self.dma_tx.dma_ifcr_ctcif.set_bit();
+        drv.dma.dma_ifcr_ctcif.set_bit();
 
         // Enable stream
-        self.dma_tx.dma_ccr.modify_reg(|r, v| r.en().set(v));
+        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
     }
 }
 
@@ -154,10 +192,11 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
     ///
     /// It is preferred that flush() is called before drop so that this will not actually block until transmission completes.
     fn drop(&mut self) {
+        let drv = self.drv;
         // Wait for
         // 1) transmit buffer to become empty (TXE), and
         // 2) for transmission to complete (TC).
-        let uart_sr = self.uart.uart_sr;
+        let uart_sr = drv.uart.uart_sr;
         loop {
             let sr_val = uart_sr.load_val();
             if uart_sr.txe().read(&sr_val) && uart_sr.tc().read(&sr_val) {
@@ -166,7 +205,7 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
         }
 
         // Disable transmitter.
-        self.uart.uart_cr1.modify_reg(|r, v| {
+        drv.uart.uart_cr1.modify_reg(|r, v| {
             r.te().clear(v);
         });
     }

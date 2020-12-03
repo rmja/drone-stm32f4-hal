@@ -18,11 +18,7 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{
-    gpio::{GpioPinCfg, GpioPinSpeed},
-    rcc::RccSetup,
-    uart::{UartClk, UartDrv, UartParity, UartSetup, UartStop},
-};
+use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::{UartClk, UartDmaSetup, UartDrv, UartParity, UartSetup, UartStop}};
 
 struct Adapters;
 
@@ -125,22 +121,27 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         uart_stop_bits: UartStop::One,
         uart_parity: UartParity::None,
         uart_oversampling: 16,
-        dma_tx: periph_dma1_ch6!(reg),
-        dma_tx_int: thr.dma_1_ch_6,
-        // dma_tx: periph_dma1_ch3!(reg),
-        // dma_tx_int: thr.dma_1_ch_3,
-        dma_tx_ch: 4,
-        dma_tx_pl: 1, // Priority level: medium
-        dma_rx: periph_dma1_ch5!(reg),
-        dma_rx_int: thr.dma_1_ch_5,
-        // dma_rx: periph_dma1_ch1!(reg),
-        // dma_rx_int: thr.dma_1_ch_1,
-        dma_rx_ch: 4,
-        dma_rx_pl: 1, // Priority level: medium
+    };
+    let tx_setup = UartDmaSetup {
+        dma: periph_dma1_ch6!(reg),
+        dma_int: thr.dma_1_ch_6,
+        // dma: periph_dma1_ch3!(reg),
+        // dma_int: thr.dma_1_ch_3,
+        dma_ch: 4,
+        dma_pl: 1, // Priority level: medium
+    };
+    let rx_setup = UartDmaSetup {
+        dma: periph_dma1_ch5!(reg),
+        dma_int: thr.dma_1_ch_5,
+        // dma: periph_dma1_ch1!(reg),
+        // dma_int: thr.dma_1_ch_1,
+        dma_ch: 4,
+        dma_pl: 1, // Priority level: medium
     };
 
     let adapters = Adapters{};
     let uart_drv = UartDrv::init(setup, adapters);
+    let mut tx_drv = uart_drv.tx(tx_setup);
 
 
     // let rx_buf = Vec::with_capacity(128).into_boxed_slice();
@@ -149,8 +150,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // rx.read(&mut buf);
 
     loop {
-        let mut tx = uart_drv.tx();
-
+        let mut tx = tx_drv.sess();
         // let writebuf = [0x55, 0xAA, 0x55, 0xAA].as_ref();
         let writebuf = b"Hello".as_ref();
         let writebuf2 = b"World\r\n".as_ref();
