@@ -4,6 +4,8 @@
 
 mod diverged;
 mod drv;
+mod rx;
+mod tx;
 
 pub use self::drv::{UartDrv, UartParity, UartSetup, UartStop};
 
