@@ -110,18 +110,6 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
     }
 }
 
-impl GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC10, DontCare> {
-    pub fn into_af7_usart_1_2_3(self) -> GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC10, Alternate<AF7, DontCare>> {
-        self.into_af7()
-    }
-}
-
-impl GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC11, DontCare> {
-    pub fn into_af7_usart_1_2_3(self) -> GpioPinCfg<drone_stm32_map::periph::gpio::pin::GpioC11, Alternate<AF7, DontCare>> {
-        self.into_af7()
-    }
-}
-
 impl<Pin: GpioPinMap> GpioPinCfg<Pin, Output<DontCare>> {
     /// Let pin output type be push/pull.
     pub fn into_pp(self) -> GpioPinCfg<Pin, Output<PushPull>> {

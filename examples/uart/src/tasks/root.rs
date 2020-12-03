@@ -4,12 +4,19 @@ use crate::{thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::{periph_dma1, periph_dma1_ch3},
-    gpio::{
-        periph_gpio_b10, periph_gpio_b2, periph_gpio_b_head, periph_gpio_c10, periph_gpio_c11,
-        periph_gpio_c_head,
+    dma::{
+        periph_dma1,
+        periph_dma1_ch5,
+        periph_dma1_ch6,
+        // periph_dma1_ch1,
+        // periph_dma1_ch3,
     },
-    uart::periph_usart3,
+    gpio::{
+        periph_gpio_b10, periph_gpio_b2, periph_gpio_b_head,
+        periph_gpio_a_head, periph_gpio_a2, periph_gpio_a3,
+        // periph_gpio_c_head, periph_gpio_c10, periph_gpio_c11,
+    },
+    uart::{periph_usart2, periph_usart3},
 };
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
@@ -28,26 +35,40 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Enable interrupts.
     thr.rcc.enable_int();
-    thr.dma_1_ch_3.enable_int();
-    thr.usart_3.enable_int();
+    thr.usart_2.enable_int();
+    thr.dma_1_ch_5.enable_int();
+    thr.dma_1_ch_6.enable_int();
+    // thr.usart_3.enable_int();
+    // thr.dma_1_ch_1.enable_int();
+    // thr.dma_1_ch_3.enable_int();
 
     // Enable IO port clock.
-    let gpio_c = periph_gpio_c_head!(reg);
-    gpio_c.rcc_busenr_gpioen.set_bit();
+    let gpio_a = periph_gpio_a_head!(reg);
+    gpio_a.rcc_busenr_gpioen.set_bit();
+    // let gpio_c = periph_gpio_c_head!(reg);
+    // gpio_c.rcc_busenr_gpioen.set_bit();
 
     // Configure UART GPIO pins.
-    GpioPinCfg::from(periph_gpio_c10!(reg))
-        .into_af7_usart_1_2_3()
+    GpioPinCfg::from(periph_gpio_a2!(reg))
+        .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-
-    GpioPinCfg::from(periph_gpio_c11!(reg))
-        .into_af7_usart_1_2_3()
+    GpioPinCfg::from(periph_gpio_a3!(reg))
+        .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
+    // GpioPinCfg::from(periph_gpio_c10!(reg))
+    //     .into_af7()
+    //     .into_pp()
+    //     .with_speed(GpioPinSpeed::VeryHighSpeed);
+    // GpioPinCfg::from(periph_gpio_c11!(reg))
+    //     .into_af7()
+    //     .into_pp()
+    //     .with_speed(GpioPinSpeed::VeryHighSpeed);
 
     // Disable IO port clock.
-    gpio_c.rcc_busenr_gpioen.clear_bit();
+    gpio_a.rcc_busenr_gpioen.clear_bit();
+    // gpio_c.rcc_busenr_gpioen.clear_bit();
 
     // Configure debug pins used for capturing logic analyzer shots.
     let gpio_b = periph_gpio_b_head!(reg);
@@ -87,35 +108,51 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
 
     let setup = UartSetup {
-        uart: periph_usart3!(reg),
-        uart_int: thr.usart_3,
+        uart: periph_usart2!(reg),
+        uart_int: thr.usart_2,
+        // uart: periph_usart3!(reg),
+        // uart_int: thr.usart_3,
         uart_baud_rate: 9600,
         uart_word_length: 8,
         uart_stop_bits: UartStop::One,
         uart_parity: UartParity::None,
         uart_oversampling: 16,
-        dma_tx: periph_dma1_ch3!(reg),
-        dma_tx_int: thr.dma_1_ch_3,
+        dma_tx: periph_dma1_ch6!(reg),
+        dma_tx_int: thr.dma_1_ch_6,
+        // dma_tx: periph_dma1_ch3!(reg),
+        // dma_tx_int: thr.dma_1_ch_3,
         dma_tx_ch: 4,
         dma_tx_pl: 1, // Priority level: medium
+        dma_rx: periph_dma1_ch5!(reg),
+        dma_rx_int: thr.dma_1_ch_5,
+        // dma_rx: periph_dma1_ch1!(reg),
+        // dma_rx_int: thr.dma_1_ch_1,
+        dma_rx_ch: 4,
+        dma_rx_pl: 1, // Priority level: medium
     };
 
     let uart_drv = UartDrv::init(setup);
 
+
+    // let rx_buf = Vec::with_capacity(128).into_boxed_slice();
+    // let mut rx = uart_drv.rx(rx_buf);
+    // let mut buf = [0u8, 1];
+    // rx.read(&mut buf);
+
     loop {
         let mut tx = uart_drv.tx();
 
-        let writebuf = [0x55, 0xAA, 0x55, 0xAA].as_ref();
-        let writebuf2 = [0x33, 0xEE, 0x33, 0xEE].as_ref();
+        // let writebuf = [0x55, 0xAA, 0x55, 0xAA].as_ref();
+        let writebuf = b"Hello".as_ref();
+        let writebuf2 = b"World\r\n".as_ref();
         dbg1.set();
         tx.write(writebuf).root_wait();
         dbg1.clear();
         tx.write(writebuf2).root_wait();
-        tx.write(writebuf).root_wait();
         dbg1.set();
         tx.flush().root_wait();
         dbg1.clear();
-        tx.write([0xFF, 0x77, 0x33, 0x11].as_ref()).root_wait();
+        tx.write(b"Drone OS is awesome!\r\n".as_ref()).root_wait();
         dbg1.set();
         drop(tx); // Dropping tx guard disables TX on the uart - this is a busy wait if flush() is not called prior to drop
         dbg1.clear();
