@@ -78,6 +78,10 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
     /// The write future completes when the DMA transfer has completed,
     /// at which time the peripheral is ready for another invokation of write().
     pub async fn write(&mut self, buf: &[u8]) {
+        if buf.len() == 0 {
+            return;
+        }
+        
         unsafe {
             self.write_unsafe(buf).await;
         }
