@@ -1,4 +1,8 @@
-use crate::{diverged::{DmaChDiverged, UartDiverged}, rx::UartRxDrv, tx::UartTxDrv};
+use crate::{
+    diverged::{DmaChDiverged, UartDiverged},
+    rx::UartRxDrv,
+    tx::UartTxDrv,
+};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -6,8 +10,7 @@ use drone_stm32_map::periph::{
     uart::{traits::*, UartMap, UartPeriph},
 };
 
-pub mod config
-{
+pub mod config {
     use super::*;
 
     /// Uart setup.
@@ -42,7 +45,13 @@ pub mod config
             }
         }
 
-        pub fn at(mut self, baud_rate: u32, data_bits: DataBits, parity: Parity, stop_bits: StopBits) -> Self {
+        pub fn at(
+            mut self,
+            baud_rate: u32,
+            data_bits: DataBits,
+            parity: Parity,
+            stop_bits: StopBits,
+        ) -> Self {
             self.baud_rate = baud_rate;
             self.data_bits = data_bits;
             self.parity = parity;
@@ -105,7 +114,7 @@ pub mod config
         #[doc = "8 data bits."]
         Eight,
         #[doc = "9 data bits."]
-        Nine
+        Nine,
     }
 
     /// Uart parity.
@@ -143,9 +152,7 @@ pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> {
     uart_clk: PhantomData<Clk>,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
-    UartDrv<Uart, UartInt, Clk>
-{    
+impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> UartDrv<Uart, UartInt, Clk> {
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
     pub fn init(setup: config::UartSetup<Uart, UartInt>, clk: Clk) -> Self {
@@ -163,24 +170,20 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
             uart_int,
             uart_clk: PhantomData,
         };
-        drv.init_uart(
-            clk,
-            baud_rate,
-            data_bits,
-            parity,
-            stop_bits,
-            oversampling,
-        );
+        drv.init_uart(clk, baud_rate, data_bits, parity, stop_bits, oversampling);
         drv
     }
 
     /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
-    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
+    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(
+        &self,
+        setup: config::UartDmaSetup<DmaCh, DmaInt>,
+    ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
         let config::UartDmaSetup {
             dma,
             dma_int,
             dma_ch,
-            dma_pl
+            dma_pl,
         } = setup;
         let mut tx = UartTxDrv {
             uart: &self.uart,
@@ -193,12 +196,15 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
     }
 
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(&self, setup: config::UartDmaSetup<DmaCh, DmaInt>) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
+    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(
+        &self,
+        setup: config::UartDmaSetup<DmaCh, DmaInt>,
+    ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
         let config::UartDmaSetup {
             dma,
             dma_int,
             dma_ch,
-            dma_pl
+            dma_pl,
         } = setup;
         let mut rx = UartRxDrv {
             uart: &self.uart,

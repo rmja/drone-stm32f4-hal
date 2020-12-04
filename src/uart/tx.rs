@@ -1,6 +1,4 @@
-use crate::{
-    diverged::{DmaChDiverged, UartDiverged},
-};
+use crate::diverged::{DmaChDiverged, UartDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap},
@@ -81,7 +79,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         if buf.len() == 0 {
             return;
         }
-        
+
         unsafe {
             self.write_unsafe(buf).await;
         }

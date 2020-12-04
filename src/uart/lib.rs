@@ -7,7 +7,7 @@ mod drv;
 mod rx;
 mod tx;
 
-pub use self::drv::{UartDrv, config};
+pub use self::drv::{config, UartDrv};
 
 #[prelude_import]
 #[allow(unused_imports)]

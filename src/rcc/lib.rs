@@ -2,4 +2,4 @@
 
 mod drv;
 
-pub use self::drv::{RccSetup};
+pub use self::drv::RccSetup;

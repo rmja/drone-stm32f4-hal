@@ -1,6 +1,4 @@
-use crate::{
-    diverged::{DmaChDiverged, UartDiverged},
-};
+use crate::diverged::{DmaChDiverged, UartDiverged};
 use core::ops::Range;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -67,12 +65,15 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
     /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
     /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the receiption.
     /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
-    pub fn sess<'sess>(&'sess mut self, ring_buf: Box<[u8]>) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
+    pub fn sess<'sess>(
+        &'sess mut self,
+        ring_buf: Box<[u8]>,
+    ) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
         let mut rx = RxGuard {
             drv: self,
             ring_buf,
             first: 0,
-            last_read_wrapped: false
+            last_read_wrapped: false,
         };
 
         rx.start();
@@ -102,7 +103,6 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         //  +- first --+               |                    +- end ------+           |
         //  |                          |                    |                        |
         //  +- end --------------------+                    +- first ----------------+
-
 
         // NDTR is auto-reloaded to the ring buffer size when it reaches 0.
         // The transfer completed interrupt flag (TCIF) is asserted when this happens,
@@ -150,8 +150,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
             self.first = (self.first + cnt) % self.ring_buf.len();
 
             Ok(cnt)
-        }
-        else {
+        } else {
             // The available portion in the ring buffer _does_ wrap.
 
             if self.first + buf.len() < self.ring_buf.len() {
@@ -171,8 +170,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
                 self.first = (self.first + cnt) % self.ring_buf.len();
 
                 Ok(cnt)
-            }
-            else {
+            } else {
                 // The provided read buffer is large enough to include all bytes from the tail of the ring buffer,
                 // so the next read will not have any unread tail bytes in the ring buffer.
 
@@ -301,8 +299,10 @@ impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> Drop
 fn limit(range: Range<usize>, limit: usize) -> Range<usize> {
     if range.len() <= limit {
         range
-    }
-    else {
-        Range { start: range.start, end: range.start + limit }
+    } else {
+        Range {
+            start: range.start,
+            end: range.start + limit,
+        }
     }
 }
