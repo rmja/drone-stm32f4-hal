@@ -177,15 +177,17 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     loop {
         let mut buf = [0; 4];
-        let read = rx.read(&mut buf).root_wait().unwrap_or_default();
-
-        if read == 0 {
-            continue;
-        }
-
-        line_buf.extend_from_slice(&buf[..read]);
+        match rx.read(&mut buf).root_wait() {
+            Ok(n) => {
+                line_buf.extend_from_slice(&buf[..n]);
+            },
+            Err(e) => {
+                line_buf.clear();
+                line_buf.extend_from_slice(format!("Error: {:?}\n", e).as_bytes());
+            }
+        };
+        
         let newline = line_buf.iter().position(|x| { x == &b'\n'});
-
         let line = match newline {
             Some(index) => &line_buf[..index],
             None => continue,

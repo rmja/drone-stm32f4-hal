@@ -21,7 +21,7 @@ pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, Dma
     first: usize,
     last_read_wrapped: bool,
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RxError {
     PossibleOverflow,
     Overflow,
@@ -174,7 +174,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
             }
             else {
                 // The provided read buffer is large enough to include all bytes from the tail of the ring buffer,
-                // so that the next read will start from the beginning.
+                // so the next read will not have any unread tail bytes in the ring buffer.
 
                 // Clear transfer completed interrupt flag.
                 drv.dma.dma_ifcr_ctcif.set_bit();
@@ -184,7 +184,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
                 self.last_read_wrapped = true;
 
                 let cnt_tail = self.copy_to(buf, self.first..self.ring_buf.len());
-                let cnt_head = self.copy_to(&mut buf[..cnt_tail], 0..end);
+                let cnt_head = self.copy_to(&mut buf[cnt_tail..], 0..end);
                 self.first = cnt_head;
 
                 Ok(cnt_tail + cnt_head)
