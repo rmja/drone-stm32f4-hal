@@ -166,6 +166,15 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Enable receiver.
     let mut rx = rx_drv.sess(rx_ring_buf);
 
+    {
+        let mut tx = tx_drv.sess();
+        tx.write(b"Write a lowercase word:\n").root_wait();
+        tx.flush().root_wait();
+    }
+
+
+    let mut line_buf = vec![];
+
     loop {
         let mut buf = [0; 4];
         let read = rx.read(&mut buf).root_wait().unwrap_or_default();
@@ -174,21 +183,29 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
             continue;
         }
 
+        line_buf.extend_from_slice(&buf[..read]);
+        let newline = line_buf.iter().position(|x| { x == &b'\n'});
+
+        let line = match newline {
+            Some(index) => &line_buf[..index],
+            None => continue,
+        };
+
+        // Write back the uppercase equivalent of the received.
+        let mut upper = String::from_utf8(line.to_vec()).unwrap_or(String::from("?"));
+        upper.make_ascii_uppercase();
+
+        // The calls to write() finishes as soon as the tx session can receive more bytes,
+        // and not when when transmission has actually completed.
+        // This enables full saturation of the uart.
+
         // Enable transmitter.
         let mut tx = tx_drv.sess();
 
-        // Write back the uppercase equivalent of the received in the format "<received>:<RECEIVED>".
-
         dbg1.set();
-        // This call to write finishes as soon as the tx session can receive more bytes,
-        // and not when when transmission has actually completed.
-        // This enables full saturation of the uart.
-        tx.write(&buf[..read]).root_wait();
-        dbg1.clear();
-        tx.write(b":").root_wait();
-        let mut upper = String::from_utf8(buf[..read].to_vec()).unwrap_or(String::from("?"));
-        upper.make_ascii_uppercase();
         tx.write(upper.into_bytes().as_ref()).root_wait();
+        dbg1.clear();
+        tx.write(b"\n").root_wait();
         dbg1.set();
         tx.flush().root_wait(); // Wait for the actual uart transmission to complete
         dbg1.clear();
@@ -196,6 +213,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         // Dropping tx disables the transmitter.
         // This is a busy wait if flush() is not called prior to dropping tx!
         drop(tx);
+
+        line_buf.clear();
     }
 
     // Enter a sleep state on ISR exit.

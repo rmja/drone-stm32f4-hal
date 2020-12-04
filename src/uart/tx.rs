@@ -6,7 +6,6 @@ use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap},
     uart::{traits::*, UartMap},
 };
-use futures::prelude::*;
 
 pub struct UartTxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
     pub(crate) uart: &'drv UartDiverged<Uart>,
