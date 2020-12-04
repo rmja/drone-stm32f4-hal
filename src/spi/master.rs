@@ -1,6 +1,4 @@
-pub struct SpiMasterDrv {
-
-}
+pub struct SpiMasterDrv {}
 
 impl SpiMasterDrv {
     pub async fn send(&mut self, tx_buf: &[u8]) -> usize {

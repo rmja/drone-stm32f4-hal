@@ -25,20 +25,11 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::RccSetup,
-    uart::config::DataBits,
     uart::{
-        config::{Parity, StopBits, UartClk, UartDmaSetup, UartSetup},
+        config::{BaudRate, UartDmaSetup, UartSetup},
         UartDrv,
     },
 };
-
-struct Adapters;
-
-impl UartClk for Adapters {
-    fn clock(&self) -> u32 {
-        90_000_000
-    }
-}
 
 /// The root task handler.
 #[inline(never)]
@@ -123,11 +114,13 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
 
-    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2).at(
-        9_600,
-        DataBits::Eight,
-        Parity::None,
-        StopBits::One,
+    let setup = UartSetup::new(
+        periph_usart2!(reg),
+        thr.usart_2,
+        BaudRate::Nom {
+            nom: 9_600,
+            f_pclk: 90_000_000,
+        },
     );
     let tx_setup = UartDmaSetup {
         dma: periph_dma1_ch6!(reg),
@@ -156,8 +149,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     //     dma_pl: 1, // Priority level: medium
     // };
 
-    let adapters = Adapters {};
-    let uart_drv = UartDrv::init(setup, adapters);
+    let uart_drv = UartDrv::init(setup);
     let mut tx_drv = uart_drv.tx(tx_setup);
 
     let rx_ring_buf = vec![0; 10].into_boxed_slice();
@@ -172,7 +164,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         tx.flush().root_wait();
     }
 
-
     let mut line_buf = vec![];
 
     loop {
@@ -180,14 +171,14 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         match rx.read(&mut buf).root_wait() {
             Ok(n) => {
                 line_buf.extend_from_slice(&buf[..n]);
-            },
+            }
             Err(e) => {
                 line_buf.clear();
                 line_buf.extend_from_slice(format!("Error: {:?}\n", e).as_bytes());
             }
         };
-        
-        let newline = line_buf.iter().position(|x| { x == &b'\n'});
+
+        let newline = line_buf.iter().position(|x| x == &b'\n');
         let line = match newline {
             Some(index) => &line_buf[..index],
             None => continue,

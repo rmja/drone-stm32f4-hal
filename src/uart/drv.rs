@@ -1,9 +1,4 @@
-use crate::{
-    diverged::{DmaChDiverged, UartDiverged},
-    rx::UartRxDrv,
-    tx::UartTxDrv,
-};
-use core::marker::PhantomData;
+use crate::{diverged::UartDiverged, rx::UartRxDrv, tx::UartTxDrv};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
@@ -20,7 +15,7 @@ pub mod config {
         /// Uart global interrupt.
         pub uart_int: UartInt,
         /// Baud rate.
-        pub baud_rate: u32,
+        pub baud_rate: BaudRate,
         /// Data bits.
         pub data_bits: DataBits,
         /// Parity.
@@ -33,30 +28,20 @@ pub mod config {
 
     impl<Uart: UartMap, UartInt: IntToken> UartSetup<Uart, UartInt> {
         /// Create a new uart setup with sensible defaults.
-        pub fn default(uart: UartPeriph<Uart>, uart_int: UartInt) -> UartSetup<Uart, UartInt> {
+        pub fn new(
+            uart: UartPeriph<Uart>,
+            uart_int: UartInt,
+            baud_rate: BaudRate,
+        ) -> UartSetup<Uart, UartInt> {
             UartSetup {
                 uart,
                 uart_int,
-                baud_rate: 9_600,
+                baud_rate,
                 data_bits: DataBits::Eight,
                 parity: Parity::None,
                 stop_bits: StopBits::One,
                 oversampling: Oversampling::By16,
             }
-        }
-
-        pub fn at(
-            mut self,
-            baud_rate: u32,
-            data_bits: DataBits,
-            parity: Parity,
-            stop_bits: StopBits,
-        ) -> Self {
-            self.baud_rate = baud_rate;
-            self.data_bits = data_bits;
-            self.parity = parity;
-            self.stop_bits = stop_bits;
-            self
         }
     }
 
@@ -72,39 +57,45 @@ pub mod config {
         pub dma_pl: u32,
     }
 
-    /// Uart clock configuration to be implemented by app adapter.
-    pub trait UartClk {
-        /// The uart peripheral clock frequency.
-        fn clock(&self) -> u32;
+    #[derive(Copy, Clone)]
+    pub enum BaudRate {
+        Nom { nom: u32, f_pclk: u32 },
+        Cust { div_man: u32, div_frac: u32 },
+    }
 
-        /// Computes the uart divider for use by the baud rate register
-        /// according to eqn. 1 in PM0090 §30.3.4 page 978.
-        fn compute_brr(&self, oversampling: Oversampling, baud_rate: u32) -> (u32, u32) {
-            let f_ck = self.clock();
-            let over8 = (oversampling == Oversampling::By8) as u32;
-            // The computation of the divisor is as follows:
-            //
-            //                             f_ck
-            //       USARTDIV = ---------------------------
-            //                  8 * (2 - over8) * baud_rate
-            //                |
-            //                V         25 * f_ck
-            // 100 * USARTDIV = ---------------------------
-            //                  2 * (2 - over8) * baud_rate
-            //
-            // Note that 25 * f_ck fits safely in a u32 as max f_ck = 90_000_000.
-            let div100 = (25 * f_ck) / (2 * (2 - over8) * baud_rate);
-            let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
-            let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
-            let div_frac = if over8 == 1 {
-                // The frac field has 3 bits, 0..15
-                (rem100 * 16 + 50) / 100
-            } else {
-                // The frac field has 4 bits, 0..31
-                (rem100 * 32 + 50) / 100
-            };
+    impl BaudRate {
+        pub(crate) fn brr(&self, oversampling: Oversampling) -> (u32, u32) {
+            match self {
+                BaudRate::Nom { nom: baud_rate, f_pclk } => {
+                    // Compute the uart divider for use by the baud rate register
+                    // according to eqn. 1 in PM0090 §30.3.4 page 978.
+                    // The computation of the divisor is as follows:
+                    //
+                    //                            f_pclk
+                    //       USARTDIV = ---------------------------
+                    //                  8 * (2 - over8) * baud_rate
+                    //                |
+                    //                V        25 * f_pclk
+                    // 100 * USARTDIV = ---------------------------
+                    //                  2 * (2 - over8) * baud_rate
+                    //
+                    // Note that 25 * f_pclk fits safely in a u32 as max f_pclk = 90_000_000.
+                    let over8 = (oversampling == Oversampling::By8) as u32;
+                    let div100 = (25 * f_pclk) / (2 * (2 - over8) * baud_rate);
+                    let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
+                    let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
+                    let div_frac = if over8 == 1 {
+                        // The frac field has 3 bits, 0..15
+                        (rem100 * 16 + 50) / 100
+                    } else {
+                        // The frac field has 4 bits, 0..31
+                        (rem100 * 32 + 50) / 100
+                    };
 
-            (div_man, div_frac)
+                    (div_man, div_frac)
+                }
+                BaudRate::Cust { div_man, div_frac } => (*div_man, *div_frac),
+            }
         }
     }
 
@@ -146,16 +137,15 @@ pub mod config {
 }
 
 /// Uart driver.
-pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> {
+pub struct UartDrv<Uart: UartMap, UartInt: IntToken> {
     uart: UartDiverged<Uart>,
     uart_int: UartInt,
-    uart_clk: PhantomData<Clk>,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> UartDrv<Uart, UartInt, Clk> {
+impl<Uart: UartMap, UartInt: IntToken> UartDrv<Uart, UartInt> {
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
-    pub fn init(setup: config::UartSetup<Uart, UartInt>, clk: Clk) -> Self {
+    pub fn init(setup: config::UartSetup<Uart, UartInt>) -> Self {
         let config::UartSetup {
             uart,
             uart_int,
@@ -168,9 +158,8 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> UartDrv<Uart, UartI
         let mut drv = Self {
             uart: uart.into(),
             uart_int,
-            uart_clk: PhantomData,
         };
-        drv.init_uart(clk, baud_rate, data_bits, parity, stop_bits, oversampling);
+        drv.init_uart(baud_rate, data_bits, parity, stop_bits, oversampling);
         drv
     }
 
@@ -218,8 +207,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> UartDrv<Uart, UartI
 
     fn init_uart(
         &mut self,
-        clk: Clk,
-        baud_rate: u32,
+        baud_rate: config::BaudRate,
         data_bits: config::DataBits,
         parity: config::Parity,
         stop_bits: config::StopBits,
@@ -268,7 +256,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk> UartDrv<Uart, UartI
         });
         self.uart.uart_brr.store_reg(|r, v| {
             // Baud rate.
-            let (div_man, div_frac) = clk.compute_brr(oversampling, baud_rate);
+            let (div_man, div_frac) = baud_rate.brr(oversampling);
             r.div_mantissa().write(v, div_man);
             r.div_fraction().write(v, div_frac);
         });

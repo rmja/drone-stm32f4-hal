@@ -1,6 +1,4 @@
-use crate::{
-    master::SpiMasterDrv,
-};
+use crate::master::SpiMasterDrv;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
@@ -36,10 +34,7 @@ pub mod config {
             }
         }
 
-        pub fn at(
-            mut self,
-            prsc: Prsc,
-        ) -> Self {
+        pub fn at(mut self, prsc: Prsc) -> Self {
             self.baud_rate_prsc = prsc;
             self
         }
@@ -58,12 +53,12 @@ pub mod config {
 
     pub enum ClkPol {
         Low,
-        High
+        High,
     }
 
     pub enum FirstBit {
         Msb,
-        Lsb
+        Lsb,
     }
 }
 
@@ -75,23 +70,14 @@ pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken> {
 impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
     #[must_use]
     pub fn init(setup: config::SpiSetup<Spi, SpiInt>) -> SpiDrv<Spi, SpiInt> {
-        let config::SpiSetup {
-            spi,
-            spi_int,
-            ..
-        } = setup;
-        let mut drv = SpiDrv {
-            spi,
-            spi_int
-        };
+        let config::SpiSetup { spi, spi_int, .. } = setup;
+        let mut drv = SpiDrv { spi, spi_int };
         drv.init_spi();
         drv
     }
 
     pub fn master(&mut self) -> SpiMasterDrv {
-        SpiMasterDrv {
-            
-        }
+        SpiMasterDrv {}
     }
 
     fn init_spi(&mut self) {
