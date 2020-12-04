@@ -65,10 +65,7 @@ pub mod config {
 
     impl BaudRate {
         pub fn nominal(baud_rate: u32, f_pclk: u32) -> BaudRate {
-            BaudRate::Nominal {
-                baud_rate,
-                f_pclk,
-            }
+            BaudRate::Nominal { baud_rate, f_pclk }
         }
 
         pub(crate) fn brr(&self, oversampling: Oversampling) -> (u32, u32) {

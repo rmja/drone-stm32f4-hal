@@ -28,7 +28,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     println!("Hello, world!");
 
 
-    let setup = SpiSetup::default(periph_spi1!(reg), thr.spi_1).at(Prsc::Prsc16);
+    let setup = SpiSetup::new(
+        periph_spi1!(reg), 
+        thr.spi_1,
+        BaudRate::max(10_000_000, 90_000_000)
+    );
     let mut spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.master();
 

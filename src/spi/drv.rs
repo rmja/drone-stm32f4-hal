@@ -13,9 +13,8 @@ pub mod config {
         pub spi: SpiPeriph<Spi>,
         /// Spi global interrupt.
         pub spi_int: SpiInt,
-        /// The baud rate clock prescaler.
-        /// baud_rate = f_pclk / baud_rate_prsc.
-        pub baud_rate_prsc: Prsc,
+        /// The baud rate.
+        pub baud_rate: BaudRate,
         /// The clock polarity.
         pub clk_pol: ClkPol,
         /// The bit transmission order.
@@ -24,31 +23,74 @@ pub mod config {
 
     impl<Spi: SpiMap, SpiInt: IntToken> SpiSetup<Spi, SpiInt> {
         /// Create a new spi setup with sensible defaults.
-        pub fn default(spi: SpiPeriph<Spi>, spi_int: SpiInt) -> SpiSetup<Spi, SpiInt> {
+        pub fn new(
+            spi: SpiPeriph<Spi>,
+            spi_int: SpiInt,
+            baud_rate: BaudRate,
+        ) -> SpiSetup<Spi, SpiInt> {
             SpiSetup {
                 spi,
                 spi_int,
-                baud_rate_prsc: Prsc::Prsc2,
+                baud_rate,
                 clk_pol: ClkPol::Low,
                 first_bit: FirstBit::Msb,
             }
         }
+    }
 
-        pub fn at(mut self, prsc: Prsc) -> Self {
-            self.baud_rate_prsc = prsc;
-            self
+    pub enum BaudRate {
+        Max { baud_rate: u32, f_pclk: u32 },
+        Custom(Prescaler),
+    }
+
+    impl BaudRate {
+        pub fn max(baud_rate: u32, f_pclk: u32) -> BaudRate {
+            BaudRate::Max {
+                baud_rate,
+                f_pclk
+            }
+        }
+        
+        pub(crate) fn br(&self) -> u32 {
+            let presc = match self {
+                BaudRate::Max { baud_rate, f_pclk } => {
+                    match f_pclk / baud_rate {
+                        0 => unreachable!(),
+                        1..=2 => Prescaler::Div2,
+                        3..=4 => Prescaler::Div4,
+                        5..=8 => Prescaler::Div8,
+                        9..=16 => Prescaler::Div16,
+                        17..=32 => Prescaler::Div32,
+                        33..=64 => Prescaler::Div64,
+                        65..=128 => Prescaler::Div128,
+                        _ => Prescaler::Div256,
+                    }
+                },
+                BaudRate::Custom(prescaler) => prescaler,
+            };
+
+            match presc {
+                Prescaler::Div2 => 0b000,
+                Prescaler::Div4 => 0b001,
+                Prescaler::Div8 => 0b010,
+                Prescaler::Div16 => 0b011,
+                Prescaler::Div32 => 0b100,
+                Prescaler::Div64 => 0b101,
+                Prescaler::Div128 => 0b110,
+                Prescaler::Div256 => 0b111,
+            }
         }
     }
 
-    pub enum Prsc {
-        Prsc2,
-        Prsc4,
-        Prsc8,
-        Prsc16,
-        Prsc32,
-        Prsc64,
-        Prsc128,
-        Prsc256,
+    pub enum Prescaler {
+        Div2,
+        Div4,
+        Div8,
+        Div16,
+        Div32,
+        Div64,
+        Div128,
+        Div256,
     }
 
     pub enum ClkPol {
