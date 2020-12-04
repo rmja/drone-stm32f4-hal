@@ -194,7 +194,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         };
 
         // Write back the uppercase equivalent of the received.
-        let mut upper = String::from_utf8(line.to_vec()).unwrap_or(String::from("?"));
+        let mut upper = String::from_utf8(line.to_vec()).unwrap_or_else(|_| String::from("?"));
         upper.make_ascii_uppercase();
 
         // The calls to write() finishes as soon as the tx session can receive more bytes,

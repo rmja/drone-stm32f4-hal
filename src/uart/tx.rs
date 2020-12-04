@@ -55,7 +55,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken
     }
 
     /// Enable tx operation for the uart peripheral and return a guard that disables the transmitter when dropped.
-    pub fn sess<'sess>(&'sess mut self) -> TxGuard<'sess, Uart, UartInt, DmaTx, DmaTxInt> {
+    pub fn sess(&mut self) -> TxGuard<Uart, UartInt, DmaTx, DmaTxInt> {
         // Enable transmitter.
         self.uart.uart_cr1.modify_reg(|r, v| {
             r.te().set(v);
@@ -76,7 +76,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
     /// The write future completes when the DMA transfer has completed,
     /// at which time the peripheral is ready for another invokation of write().
     pub async fn write(&mut self, buf: &[u8]) {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return;
         }
 
