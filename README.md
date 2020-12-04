@@ -10,25 +10,10 @@ Add the crate to your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
-drone-stm32f4-hal = { git = "https://github.com/rmja/drone-stm32f4-hal" }
+drone-stm32f4-hal = { git = "https://github.com/rmja/drone-stm32f4-hal", features = ["uart"] }
 ```
 
-### Uart Driver
-
-Example of usage:
-
-```rust
-let mut drv = UartDrv::init(...);
-{
-    let mut tx = drv.tx(); // Enables uart TX peripheral
-
-    let buf1 = vec![0x55, 0xAA, 0x55, 0xAA].into_boxed_slice();
-    let buf2 = vec![0x33, 0xEE, 0x33, 0xEE].into_boxed_slice();
-    tx.write(&buf1).await; // Future returns as soon as a new write is possible
-    tx.write(&buf2).await;
-    tx.flush().await; // Wait for uart peripheral to complete transmission
-} // Dropping tx guard disables TX on the uart - this is a busy wait if flush() is not called prior to drop
-```
+* [Uart driver echo example](./examples/uart/src/tasks/root.rs)
 
 ## References
 
