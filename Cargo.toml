@@ -31,6 +31,7 @@ std = [
 gpio = ["drone-stm32f4-gpio-drv"]
 rcc = ["drone-stm32f4-rcc-drv"]
 uart = ["drone-stm32f4-uart-drv"]
+spi = ["drone-stm32f4-spi-drv"]
 
 [dependencies]
 drone-core = { version = "0.13.0", path = "../drone-core" }
@@ -49,4 +50,9 @@ optional = true
 [dependencies.drone-stm32f4-uart-drv]
 version = "=0.1.0"
 path = "src/uart"
+optional = true
+
+[dependencies.drone-stm32f4-spi-drv]
+version = "=0.1.0"
+path = "src/spi"
 optional = true
