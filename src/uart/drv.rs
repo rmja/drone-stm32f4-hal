@@ -59,14 +59,21 @@ pub mod config {
 
     #[derive(Copy, Clone)]
     pub enum BaudRate {
-        Nom { nom: u32, f_pclk: u32 },
-        Cust { div_man: u32, div_frac: u32 },
+        Nominal { baud_rate: u32, f_pclk: u32 },
+        Custom { div_man: u32, div_frac: u32 },
     }
 
     impl BaudRate {
+        pub fn nominal(baud_rate: u32, f_pclk: u32) -> BaudRate {
+            BaudRate::Nominal {
+                baud_rate,
+                f_pclk,
+            }
+        }
+
         pub(crate) fn brr(&self, oversampling: Oversampling) -> (u32, u32) {
             match self {
-                BaudRate::Nom { nom: baud_rate, f_pclk } => {
+                BaudRate::Nominal { baud_rate, f_pclk } => {
                     // Compute the uart divider for use by the baud rate register
                     // according to eqn. 1 in PM0090 §30.3.4 page 978.
                     // The computation of the divisor is as follows:
@@ -94,7 +101,7 @@ pub mod config {
 
                     (div_man, div_frac)
                 }
-                BaudRate::Cust { div_man, div_frac } => (*div_man, *div_frac),
+                BaudRate::Custom { div_man, div_frac } => (*div_man, *div_frac),
             }
         }
     }

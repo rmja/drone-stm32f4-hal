@@ -117,10 +117,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let setup = UartSetup::new(
         periph_usart2!(reg),
         thr.usart_2,
-        BaudRate::Nom {
-            nom: 9_600,
-            f_pclk: 90_000_000,
-        },
+        BaudRate::nominal(9_600, 90_000_000),
     );
     let tx_setup = UartDmaSetup {
         dma: periph_dma1_ch6!(reg),
