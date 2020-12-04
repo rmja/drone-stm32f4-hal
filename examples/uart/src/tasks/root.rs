@@ -12,13 +12,25 @@ use drone_stm32_map::periph::{
         // periph_dma1_ch3,
     },
     gpio::{
-        periph_gpio_b10, periph_gpio_b2, periph_gpio_b_head,
-        periph_gpio_a_head, periph_gpio_a2, periph_gpio_a3,
+        periph_gpio_a2,
+        periph_gpio_a3,
         // periph_gpio_c_head, periph_gpio_c10, periph_gpio_c11,
+        periph_gpio_a_head,
+        periph_gpio_b10,
+        periph_gpio_b2,
+        periph_gpio_b_head,
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::RccSetup, uart::config::DataBits, uart::{UartDrv, config::{Parity, StopBits, UartClk, UartDmaSetup, UartSetup}}};
+use drone_stm32f4_hal::{
+    gpio::{GpioPinCfg, GpioPinSpeed},
+    rcc::RccSetup,
+    uart::config::DataBits,
+    uart::{
+        config::{Parity, StopBits, UartClk, UartDmaSetup, UartSetup},
+        UartDrv,
+    },
+};
 
 struct Adapters;
 
@@ -111,8 +123,12 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
 
-    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2)
-        .at(9_600, DataBits::Eight, Parity::None, StopBits::One);
+    let setup = UartSetup::default(periph_usart2!(reg), thr.usart_2).at(
+        9_600,
+        DataBits::Eight,
+        Parity::None,
+        StopBits::One,
+    );
     let tx_setup = UartDmaSetup {
         dma: periph_dma1_ch6!(reg),
         dma_int: thr.dma_1_ch_6,
@@ -140,32 +156,46 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     //     dma_pl: 1, // Priority level: medium
     // };
 
-    let adapters = Adapters{};
+    let adapters = Adapters {};
     let uart_drv = UartDrv::init(setup, adapters);
     let mut tx_drv = uart_drv.tx(tx_setup);
 
+    let rx_ring_buf = vec![0; 10].into_boxed_slice();
+    let mut rx_drv = uart_drv.rx(rx_setup);
 
-    // let rx_buf = Vec::with_capacity(128).into_boxed_slice();
-    // let mut rx = uart_drv.rx(rx_buf);
-    // let mut buf = [0u8, 1];
-    // rx.read(&mut buf);
+    // Enable receiver.
+    let mut rx = rx_drv.sess(rx_ring_buf);
 
     loop {
+        let mut buf = [0; 4];
+        let read = rx.read(&mut buf).root_wait().unwrap_or_default();
+
+        if read == 0 {
+            continue;
+        }
+
+        // Enable transmitter.
         let mut tx = tx_drv.sess();
-        // let writebuf = [0x55, 0xAA, 0x55, 0xAA].as_ref();
-        let writebuf = b"Hello".as_ref();
-        let writebuf2 = b"World\r\n".as_ref();
+
+        // Write back the uppercase equivalent of the received in the format "<received>:<RECEIVED>".
+
         dbg1.set();
-        tx.write(writebuf).root_wait();
+        // This call to write finishes as soon as the tx session can receive more bytes,
+        // and not when when transmission has actually completed.
+        // This enables full saturation of the uart.
+        tx.write(&buf[..read]).root_wait();
         dbg1.clear();
-        tx.write(writebuf2).root_wait();
+        tx.write(b":").root_wait();
+        let mut upper = String::from_utf8(buf[..read].to_vec()).unwrap_or(String::from("?"));
+        upper.make_ascii_uppercase();
+        tx.write(upper.into_bytes().as_ref()).root_wait();
         dbg1.set();
-        tx.flush().root_wait();
+        tx.flush().root_wait(); // Wait for the actual uart transmission to complete
         dbg1.clear();
-        tx.write(b"Drone OS is awesome!\r\n".as_ref()).root_wait();
-        dbg1.set();
-        drop(tx); // Dropping tx guard disables TX on the uart - this is a busy wait if flush() is not called prior to drop
-        dbg1.clear();
+
+        // Dropping tx disables the transmitter.
+        // This is a busy wait if flush() is not called prior to dropping tx!
+        drop(tx);
     }
 
     // Enter a sleep state on ISR exit.

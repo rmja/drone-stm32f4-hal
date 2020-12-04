@@ -1,6 +1,7 @@
 use crate::{
     diverged::{DmaChDiverged, UartDiverged},
 };
+use core::ops::Range;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap},
@@ -46,6 +47,9 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
             r.tcie().clear(v); // transfer complete interrupt disable
             r.teie().set(v); // transfer error interrupt enable
         });
+        self.dma.dma_cfcr.store_reg(|r, v| {
+            r.dmdis().clear(v); // use direct mode instead of fifo
+        });
 
         // Attach dma error handler
         let dma_isr_dmeif = self.dma.dma_isr_dmeif;
@@ -60,12 +64,10 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
         });
     }
 
+    /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
+    /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the receiption.
+    /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
     pub fn sess<'sess>(&'sess mut self, ring_buf: Box<[u8]>) -> RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt> {
-        // Enable receiver.
-        self.uart.uart_cr1.modify_reg(|r, v| {
-            r.re().set(v);
-        });
-
         let mut rx = RxGuard {
             drv: self,
             ring_buf,
@@ -73,9 +75,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
             last_read_wrapped: false
         };
 
-        unsafe {
-            rx.setup_dma();
-        }
+        rx.start();
 
         rx
     }
@@ -91,32 +91,32 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         //
         // Without wraparound:                             With wraparound:
         //
-        //  + buf                      +--- NDTR ---+       + buf    +------------ NDTR ------------+
-        //  |                          |            |       |        |                              |
-        //  v                          v            v       v        v                              v
+        //  + ring_buf                 +--- NDTR ---+       + ring_buf   +---------- NDTR ----------+
+        //  |                          |            |       |            |                          |
+        //  v                          v            v       v            v                          v
         // +-----------------------------------------+     +-----------------------------------------+
-        // |oooooooooooXXXXXXXXXXXXXXXXoooooooooooooo|     |XXXXXXXXXooooooooooooooooXXXXXXXXXXXXXXXX|
+        // |oooooooooooXXXXXXXXXXXXXXXXoooooooooooooo|     |XXXXXXXXXXXXXooooooooooooXXXXXXXXXXXXXXXX|
         // +-----------------------------------------+     +-----------------------------------------+
-        //  ^          ^               ^                    ^        ^               ^
-        //  |          |               |                    |        |               |
-        //  +- first --+               |                    +- end --+               |
+        //  ^          ^               ^                    ^            ^           ^
+        //  |          |               |                    |            |           |
+        //  +- first --+               |                    +- end ------+           |
         //  |                          |                    |                        |
         //  +- end --------------------+                    +- first ----------------+
 
 
         // NDTR is auto-reloaded to the ring buffer size when it reaches 0.
-        // The transfer completed interrupt flag (TCIF) is asserted when this happens.
-        // We use this to 
+        // The transfer completed interrupt flag (TCIF) is asserted when this happens,
+        // which is used to detect overflows in the ring buffer.
 
-        let ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
-        let mut end = buf.len() - ndtr;
+        let mut ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
+        let mut end = self.ring_buf.len() - ndtr;
 
         if self.first == end {
-            // There currently no bytes available in the buffer.
+            // There currently no bytes readily available in the buffer.
 
             // Return a buffer overflow error if TCIF is asserted
             // as the DMA controller in that case has wrapped.
-            // This is the special case where n*ring_buf.len(), n > 0, bytes have been written since last read.
+            // This is the special case where n*ring_buf.len(), n > 0,1,2,..., bytes have been written since last read.
             if drv.dma.dma_isr_tcif.read_bit() {
                 // Clear transfer completed interrupt flag.
                 drv.dma.dma_ifcr_ctcif.set_bit();
@@ -124,40 +124,18 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
                 return Err(RxError::Overflow);
             }
 
-            let dma_cndtr = self.drv.dma.dma_cndtr;
-            let any_rx = drv.uart_int.add_future(fib::new_fn(move || {
-                // Note that we cannot clear the RXNE flag as it is automatically cleared by the DMA controller.
-                let new_ndtr = dma_cndtr.ndt().read_bits() as usize;
-                if new_ndtr != ndtr {
-                    fib::Complete(new_ndtr)
-                } else {
-                    fib::Yielded(())
-                }
-            }));
+            // Wait for any number of bytes to arrive in the rx ring buffer.
+            self.any_rx(ndtr).await;
 
-            // Listen for any rx activity.
-            drv.uart.uart_cr1.modify_reg(|r, v| {
-                r.rxneie().set(v);
-            });
-
-            let mut new_ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
-            if new_ndtr == ndtr {
-                // Wait for actitivy.
-                new_ndtr = any_rx.await;
-            }
-
-            // Stop listen activity.
-            drv.uart.uart_cr1.modify_reg(|r, v| {
-                r.rxneie().clear(v);
-            });
-
-            end = buf.len() - new_ndtr;
+            // Update the ring buffer values to new values after some bytes have been received.
+            ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
+            end = self.ring_buf.len() - ndtr;
         }
 
-        // There are bytes readily available in the buffer at this time.
+        // There are at this time bytes readily available in the ring buffer.
 
         if self.first < end {
-            // The available portion _does not_ wrap.
+            // The available portion in the ring buffer _does not_ wrap.
 
             // Return a buffer overflow error if TCIF is asserted
             // as the DMA controller in that case has wrapped.
@@ -168,55 +146,146 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
             }
             self.last_read_wrapped = false;
 
-            let src = self.first..end;
-            let dst = 0..buf.len();
-            let cnt = core::cmp::min(src.len(), dst.len());
-            buf[dst].copy_from_slice(&self.ring_buf[src]);
-            self.first += cnt;
+            let cnt = self.copy_to(buf, self.first..end);
+            self.first = (self.first + cnt) % self.ring_buf.len();
 
             Ok(cnt)
         }
         else {
-            // The available portion _does_ wrap.
+            // The available portion in the ring buffer _does_ wrap.
 
-            // Clear transfer completed interrupt flag.
-            drv.dma.dma_ifcr_ctcif.set_bit();
-            if self.last_read_wrapped {
-                return Err(RxError::PossibleOverflow);
+            if self.first + buf.len() < self.ring_buf.len() {
+                // The dma controller has wrapped and is currently writing (or the next byte added will be) in the beginning of the ring buffer,
+                // but the provided read buffer is not sufficiently large to empty the tail in the ring buffer.
+
+                // Return a buffer overflow error if TCIF is asserted
+                // as the DMA controller in that case has wrapped.
+                if drv.dma.dma_isr_tcif.read_bit() {
+                    // Clear transfer completed interrupt flag.
+                    drv.dma.dma_ifcr_ctcif.set_bit();
+                    return Err(RxError::Overflow);
+                }
+                self.last_read_wrapped = false;
+
+                let cnt = self.copy_to(buf, self.first..self.ring_buf.len());
+                self.first = (self.first + cnt) % self.ring_buf.len();
+
+                Ok(cnt)
             }
-            self.last_read_wrapped = true;
+            else {
+                // The provided read buffer is large enough to include all bytes from the tail of the ring buffer,
+                // so that the next read will start from the beginning.
 
-            // Copy the tail.
-            let src = self.first..self.ring_buf.len();
-            let dst = 0..buf.len();
-            let cnt_tail = core::cmp::min(src.len(), dst.len());
-            buf[dst].copy_from_slice(&self.ring_buf[src]);
+                // Clear transfer completed interrupt flag.
+                drv.dma.dma_ifcr_ctcif.set_bit();
+                if self.last_read_wrapped {
+                    return Err(RxError::PossibleOverflow);
+                }
+                self.last_read_wrapped = true;
 
-            // Copy the head.
-            let src = 0..end;
-            let dst = cnt_tail..buf.len();
-            let cnt_head = core::cmp::min(src.len(), dst.len());
-            buf[dst].copy_from_slice(&self.ring_buf[src]);
+                let cnt_tail = self.copy_to(buf, self.first..self.ring_buf.len());
+                let cnt_head = self.copy_to(&mut buf[..cnt_tail], 0..end);
+                self.first = cnt_head;
 
-            Ok(cnt_tail + cnt_head)
+                Ok(cnt_tail + cnt_head)
+            }
         }
+    }
+
+    fn copy_to(&mut self, buf: &mut [u8], data_range: Range<usize>) -> usize {
+        // Limit the number of bytes that can be copied.
+        let cnt = core::cmp::min(data_range.len(), buf.len());
+        let data_range = limit(data_range, cnt);
+
+        // Copy from ring buffer into read buffer.
+        buf[0..cnt].copy_from_slice(&self.ring_buf[data_range]);
+
+        cnt
+    }
+
+    fn start(&mut self) {
+        let drv = self.drv;
+
+        unsafe {
+            self.setup_dma();
+        }
+
+        // Enable receiver.
+        drv.uart.uart_cr1.modify_reg(|r, v| {
+            r.re().set(v);
+        });
+
+        // Start receive on DMA channel.
+        drv.uart.uart_cr3.modify_reg(|r, v| {
+            r.dmar().set(v);
+        });
+    }
+
+    fn stop(&mut self) {
+        let drv = self.drv;
+
+        // Stop receive on DMA channel.
+        drv.uart.uart_cr3.modify_reg(|r, v| {
+            r.dmar().clear(v);
+        });
+
+        // Disable receiver.
+        drv.uart.uart_cr1.modify_reg(|r, v| {
+            r.re().clear(v);
+        });
+
+        // Disable dma stream.
+        drv.dma.dma_ccr.modify_reg(|r, v| r.en().clear(v));
     }
 
     unsafe fn setup_dma(&mut self) {
         let drv = self.drv;
 
-        // Set buffer memory addres
+        // Set buffer memory addres.
         drv.dma.dma_cm0ar.store_reg(|r, v| {
             r.m0a().write(v, self.ring_buf.as_ptr() as u32);
         });
 
-        // Set number of bytes to transfer
+        // Set number of bytes to transfer.
         drv.dma.dma_cndtr.store_reg(|r, v| {
             r.ndt().write(v, self.ring_buf.len() as u32);
         });
 
-        // Enable stream
+        // Clear transfer completed interrupt flag.
+        drv.dma.dma_ifcr_ctcif.set_bit();
+
+        // Enable stream.
         drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
+    }
+
+    async fn any_rx(&mut self, old_ndtr: usize) {
+        let drv = self.drv;
+        let dma_cndtr = drv.dma.dma_cndtr;
+        let any_rx = drv.uart_int.add_future(fib::new_fn(move || {
+            // Note that we cannot clear the RXNE flag as it is automatically cleared by the DMA controller.
+            let new_ndtr = dma_cndtr.ndt().read_bits() as usize;
+            if new_ndtr != old_ndtr {
+                fib::Complete(())
+            } else {
+                fib::Yielded(())
+            }
+        }));
+
+        // Listen for any rx activity.
+        drv.uart.uart_cr1.modify_reg(|r, v| {
+            r.rxneie().set(v);
+        });
+
+        let new_ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
+        if new_ndtr == old_ndtr {
+            // Wait for actitivy.
+            any_rx.await;
+        }
+
+        // Stop listen for activity.
+        drv.uart.uart_cr1.modify_reg(|r, v| {
+            r.rxneie().clear(v);
+        });
     }
 }
 
@@ -225,9 +294,15 @@ impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> Drop
 {
     /// Stop the receiver.
     fn drop(&mut self) {
-        // Disable receiver.
-        self.drv.uart.uart_cr1.modify_reg(|r, v| {
-            r.re().clear(v);
-        });
+        self.stop();
+    }
+}
+
+fn limit(range: Range<usize>, limit: usize) -> Range<usize> {
+    if range.len() <= limit {
+        range
+    }
+    else {
+        Range { start: range.start, end: range.start + limit }
     }
 }
