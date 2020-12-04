@@ -125,7 +125,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
             }
 
             // Wait for any number of bytes to arrive in the rx ring buffer.
-            self.any_rx(ndtr).await;
+            self.any_rx_activity(ndtr).await;
 
             // Update the ring buffer values to new values after some bytes have been received.
             ndtr = drv.dma.dma_cndtr.ndt().read_bits() as usize;
@@ -258,7 +258,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
     }
 
-    async fn any_rx(&mut self, old_ndtr: usize) {
+    async fn any_rx_activity(&mut self, old_ndtr: usize) {
         let drv = self.drv;
         let dma_cndtr = drv.dma.dma_cndtr;
         let any_rx = drv.uart_int.add_future(fib::new_fn(move || {

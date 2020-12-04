@@ -17,7 +17,7 @@ pub struct UartTxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, Dm
 
 pub struct TxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
     drv: &'sess UartTxDrv<'sess, Uart, UartInt, DmaTx, DmaTxInt>,
-    any_write: bool,
+    busy: bool,
 }
 
 impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
@@ -66,7 +66,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken
 
         TxGuard {
             drv: self,
-            any_write: false,
+            busy: false,
         }
     }
 }
@@ -121,14 +121,14 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         drv.uart.uart_sr.tc().clear_bit();
 
         // Clear any outstanding fifo error interrupt flag by settings its clear register.
-        // drv.dma.dma_ifcr_cfeif.set_bit();
+        drv.dma.dma_ifcr_cfeif.set_bit();
 
         // Start transfer on DMA channel.
         drv.uart.uart_cr3.modify_reg(|r, v| {
             r.dmat().set(v);
         });
 
-        self.any_write = true;
+        self.busy = true;
 
         // Wait for DMA transfer to complete.
         dma_tc
@@ -138,7 +138,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
 
     /// Wait for the uart peripheral to actually complete the transfer.
     pub async fn flush(&mut self) {
-        if !self.any_write {
+        if !self.busy {
             // write() has not been called - there is nothing to wait for.
             return;
         }
@@ -174,7 +174,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         });
 
         // Wait for another call to write() before we need to wait in flush().
-        self.any_write = false;
+        self.busy = false;
     }
 
     unsafe fn setup_dma(&mut self, buf_tx: &[u8]) {
@@ -207,7 +207,7 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
     fn drop(&mut self) {
         let drv = self.drv;
 
-        if self.any_write {
+        if self.busy {
             // Wait for
             // 1) transmit buffer to become empty (TXE), and
             // 2) for transmission to complete (TC).
@@ -219,7 +219,7 @@ impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
                 }
             }
 
-            self.any_write = false;
+            self.busy = false;
         }
 
         // Disable transmitter.
