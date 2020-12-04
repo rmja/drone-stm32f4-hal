@@ -84,7 +84,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         }
     }
 
-    unsafe fn write_unsafe(&mut self, buf: &[u8]) -> impl Future<Output = ()> {
+    async unsafe fn write_unsafe(&mut self, buf: &[u8]) {
         let drv = self.drv;
         // PE (Parity error),
         // FE (Framing error),
@@ -131,9 +131,15 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         self.busy = true;
 
         // Wait for DMA transfer to complete.
-        dma_tc
+        dma_tc.await;
 
-        // The peripheral automatically disables the DMA stream on completion without error.
+        // The peripheral automatically disables the DMA stream on completion without error,
+        // but it does not clear the DMAT flag in CR3.
+
+        // Stop transfer on DMA channel.
+        drv.uart.uart_cr3.modify_reg(|r, v| {
+            r.dmat().clear(v);
+        });
     }
 
     /// Wait for the uart peripheral to actually complete the transfer.

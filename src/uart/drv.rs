@@ -287,6 +287,9 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: config::UartClk>
 }
 
 fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
+    if sr.rxne().read(&val) {
+        panic!("Read data register not empty");
+    }
     if sr.ore().read(&val) {
         panic!("Overrun error");
     }
