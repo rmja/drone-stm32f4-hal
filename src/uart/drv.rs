@@ -74,7 +74,7 @@ pub mod config {
 
     /// Uart clock configuration to be implemented by app adapter.
     pub trait UartClk {
-        /// The uart clock frequency.
+        /// The uart peripheral clock frequency.
         fn clock(&self) -> u32;
 
         /// Computes the uart divider for use by the baud rate register

@@ -1,10 +1,10 @@
 {
 	"folders": [
 		{
-			"path": "../.."
+			"path": "."
 		},
 		{
-			"path": "."
+			"path": "../.."
 		},
 		{
 			"path": "../../../drone-stm32-map"
