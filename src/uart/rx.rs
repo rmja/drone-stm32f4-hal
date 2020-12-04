@@ -201,39 +201,52 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         cnt
     }
 
+    /// Start the uart and dma according to AN4031 §4.3.
     fn start(&mut self) {
         let drv = self.drv;
 
+        // 1. Configure the dma stream.
         unsafe {
             self.setup_dma();
         }
 
-        // Enable receiver.
-        drv.uart.uart_cr1.modify_reg(|r, v| {
-            r.re().set(v);
-        });
+        // 2. Enable the dma stream.
+        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
 
-        // Start receive on DMA channel.
+        // 3a. Configure uart to receive on DMA channel.
         drv.uart.uart_cr3.modify_reg(|r, v| {
             r.dmar().set(v);
         });
+
+        // 3b. Enable receiver peripheral.
+        drv.uart.uart_cr1.modify_reg(|r, v| {
+            r.re().set(v);
+        });
     }
 
+    /// Stop the uart and dma according to AN4031 §4.1.
     fn stop(&mut self) {
         let drv = self.drv;
 
-        // Stop receive on DMA channel.
-        drv.uart.uart_cr3.modify_reg(|r, v| {
-            r.dmar().clear(v);
-        });
+        // 1. Disable dma stream.
+        drv.dma.dma_ccr.modify_reg(|r, v| r.en().clear(v));
 
-        // Disable receiver.
+        // 2. Wait until the EN bit in DMA_SxCR register is reset.
+        loop {
+            if !drv.dma.dma_ccr.en().read_bit() {
+                break;
+            }
+        }
+
+        // 3a. Disable receiver.
         drv.uart.uart_cr1.modify_reg(|r, v| {
             r.re().clear(v);
         });
 
-        // Disable dma stream.
-        drv.dma.dma_ccr.modify_reg(|r, v| r.en().clear(v));
+        // 3b. Stop receive on DMA channel.
+        drv.uart.uart_cr3.modify_reg(|r, v| {
+            r.dmar().clear(v);
+        });
     }
 
     unsafe fn setup_dma(&mut self) {
@@ -251,9 +264,6 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
 
         // Clear transfer completed interrupt flag.
         drv.dma.dma_ifcr_ctcif.set_bit();
-
-        // Enable stream.
-        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
     }
 
     async fn any_rx_activity(&mut self, old_ndtr: usize) {
