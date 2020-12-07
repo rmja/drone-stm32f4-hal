@@ -3,13 +3,13 @@ use config::{BaudRate, ClkPol, FirstBit};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
-    spi::{traits::*, SpiMap, SpiPeriph},
+    spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
 
 pub mod config {
     use super::*;
 
-    pub struct SpiSetup<Spi: SpiMap, SpiInt: IntToken> {
+    pub struct SpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken> {
         /// Spi peripheral.
         pub spi: SpiPeriph<Spi>,
         /// Spi global interrupt.
@@ -22,7 +22,7 @@ pub mod config {
         pub first_bit: FirstBit,
     }
 
-    impl<Spi: SpiMap, SpiInt: IntToken> SpiSetup<Spi, SpiInt> {
+    impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiSetup<Spi, SpiInt> {
         /// Create a new spi setup with sensible defaults.
         pub fn new(
             spi: SpiPeriph<Spi>,
@@ -39,6 +39,18 @@ pub mod config {
         }
     }
 
+    /// Spi tx/rx dma channel setup.
+    pub struct SpiDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
+        /// DMA channel peripheral.
+        pub dma: DmaChPeriph<DmaCh>,
+        /// DMA channel interrupt.
+        pub dma_int: DmaInt,
+        /// DMA channel number.
+        pub dma_ch: u32,
+        /// DMA channel priority level.
+        pub dma_pl: u32,
+    }
+
     pub enum BaudRate {
         Max { baud_rate: u32, f_pclk: u32 },
         Custom(Prescaler),
@@ -46,26 +58,21 @@ pub mod config {
 
     impl BaudRate {
         pub fn max(baud_rate: u32, f_pclk: u32) -> BaudRate {
-            BaudRate::Max {
-                baud_rate,
-                f_pclk
-            }
+            BaudRate::Max { baud_rate, f_pclk }
         }
-        
+
         pub(crate) fn br(&self) -> u32 {
             let presc = match self {
-                BaudRate::Max { baud_rate, f_pclk } => {
-                    match f_pclk / baud_rate {
-                        0 => unreachable!(),
-                        1..=2 => Prescaler::Div2,
-                        3..=4 => Prescaler::Div4,
-                        5..=8 => Prescaler::Div8,
-                        9..=16 => Prescaler::Div16,
-                        17..=32 => Prescaler::Div32,
-                        33..=64 => Prescaler::Div64,
-                        65..=128 => Prescaler::Div128,
-                        _ => Prescaler::Div256,
-                    }
+                BaudRate::Max { baud_rate, f_pclk } => match f_pclk / baud_rate {
+                    0 => unreachable!(),
+                    1..=2 => Prescaler::Div2,
+                    3..=4 => Prescaler::Div4,
+                    5..=8 => Prescaler::Div8,
+                    9..=16 => Prescaler::Div16,
+                    17..=32 => Prescaler::Div32,
+                    33..=64 => Prescaler::Div64,
+                    65..=128 => Prescaler::Div128,
+                    _ => Prescaler::Div256,
                 },
                 BaudRate::Custom(prescaler) => *prescaler,
             };
@@ -108,12 +115,12 @@ pub mod config {
     }
 }
 
-pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken> {
+pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken> {
     spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
 }
 
-impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
+impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
     #[must_use]
     pub fn init(setup: config::SpiSetup<Spi, SpiInt>) -> SpiDrv<Spi, SpiInt> {
         let config::SpiSetup {
@@ -121,7 +128,7 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
             spi_int,
             baud_rate,
             clk_pol,
-            first_bit
+            first_bit,
         } = setup;
         let mut drv = SpiDrv {
             spi: spi.into(),
@@ -131,8 +138,37 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
         drv
     }
 
-    pub fn master(&mut self) -> SpiMasterDrv {
-        SpiMasterDrv {}
+    /// Configures the driver in master-mode for full duplex operation.
+    pub fn master<DmaRxCh: DmaChMap, DmaRxInt: IntToken, DmaTxCh: DmaChMap, DmaTxInt: IntToken>(
+        &mut self,
+        rx_setup: config::SpiDmaSetup<DmaRxCh, DmaRxInt>,
+        tx_setup: config::SpiDmaSetup<DmaTxCh, DmaTxInt>,
+    ) -> SpiMasterDrv<Spi, SpiInt, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt> {
+        let config::SpiDmaSetup {
+            dma: dma_rx,
+            dma_int: dma_rx_int,
+            dma_ch: dma_rx_ch,
+            dma_pl: dma_rx_pl,
+        } = rx_setup;
+        let config::SpiDmaSetup {
+            dma: dma_tx,
+            dma_int: dma_tx_int,
+            dma_ch: dma_tx_ch,
+            dma_pl: dma_tx_pl,
+        } = tx_setup;
+        let mut master = SpiMasterDrv {
+            spi: &self.spi,
+            spi_int: &self.spi_int,
+            dma_rx: dma_rx.into(),
+            dma_rx_int,
+            dma_tx: dma_tx.into(),
+            dma_tx_int,
+        };
+
+        master.init_dma_rx(dma_rx_ch, dma_rx_pl);
+        master.init_dma_tx(dma_tx_ch, dma_tx_pl);
+
+        master
     }
 
     fn init_spi(&mut self, baud_rate: BaudRate, clk_pol: ClkPol, first_bit: FirstBit) {
@@ -152,24 +188,18 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
             // TODO: Should the driver support hardware slave management?
             r.ssm().set(v);
 
-            if first_bit == FirstBit::Msb {
-                r.lsbfirst().clear(v);
-            }
-            else {
+            if first_bit == FirstBit::Lsb {
                 r.lsbfirst().set(v);
             }
 
             // Baud rate control.
-            r.br().write(baud_rate.br());
+            r.br().write(v, baud_rate.br());
 
             // Master configuration.
             r.mstr().set(v);
 
             // Clock polarity.
-            if clk_pol == ClkPol::Low {
-                r.cpol().clear(v);
-            }
-            else {
+            if clk_pol == ClkPol::High {
                 r.cpol().set(v);
             }
 
@@ -178,7 +208,7 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
             r.cpha().clear(v);
         });
 
-        self.spi.spi_cr2.modify_reg(|r, v| {
+        self.spi.spi_cr2.store_reg(|r, v| {
             // Enable error interrupt
             r.errie().set(v);
         });
@@ -213,5 +243,22 @@ fn handle_spi_err<Spi: SpiMap>(val: &Spi::SpiSrVal, sr: Spi::CSpiSr) {
     }
     if sr.udr().read(&val) {
         panic!("Underrun error");
+    }
+}
+
+pub(crate) fn handle_dma_err<T: DmaChMap>(
+    val: &T::DmaIsrVal,
+    dma_isr_dmeif: T::CDmaIsrDmeif,
+    dma_isr_feif: T::CDmaIsrFeif,
+    dma_isr_teif: T::CDmaIsrTeif,
+) {
+    if dma_isr_teif.read(&val) {
+        panic!("Transfer error");
+    }
+    if dma_isr_dmeif.read(&val) {
+        panic!("Direct mode error");
+    }
+    if dma_isr_feif.read(&val) {
+        panic!("FIFO error");
     }
 }

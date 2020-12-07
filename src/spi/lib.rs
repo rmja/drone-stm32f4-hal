@@ -9,7 +9,7 @@ mod master;
 mod slave;
 
 pub use self::drv::{config, SpiDrv};
-pub use self::iface::{SpiIface, IfaceRoot};
+pub use self::iface::{IfaceRoot, SpiIface};
 
 #[prelude_import]
 #[allow(unused_imports)]

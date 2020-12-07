@@ -56,11 +56,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // gpio_c.rcc_busenr_gpioen.set_bit();
 
     // Configure UART GPIO pins.
-    GpioPinCfg::from(periph_gpio_a2!(reg))
+    GpioPinCfg::from(periph_gpio_a2!(reg)) // TX.
         .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    GpioPinCfg::from(periph_gpio_a3!(reg))
+    GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
         .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
@@ -119,15 +119,15 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         thr.usart_2,
         BaudRate::nominal(9_600, 90_000_000),
     );
-    let tx_setup = UartDmaSetup {
-        dma: periph_dma1_ch6!(reg),
-        dma_int: thr.dma_1_ch_6,
-        dma_ch: 4,
-        dma_pl: 1, // Priority level: medium
-    };
     let rx_setup = UartDmaSetup {
         dma: periph_dma1_ch5!(reg),
         dma_int: thr.dma_1_ch_5,
+        dma_ch: 4,
+        dma_pl: 1, // Priority level: medium
+    };
+    let tx_setup = UartDmaSetup {
+        dma: periph_dma1_ch6!(reg),
+        dma_int: thr.dma_1_ch_6,
         dma_ch: 4,
         dma_pl: 1, // Priority level: medium
     };
