@@ -10,18 +10,15 @@ pub struct SpiIface<CsPin: GpioPinMap> {
     cs: GpioPinPeriph<CsPin>,
 }
 
-pub trait IfaceRoot {
-    fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
-    fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
-}
-
-impl<CsPin: GpioPinMap> SpiIface<CsPin> {
-    pub fn new(cs: GpioPinPeriph<CsPin>) -> Self {
-        Self { cs }
+pub mod traits {
+    use super::*;
+    
+    pub trait IfaceRoot {
+        fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
+        fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
     }
-}
 
-impl<
+    impl<
         'drv,
         Spi: SpiMap,
         SpiInt: IntToken,
@@ -30,13 +27,20 @@ impl<
         DmaTx: DmaChMap,
         DmaTxInt: IntToken,
     > IfaceRoot for SpiMasterDrv<'drv, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
-{
-    fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
-        // Clear output pin by writing BR (bit reset) to the bit set/reset register.
-        iface.cs.gpio_bsrr_br.set_bit();
-    }
+    {
+        fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
+            // Clear output pin by writing BR (bit reset) to the bit set/reset register.
+            iface.cs.gpio_bsrr_br.set_bit();
+        }
 
-    fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
-        iface.cs.gpio_bsrr_bs.set_bit();
+        fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
+            iface.cs.gpio_bsrr_bs.set_bit();
+        }
+    }
+}
+
+impl<CsPin: GpioPinMap> SpiIface<CsPin> {
+    pub fn new(cs: GpioPinPeriph<CsPin>) -> Self {
+        Self { cs }
     }
 }

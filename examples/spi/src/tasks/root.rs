@@ -14,7 +14,7 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::RccSetup,
-    spi::{config::*, IfaceRoot, SpiDrv, SpiIface},
+    spi::{config::*, SpiDrv, SpiIface, traits::*},
 };
 
 /// The root task handler.
