@@ -2,6 +2,7 @@
 #![feature(prelude_import)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod diverged;
 mod drv;
 mod iface;
 mod master;

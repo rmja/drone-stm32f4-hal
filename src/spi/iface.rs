@@ -7,8 +7,8 @@ pub struct SpiIface<CsPin: GpioPinMap> {
 }
 
 pub trait IfaceRoot {
-    fn select<CsPin: GpioPinMap>(&mut self, iface: SpiIface<CsPin>);
-    fn deselect<CsPin: GpioPinMap>(&mut self, iface: SpiIface<CsPin>);
+    fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
+    fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>);
 }
 
 impl<CsPin: GpioPinMap> SpiIface<CsPin> {
@@ -18,12 +18,12 @@ impl<CsPin: GpioPinMap> SpiIface<CsPin> {
 }
 
 impl IfaceRoot for SpiMasterDrv {
-    fn select<CsPin: GpioPinMap>(&mut self, iface: SpiIface<CsPin>) {
+    fn select<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
         // Clear output pin by writing BR (bit reset) to the bit set/reset register.
-        iface.gpio_bsrr_br.set_bit();
+        iface.cs.gpio_bsrr_br.set_bit();
     }
 
-    fn deselect<CsPin: GpioPinMap>(&mut self, iface: SpiIface<CsPin>) {
-        self.cs.gpio_bsrr_bs.set_bit();
+    fn deselect<CsPin: GpioPinMap>(&mut self, iface: &SpiIface<CsPin>) {
+        iface.cs.gpio_bsrr_bs.set_bit();
     }
 }

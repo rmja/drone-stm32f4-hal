@@ -1,4 +1,5 @@
-use crate::master::SpiMasterDrv;
+use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
+use config::{BaudRate, ClkPol, FirstBit};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
@@ -66,7 +67,7 @@ pub mod config {
                         _ => Prescaler::Div256,
                     }
                 },
-                BaudRate::Custom(prescaler) => prescaler,
+                BaudRate::Custom(prescaler) => *prescaler,
             };
 
             match presc {
@@ -82,6 +83,7 @@ pub mod config {
         }
     }
 
+    #[derive(Copy, Clone, PartialEq)]
     pub enum Prescaler {
         Div2,
         Div4,
@@ -93,11 +95,13 @@ pub mod config {
         Div256,
     }
 
+    #[derive(Copy, Clone, PartialEq)]
     pub enum ClkPol {
         Low,
         High,
     }
 
+    #[derive(Copy, Clone, PartialEq)]
     pub enum FirstBit {
         Msb,
         Lsb,
@@ -105,16 +109,25 @@ pub mod config {
 }
 
 pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken> {
-    spi: SpiPeriph<Spi>,
+    spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
 }
 
 impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
     #[must_use]
     pub fn init(setup: config::SpiSetup<Spi, SpiInt>) -> SpiDrv<Spi, SpiInt> {
-        let config::SpiSetup { spi, spi_int, .. } = setup;
-        let mut drv = SpiDrv { spi, spi_int };
-        drv.init_spi();
+        let config::SpiSetup {
+            spi,
+            spi_int,
+            baud_rate,
+            clk_pol,
+            first_bit
+        } = setup;
+        let mut drv = SpiDrv {
+            spi: spi.into(),
+            spi_int,
+        };
+        drv.init_spi(baud_rate, clk_pol, first_bit);
         drv
     }
 
@@ -122,7 +135,7 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
         SpiMasterDrv {}
     }
 
-    fn init_spi(&mut self) {
+    fn init_spi(&mut self, baud_rate: BaudRate, clk_pol: ClkPol, first_bit: FirstBit) {
         use self::config::*;
 
         // Enable spi clock.
@@ -130,64 +143,75 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
 
         // Configure spi.
         self.spi.spi_cr1.store_reg(|r, v| {
+            // Do not enable spi before it is fully configured.
+
+            // 8-bit data frame format.
+            r.dff().clear(v);
+
             // Use software slave management, i.e. the app control slave selection.
+            // TODO: Should the driver support hardware slave management?
             r.ssm().set(v);
 
-            
-            // Word length.
-            if data_bits == DataBits::Nine {
-                r.m().set(v);
+            if first_bit == FirstBit::Msb {
+                r.lsbfirst().clear(v);
+            }
+            else {
+                r.lsbfirst().set(v);
             }
 
-            // Parity.
-            if parity != Parity::None {
-                // Enable parity.
-                r.pce().set(v);
-                if parity == Parity::Odd {
-                    // Parity selection: odd.
-                    r.ps().set(v);
-                }
+            // Baud rate control.
+            r.br().write(baud_rate.br());
+
+            // Master configuration.
+            r.mstr().set(v);
+
+            // Clock polarity.
+            if clk_pol == ClkPol::Low {
+                r.cpol().clear(v);
+            }
+            else {
+                r.cpol().set(v);
             }
 
-            // Oversampling.
-            if oversampling == Oversampling::By8 {
-                r.over8().set(v);
-            }
+            // Clock phase.
+            // TODO: Expose configuration option?
+            r.cpha().clear(v);
         });
-        // self.uart.uart_cr2.store_reg(|r, v| {
-        //     // Stop bits.
-        //     r.stop().write(
-        //         v,
-        //         match stop_bits {
-        //             StopBits::One => 0,
-        //             StopBits::Half => 1,
-        //             StopBits::Two => 2,
-        //             StopBits::OneHalf => 3,
-        //         },
-        //     );
-        // });
-        // self.uart.uart_brr.store_reg(|r, v| {
-        //     // Baud rate.
-        //     let (div_man, div_frac) = clk.compute_brr(oversampling, baud_rate);
-        //     r.div_mantissa().write(v, div_man);
-        //     r.div_fraction().write(v, div_frac);
-        // });
 
-        // self.uart.uart_cr1.modify_reg(|r, v| {
-        //     // Enable parity error interrupt
-        //     r.peie().set(v);
-        //     // Enable ORE or RXNE interrupt
-        //     r.rxneie().set(v);
-        //     // Enable uart after being fully configured.
-        //     r.ue().set(v);
-        // });
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            // Enable error interrupt
+            r.errie().set(v);
+        });
 
-        // // Attach uart error handler
-        // let sr = self.uart.uart_sr;
-        // self.uart_int.add_fn(move || {
-        //     let val = sr.load_val();
-        //     handle_uart_err::<Uart>(&val, sr);
-        //     fib::Yielded::<(), !>(())
-        // });
+        self.spi.spi_cr1.modify_reg(|r, v| {
+            // Enable spi after being fully configured.
+            r.spe().set(v);
+        });
+
+        // Attach spi error handler
+        let sr = self.spi.spi_sr;
+        self.spi_int.add_fn(move || {
+            let val = sr.load_val();
+            handle_spi_err::<Spi>(&val, sr);
+            fib::Yielded::<(), !>(())
+        });
+    }
+}
+
+fn handle_spi_err<Spi: SpiMap>(val: &Spi::SpiSrVal, sr: Spi::CSpiSr) {
+    if sr.fre().read(&val) {
+        panic!("Frame format error");
+    }
+    if sr.ovr().read(&val) {
+        panic!("Overrun error");
+    }
+    if sr.modf().read(&val) {
+        panic!("Mode fault");
+    }
+    if sr.crcerr().read(&val) {
+        panic!("CRC error");
+    }
+    if sr.udr().read(&val) {
+        panic!("Underrun error");
     }
 }

@@ -38,8 +38,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let mut spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.master();
 
-    let cs = GpioPinCfg::from(periph_gpio_b0!()).into_output().with_speed(GpioPinSpeed::HighSpeed).pin();
-    let mut iface = SpiIface::new(cs);
+    let cs = GpioPinCfg::from(periph_gpio_b0!(reg)).into_output().with_speed(GpioPinSpeed::HighSpeed).pin();
+    let iface = SpiIface::new(cs);
 
     spi_master.select(&iface);
     let tx_buf = [1,2,3,4].as_ref();
