@@ -2,7 +2,7 @@ use crate::diverged::{DmaChDiverged, SpiDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap},
-    spi::SpiMap,
+    spi::{traits::*, SpiMap},
 };
 
 pub struct SpiMasterDrv<
@@ -94,19 +94,177 @@ impl<
     }
 
     /// Send a buffer to the currently selected slave.
-    pub async fn send(&mut self, tx_buf: &[u8]) -> usize {
-        tx_buf.len()
+    pub async fn write(&mut self, buf: &[u8]) {
+        if buf.is_empty() {
+            return;
+        }
+
+        unsafe {
+            self.writeonly_unsafe(buf).await;
+        }
+    }
+
+    pub async fn read(&mut self, buf: &mut [u8]) {
+        if buf.is_empty() {
+            return;
+        }
+
+        unsafe {
+            self.readonly_unsafe(buf).await;
+        }
     }
 
     /// Send to and receive from the currently selected slave.
-    pub async fn xfer(&mut self, tx_buf: &[u8], rx_buf: &mut &[u8]) -> usize {
-        assert!(rx_buf.len() >= tx_buf.len());
+    pub async fn xfer(&mut self, tx_buf: &[u8], rx_buf: &mut [u8]) {
+        assert!(rx_buf.len() == tx_buf.len());
 
-        tx_buf.len()
+        if tx_buf.is_empty() {
+            return;
+        }
+
+        unsafe {
+            self.xfer_unsafe(tx_buf, rx_buf).await;
+        }
+    }
+
+    async unsafe fn writeonly_unsafe(&mut self, buf: &[u8]) {
+        // Setup DMA transfer parameters.
+        setup_dma(&mut self.dma_tx, buf);
+
+        // Start listen for DMA transfer to complete.
+        // The transfer completes just after the second last byte is being sent on the wire.
+        let dma_isr_tcif = self.dma_tx.dma_isr_tcif;
+        let dma_ifcr_ctcif = self.dma_tx.dma_ifcr_ctcif;
+        let dma_tc = self.dma_tx_int.add_future(fib::new_fn(move || {
+            if dma_isr_tcif.read_bit() {
+                // Clear transfer completed interrupt flag.
+                dma_ifcr_ctcif.set_bit();
+                fib::Complete(())
+            } else {
+                fib::Yielded(())
+            }
+        }));
+
+        // Clear any outstanding fifo error interrupt flag by settings its clear register.
+        self.dma_tx.dma_ifcr_cfeif.set_bit();
+
+        // Start transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.txdmaen().set(v);
+        });
+
+        // Wait for DMA transfer to complete.
+        dma_tc.await;
+
+        // The peripheral automatically disables the DMA stream on completion without error,
+        // but it does not clear the DMAT flag in CR3.
+
+        // Stop transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.txdmaen().clear(v);
+        });
+    }
+
+    async unsafe fn readonly_unsafe(&mut self, buf: &mut [u8]) {
+        // Setup DMA transfer parameters.
+        setup_dma(&mut self.dma_rx, buf);
+
+        // Start listen for DMA transfer to complete.
+        // The transfer completes just after the second last byte is being sent on the wire.
+        let dma_isr_tcif = self.dma_rx.dma_isr_tcif;
+        let dma_ifcr_ctcif = self.dma_rx.dma_ifcr_ctcif;
+        let dma_tc = self.dma_rx_int.add_future(fib::new_fn(move || {
+            if dma_isr_tcif.read_bit() {
+                // Clear transfer completed interrupt flag.
+                dma_ifcr_ctcif.set_bit();
+                fib::Complete(())
+            } else {
+                fib::Yielded(())
+            }
+        }));
+
+        // Clear any outstanding fifo error interrupt flag by settings its clear register.
+        self.dma_rx.dma_ifcr_cfeif.set_bit();
+
+        // Start transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.rxdmaen().set(v);
+        });
+
+        // Wait for DMA transfer to complete.
+        dma_tc.await;
+
+        // The peripheral automatically disables the DMA stream on completion without error,
+        // but it does not clear the DMAT flag in CR3.
+
+        // Stop transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.rxdmaen().clear(v);
+        });
+    }
+
+    async unsafe fn xfer_unsafe(&mut self, tx_buf: &[u8], rx_buf: &mut [u8]) {
+        // Setup DMA transfer parameters.
+        setup_dma(&mut self.dma_rx, rx_buf);
+        setup_dma(&mut self.dma_tx, tx_buf);
+
+        // Start listen for RX DMA transfer to complete.
+        // The transfer completes just after the second last byte is being sent on the wire.
+        let dma_isr_tcif = self.dma_rx.dma_isr_tcif;
+        let dma_ifcr_ctcif = self.dma_rx.dma_ifcr_ctcif;
+        let dma_rx_tc = self.dma_rx_int.add_future(fib::new_fn(move || {
+            if dma_isr_tcif.read_bit() {
+                // Clear transfer completed interrupt flag.
+                dma_ifcr_ctcif.set_bit();
+                fib::Complete(())
+            } else {
+                fib::Yielded(())
+            }
+        }));
+
+        // Clear any outstanding fifo error interrupt flag by settings its clear register.
+        self.dma_rx.dma_ifcr_cfeif.set_bit();
+        self.dma_tx.dma_ifcr_cfeif.set_bit();
+
+        // Start transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.rxdmaen().set(v);
+            r.txdmaen().set(v);
+        });
+
+        // Wait for DMA transfer to complete.
+        dma_rx_tc.await;
+
+        // The peripheral automatically disables the DMA stream on completion without error,
+        // but it does not clear the DMAT flag in CR3.
+
+        // Stop transfer on DMA channel.
+        self.spi.spi_cr2.modify_reg(|r, v| {
+            r.rxdmaen().clear(v);
+            r.txdmaen().clear(v);
+        });
     }
 
     /// Read the current value of the miso pin.
     pub fn miso(&self) -> bool {
-        true
+        todo!();
     }
+}
+
+unsafe fn setup_dma<Dma: DmaChMap>(dma: &mut DmaChDiverged<Dma>, buf: &[u8]) {
+    // Set buffer memory addres.
+    dma.dma_cm0ar.store_reg(|r, v| {
+        r.m0a().write(v, buf.as_ptr() as u32);
+    });
+
+    // Set number of bytes to transfer.
+    dma.dma_cndtr.store_reg(|r, v| {
+        r.ndt().write(v, buf.len() as u32);
+    });
+
+    // Clear transfer complete interrupt flag.
+    dma.dma_ifcr_ctcif.set_bit();
+
+    // Enable stream.
+    dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
 }

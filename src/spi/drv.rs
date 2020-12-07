@@ -181,9 +181,6 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
         self.spi.spi_cr1.store_reg(|r, v| {
             // Do not enable spi before it is fully configured.
 
-            // 8-bit data frame format.
-            r.dff().clear(v);
-
             // Use software slave management, i.e. the app control slave selection.
             // TODO: Should the driver support hardware slave management?
             r.ssm().set(v);

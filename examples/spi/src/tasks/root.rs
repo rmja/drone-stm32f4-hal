@@ -6,7 +6,7 @@ use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::{periph_dma2, periph_dma2_ch2, periph_dma2_ch3},
     gpio::{
-        periph_gpio_a5, periph_gpio_a6, periph_gpio_a7, periph_gpio_a_head, periph_gpio_b0,
+        periph_gpio_a5, periph_gpio_a6, periph_gpio_a7, periph_gpio_a_head, periph_gpio_b1,
         periph_gpio_b_head,
     },
     spi::periph_spi1,
@@ -14,7 +14,7 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::RccSetup,
-    spi::{config::*, SpiDrv, SpiIface, traits::*},
+    spi::{config::*, traits::*, SpiDrv, SpiIface},
 };
 
 /// The root task handler.
@@ -51,7 +51,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_af5()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let cs_pin = GpioPinCfg::from(periph_gpio_b0!(reg))
+    let cs_pin = GpioPinCfg::from(periph_gpio_b1!(reg))
         .into_output()
         .with_speed(GpioPinSpeed::HighSpeed)
         .pin();
@@ -107,7 +107,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     spi_master.select(&iface);
     let tx_buf = [1, 2, 3, 4].as_ref();
-    spi_master.send(tx_buf).root_wait();
+    spi_master.write(tx_buf).root_wait();
     spi_master.deselect(&iface);
 
     // Enter a sleep state on ISR exit.
