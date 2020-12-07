@@ -13,10 +13,12 @@ use drone_stm32_map::periph::{
         periph_gpio_a5,
         periph_gpio_a6,
         periph_gpio_a7,
+        periph_gpio_b_head,
+        periph_gpio_b0,
     },
     spi::{periph_spi1},
 };
-use drone_stm32f4_hal::spi::{SpiDrv, config::*};
+use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, spi::{IfaceRoot, SpiDrv, SpiIface, config::*}};
 
 /// The root task handler.
 #[inline(never)]
@@ -36,8 +38,13 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let mut spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.master();
 
+    let cs = GpioPinCfg::from(periph_gpio_b0!()).into_output().with_speed(GpioPinSpeed::HighSpeed).pin();
+    let mut iface = SpiIface::new(cs);
+
+    spi_master.select(&iface);
     let tx_buf = [1,2,3,4].as_ref();
     spi_master.send(tx_buf).root_wait();
+    spi_master.deselect(&iface);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();

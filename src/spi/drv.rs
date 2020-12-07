@@ -123,35 +123,37 @@ impl<Spi: SpiMap, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
     }
 
     fn init_spi(&mut self) {
-        // use self::config::*;
+        use self::config::*;
 
-        // // Enable uart clock.
-        // self.uart.rcc_busenr_uarten.set_bit();
+        // Enable spi clock.
+        self.spi.rcc_busenr_spien.set_bit();
 
-        // // Configure uart.
-        // self.uart.uart_cr1.store_reg(|r, v| {
-        //     // Do not enable uart before it is fully configured.
+        // Configure spi.
+        self.spi.spi_cr1.store_reg(|r, v| {
+            // Use software slave management, i.e. the app control slave selection.
+            r.ssm().set(v);
 
-        //     // Word length.
-        //     if data_bits == DataBits::Nine {
-        //         r.m().set(v);
-        //     }
+            
+            // Word length.
+            if data_bits == DataBits::Nine {
+                r.m().set(v);
+            }
 
-        //     // Parity.
-        //     if parity != Parity::None {
-        //         // Enable parity.
-        //         r.pce().set(v);
-        //         if parity == Parity::Odd {
-        //             // Parity selection: odd.
-        //             r.ps().set(v);
-        //         }
-        //     }
+            // Parity.
+            if parity != Parity::None {
+                // Enable parity.
+                r.pce().set(v);
+                if parity == Parity::Odd {
+                    // Parity selection: odd.
+                    r.ps().set(v);
+                }
+            }
 
-        //     // Oversampling.
-        //     if oversampling == Oversampling::By8 {
-        //         r.over8().set(v);
-        //     }
-        // });
+            // Oversampling.
+            if oversampling == Oversampling::By8 {
+                r.over8().set(v);
+            }
+        });
         // self.uart.uart_cr2.store_reg(|r, v| {
         //     // Stop bits.
         //     r.stop().write(

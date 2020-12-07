@@ -3,10 +3,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod drv;
+mod iface;
 mod master;
 mod slave;
 
 pub use self::drv::{config, SpiDrv};
+pub use self::iface::{SpiIface, IfaceRoot};
 
 #[prelude_import]
 #[allow(unused_imports)]

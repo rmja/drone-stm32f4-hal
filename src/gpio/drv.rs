@@ -110,6 +110,12 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare> {
     }
 }
 
+impl<Pin: GpioPinMap, Mode> GpioPinCfg<Pin, Mode> {
+    pub fn pin(self) -> GpioPinPeriph<Pin> {
+        self.pin
+    }
+}
+
 impl<Pin: GpioPinMap> GpioPinCfg<Pin, Output<DontCare>> {
     /// Let pin output type be push/pull.
     pub fn into_pp(self) -> GpioPinCfg<Pin, Output<PushPull>> {
