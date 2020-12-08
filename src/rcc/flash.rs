@@ -8,7 +8,7 @@ pub struct Flash {
 }
 
 pub mod traits {
-    pub trait WaitStateSrc {
+    pub trait HClkExt {
         fn get_wait_states(&self, voltage: VoltageRange) -> u32;
     }
 
@@ -45,7 +45,7 @@ impl Flash {
     stm32_mcu = "stm32f415",
     stm32_mcu = "stm32f417",
 ))]
-impl WaitStateSrc for HClk {
+impl HClkExt for HClk {
     fn get_wait_states(&self, voltage: VoltageRange) -> u32 {
         // Table 10 in PM0090.
         let upper = match voltage {
@@ -64,7 +64,7 @@ impl WaitStateSrc for HClk {
     stm32_mcu = "stm32f429",
     stm32_mcu = "stm32f437",
 ))]
-impl WaitStateSrc for HClk {
+impl HClkExt for HClk {
     fn get_wait_states(&self, voltage: VoltageRange) -> u32 {
         // Table 11 in PM0090.
         let upper = match voltage {

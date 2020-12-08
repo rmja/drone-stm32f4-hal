@@ -15,5 +15,6 @@ pub use self::rcc::{Rcc, RccSetup};
 
 pub mod traits {
     pub use crate::flash::traits::*;
+    pub use crate::pwr::traits::*;
     pub use crate::rcc::traits::*;
 }

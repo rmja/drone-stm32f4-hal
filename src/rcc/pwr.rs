@@ -1,3 +1,4 @@
+use self::traits::*;
 use crate::periph::PwrPeriph;
 use drone_cortexm::reg::prelude::*;
 
@@ -13,8 +14,22 @@ impl Pwr {
 
         Pwr { pwr: periph }
     }
+}
 
-    pub fn enable_od(&self) {
+pub mod traits {
+    pub trait Overdriveable {
+        fn enable_od(&self);
+    }
+}
+
+// STM32F42xxx and STM32F43xxx
+#[cfg(any(
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f437",
+))]
+impl Overdriveable for Pwr {
+    fn enable_od(&self) {
         // Enable the Over-drive mode and wait for the ODRDY flag to be set.
         self.pwr.pwr_cr.modify(|r| r.set_oden());
         loop {
