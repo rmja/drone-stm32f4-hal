@@ -4,8 +4,8 @@ pub trait Freq {
     fn freq(self) -> u32;
 }
 
-pub trait Muxable<Mux> {
-    fn mux(self) -> Mux;
+pub trait MuxableSrc<Mux> {
+    fn src_mux(self) -> Mux;
 }
 
 /// The High-Speed External (HSE) clock.
@@ -81,8 +81,8 @@ impl Freq for PllSrc {
     }
 }
 
-impl Muxable<PllSrcMux> for PllSrc {
-    fn mux(self) -> PllSrcMux {
+impl MuxableSrc<PllSrcMux> for PllSrc {
+    fn src_mux(self) -> PllSrcMux {
         self.mux
     }
 }
@@ -105,9 +105,9 @@ impl Freq for PllVco {
     }
 }
 
-impl Muxable<PllSrcMux> for PllVco {
-    fn mux(self) -> PllSrcMux {
-        self.src.mux()
+impl MuxableSrc<PllSrcMux> for PllVco {
+    fn src_mux(self) -> PllSrcMux {
+        self.src.src_mux()
     }
 }
 
@@ -138,9 +138,9 @@ pub struct Pll {
     pub q: PllClk<PllQ>,
 }
 
-impl Muxable<PllSrcMux> for Pll {
-    fn mux(self) -> PllSrcMux {
-        self.vco.mux()
+impl MuxableSrc<PllSrcMux> for Pll {
+    fn src_mux(self) -> PllSrcMux {
+        self.vco.src_mux()
     }
 }
 
@@ -203,8 +203,8 @@ impl Freq for HClk {
     }
 }
 
-impl Muxable<SysClkMux> for HClk {
-    fn mux(self) -> SysClkMux {
+impl MuxableSrc<SysClkMux> for HClk {
+    fn src_mux(self) -> SysClkMux {
         self.mux
     }
 }
