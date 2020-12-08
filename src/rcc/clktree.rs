@@ -63,14 +63,24 @@ pub struct PllSrc {
     pub m: u32,
 }
 
-
 impl PllSrc {
     pub const fn to_pll(self, pll_n: u32, pll_p: u32, pll_q: u32) -> Pll {
-        let vco = PllVco { src: self, n: pll_n };
+        let vco = PllVco {
+            src: self,
+            n: pll_n,
+        };
         Pll {
             vco,
-            p: PllClk { _out: PhantomData, src: vco, div: pll_p },
-            q: PllClk { _out: PhantomData, src: vco, div: pll_q },
+            p: PllClk {
+                _out: PhantomData,
+                src: vco,
+                div: pll_p,
+            },
+            q: PllClk {
+                _out: PhantomData,
+                src: vco,
+                div: pll_q,
+            },
         }
     }
 }
@@ -154,10 +164,7 @@ pub enum SysClkMux {
 
 impl SysClkMux {
     pub const fn to_hclk(self, hpre: u32) -> HClk {
-        HClk {
-            mux: self,
-            hpre,
-        }
+        HClk { mux: self, hpre }
     }
 }
 
@@ -183,17 +190,11 @@ pub struct HClk {
 
 impl HClk {
     pub const fn to_pclk1(self, ppre1: u32) -> PClk1 {
-        PClk1 {
-            src: self,
-            ppre1,
-        }
+        PClk1 { src: self, ppre1 }
     }
 
     pub const fn to_pclk2(self, ppre2: u32) -> PClk2 {
-        PClk2 {
-            src: self,
-            ppre2,
-        }
+        PClk2 { src: self, ppre2 }
     }
 }
 

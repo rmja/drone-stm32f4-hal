@@ -2,7 +2,7 @@ use crate::periph::PwrPeriph;
 use drone_cortexm::reg::prelude::*;
 
 pub struct Pwr {
-    pub pwr: PwrPeriph,
+    pwr: PwrPeriph,
 }
 
 impl Pwr {
@@ -13,9 +13,7 @@ impl Pwr {
 
         Pwr { pwr: periph }
     }
-}
 
-impl Pwr {
     pub fn enable_od(&self) {
         // Enable the Over-drive mode and wait for the ODRDY flag to be set.
         self.pwr.pwr_cr.modify(|r| r.set_oden());

@@ -1,8 +1,8 @@
-use crate::{diverged::RccDiverged, clktree::*, periph::RccPeriph};
+use self::traits::*;
+use crate::{clktree::*, diverged::RccDiverged, periph::RccPeriph};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::reg;
 use fib::FiberFuture;
-use self::traits::*;
 
 pub struct RccSetup<RccInt: IntToken> {
     /// Rcc peripheral.
@@ -19,10 +19,7 @@ pub struct Rcc<RccInt: IntToken> {
 impl<RccInt: IntToken> Rcc<RccInt> {
     #[must_use]
     pub fn init(setup: RccSetup<RccInt>) -> Rcc<RccInt> {
-        let RccSetup {
-            rcc,
-            rcc_int
-        } = setup;
+        let RccSetup { rcc, rcc_int } = setup;
         Rcc {
             rcc: rcc.into(),
             rcc_int,
@@ -32,7 +29,7 @@ impl<RccInt: IntToken> Rcc<RccInt> {
 
 pub mod traits {
     use super::*;
-    
+
     pub trait StabilingClkCtrl<Clk> {
         /// Enables the clock and completes the future when the clock has stabilized.
         fn enable(&self, clk: Clk) -> FiberFuture<()>;
@@ -101,7 +98,7 @@ impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
                 4 => 0b01,
                 6 => 0b10,
                 8 => 0b11,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             r.write_pllm(clk.vco.src.m)
                 .write_plln(clk.vco.n)

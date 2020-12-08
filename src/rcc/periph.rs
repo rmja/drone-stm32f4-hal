@@ -38,3 +38,18 @@ periph::singular! {
         CSR;
     }
 }
+
+periph::singular! {
+    /// Extracts FLASH register tokens.
+    pub macro periph_flash;
+    /// FLASH peripheral.
+    pub struct FlashPeriph;
+    // Path prefix to reach registers.
+    drone_stm32_map::reg;
+    // Absolute path to the current module.
+    crate;
+
+    FLASH {
+        ACR;
+    }
+}
