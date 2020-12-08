@@ -32,9 +32,7 @@ impl Flash {
     }
 
     pub fn set_latency(&self, wait_states: u32) {
-        self.flash
-            .flash_acr
-            .modify(|r| r.write_latency(wait_states));
+        self.flash.flash_acr.modify(|r| r.write_latency(wait_states));
     }
 }
 

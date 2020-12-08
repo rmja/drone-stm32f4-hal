@@ -8,16 +8,17 @@ pub struct Pwr {
 
 impl Pwr {
     #[must_use]
-    pub fn init(periph: PwrPeriph) -> Pwr {
+    pub fn init(pwr: PwrPeriph) -> Pwr {
         // Enable pwr clock.
-        // periph.rcc_apb1enr_pwren.set_bit();
+        pwr.rcc_apb1enr_pwren.set_bit();
 
-        Pwr { pwr: periph }
+        Pwr { pwr }
     }
 }
 
 pub mod traits {
     pub trait Overdriveable {
+        /// Enable over-drive.
         fn enable_od(&self);
     }
 }

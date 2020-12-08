@@ -1,5 +1,100 @@
 use core::marker::PhantomData;
 
+#[cfg(any(
+    stm32_mcu = "stm32f401",
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f410",
+    stm32_mcu = "stm32f411",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f415",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f423",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f439",
+    stm32_mcu = "stm32f469",
+    stm32_mcu = "stm32f479",
+))]
+/// Minimum CPU clock frequency.
+pub const HCLK_MIN: u32 = 24_000_000;
+
+#[cfg(any(
+    stm32_mcu = "stm32f446",
+))]
+/// Minimum CPU clock frequency.
+pub const HCLK_MIN: u32 = 12_500_000;
+
+
+#[cfg(any(
+    stm32_mcu = "stm32f401",
+))]
+/// Maximum CPU clock frequency.
+pub const HCLK_MAX: u32 = 84_000_000;
+
+#[cfg(any(
+    stm32_mcu = "stm32f410",
+    stm32_mcu = "stm32f411",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f423",
+))]
+/// Maximum CPU clock frequency.
+pub const HCLK_MAX: u32 = 100_000_000;
+
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f415",
+    stm32_mcu = "stm32f417",
+))]
+/// Maximum CPU clock frequency.
+pub const HCLK_MAX: u32 = 168_000_000;
+
+#[cfg(any(
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f439",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+    stm32_mcu = "stm32f479",
+))]
+/// Maximum CPU clock frequency.
+pub const HCLK_MAX: u32 = 180_000_000;
+
+#[cfg(any(
+    stm32_mcu = "stm32f401",
+    stm32_mcu = "stm32f410",
+    stm32_mcu = "stm32f411",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f423",
+))]
+/// Maximum APB2 peripheral clock frequency.
+pub const PCLK2_MAX: u32 = HCLK_MAX;
+
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f415",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f439",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+    stm32_mcu = "stm32f479",
+))]
+/// Maximum APB2, high speed peripheral clock frequency.
+pub const PCLK2_MAX: u32 = HCLK_MAX / 2;
+
+/// Maximum APB1, low speed peripheral clock frequency.
+pub const PCLK1_MAX: u32 = PCLK2_MAX / 2;
+
 pub trait Freq {
     fn freq(self) -> u32;
 }
@@ -10,22 +105,31 @@ pub trait MuxableSrc<Mux> {
 
 /// The High-Speed External (HSE) clock.
 #[derive(Copy, Clone)]
-pub struct HseClk(pub u32);
+pub struct HseClk(u32);
+
+impl HseClk {
+    pub const fn new(freq: u32) -> HseClk {
+        assert!(freq >= 4_000_000 && freq <= 26_000_000);
+        HseClk(freq)
+    }
+
+    const fn f(self) -> u32 { self.0 }
+}
 
 impl Freq for HseClk {
-    fn freq(self) -> u32 {
-        self.0
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 /// The High-Speed Internal (HSI) 16MHz clock.
 #[derive(Copy, Clone)]
 pub struct HsiClk;
 
+impl HsiClk {
+    const fn f(self) -> u32 { 16_000_000 }
+}
+
 impl Freq for HsiClk {
-    fn freq(self) -> u32 {
-        16_000_000
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 /// The pll clock source.
@@ -36,21 +140,20 @@ pub enum PllSrcMux {
 }
 
 impl PllSrcMux {
-    pub const fn to_pllsrc(self, pll_m: u32) -> PllSrc {
-        PllSrc {
-            mux: self,
-            m: pll_m,
+    const fn f(self) -> u32 {
+        match self {
+            PllSrcMux::Hsi(clk) => clk.f(),
+            PllSrcMux::Hse(clk) => clk.f(),
         }
+    }
+
+    pub const fn to_pllsrc(self, pll_m: u32) -> PllSrc {
+        PllSrc::new(self, pll_m)
     }
 }
 
 impl Freq for PllSrcMux {
-    fn freq(self) -> u32 {
-        match self {
-            PllSrcMux::Hsi(clk) => clk.freq(),
-            PllSrcMux::Hse(clk) => clk.freq(),
-        }
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 /// The pll input clock (vcoin).
@@ -64,31 +167,22 @@ pub struct PllSrc {
 }
 
 impl PllSrc {
+    #[must_use]
+    const fn new(mux: PllSrcMux, m: u32) -> PllSrc {
+        assert!(m >= 2 && m <= 63);
+        PllSrc { mux, m }
+    }
+
+    const fn f(self) -> u32 { self.mux.f() / self.m }
+
     pub const fn to_pll(self, pll_n: u32, pll_p: u32, pll_q: u32) -> Pll {
-        let vco = PllVco {
-            src: self,
-            n: pll_n,
-        };
-        Pll {
-            vco,
-            p: PllClk {
-                _out: PhantomData,
-                src: vco,
-                div: pll_p,
-            },
-            q: PllClk {
-                _out: PhantomData,
-                src: vco,
-                div: pll_q,
-            },
-        }
+        let vco = PllVco::new(self, pll_n);
+        Pll::new(vco, pll_p, pll_q)
     }
 }
 
 impl Freq for PllSrc {
-    fn freq(self) -> u32 {
-        self.mux.freq() / self.m
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 impl MuxableSrc<PllSrcMux> for PllSrc {
@@ -109,10 +203,18 @@ pub struct PllVco {
     pub n: u32,
 }
 
-impl Freq for PllVco {
-    fn freq(self) -> u32 {
-        (self.src.freq() / self.src.m) * self.n
+impl PllVco {
+    #[must_use]
+    const fn new(src: PllSrc, n: u32) -> PllVco {
+        assert!(n >= 50 && n <= 432);
+        PllVco { src, n }
     }
+
+    const fn f(self) -> u32 { self.src.f() * self.n }
+}
+
+impl Freq for PllVco {
+    fn freq(self) -> u32 { self.f() }
 }
 
 impl MuxableSrc<PllSrcMux> for PllVco {
@@ -134,10 +236,12 @@ pub struct PllClk<Out> {
     pub div: u32,
 }
 
+impl<Out> PllClk<Out> {
+    const fn f(self) -> u32 { self.src.f() / self.div }
+}
+
 impl<Out> Freq for PllClk<Out> {
-    fn freq(self) -> u32 {
-        self.src.freq() / self.div
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 pub struct Pll {
@@ -146,6 +250,29 @@ pub struct Pll {
     pub p: PllClk<PllP>,
     /// Pll division factor for usb, sdio, and rng.
     pub q: PllClk<PllQ>,
+}
+
+impl Pll {
+    #[must_use]
+    const fn new(vco: PllVco, p: u32, q: u32) -> Pll {
+        assert!(p == 2 || p == 4 || p == 6 || p == 8);
+        assert!(q >= 2 && q <= 15);
+        let pll = Pll {
+            vco,
+            p: PllClk {
+                _out: PhantomData,
+                src: vco,
+                div: p,
+            },
+            q: PllClk {
+                _out: PhantomData,
+                src: vco,
+                div: q,
+            },
+        };
+        assert!(pll.q.f() <= 48_000_000);
+        pll
+    }
 }
 
 impl MuxableSrc<PllSrcMux> for Pll {
@@ -163,19 +290,21 @@ pub enum SysClkMux {
 }
 
 impl SysClkMux {
+    const fn f(self) -> u32 {
+        match self {
+            SysClkMux::Hsi(clk) => clk.f(),
+            SysClkMux::Hse(clk) => clk.f(),
+            SysClkMux::Pll(clk) => clk.f(),
+        }
+    }
+
     pub const fn to_hclk(self, hpre: u32) -> HClk {
-        HClk { mux: self, hpre }
+        HClk::new(self, hpre)
     }
 }
 
 impl Freq for SysClkMux {
-    fn freq(self) -> u32 {
-        match self {
-            SysClkMux::Hsi(clk) => clk.freq(),
-            SysClkMux::Hse(clk) => clk.freq(),
-            SysClkMux::Pll(clk) => clk.freq(),
-        }
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 /// The AHB (Advanced High-Performance Bus) and CPU clock.
@@ -189,19 +318,27 @@ pub struct HClk {
 }
 
 impl HClk {
+    #[must_use]
+    const fn new(mux: SysClkMux, hpre: u32) -> HClk {
+        let hclk = HClk { mux, hpre };
+        let f = hclk.f();
+        assert!(f >= HCLK_MIN &&  f <= HCLK_MAX);
+        hclk
+    }
+
+    const fn f(self) -> u32 { self.mux.f() / self.hpre }
+
     pub const fn to_pclk1(self, ppre1: u32) -> PClk1 {
-        PClk1 { src: self, ppre1 }
+        PClk1::new(self, ppre1)
     }
 
     pub const fn to_pclk2(self, ppre2: u32) -> PClk2 {
-        PClk2 { src: self, ppre2 }
+        PClk2::new(self, ppre2)
     }
 }
 
 impl Freq for HClk {
-    fn freq(self) -> u32 {
-        self.mux.freq() / self.hpre
-    }
+    fn freq(self) -> u32 { self.f() }
 }
 
 impl MuxableSrc<SysClkMux> for HClk {
@@ -220,10 +357,19 @@ pub struct PClk1 {
     ppre1: u32,
 }
 
-impl Freq for PClk1 {
-    fn freq(self) -> u32 {
-        self.src.freq() / self.ppre1
+impl PClk1 {
+    #[must_use]
+    const fn new(src: HClk, ppre1: u32) -> PClk1 {
+        let pclk1 = PClk1 { src, ppre1 };
+        assert!(pclk1.f() <= PCLK1_MAX);
+        pclk1
     }
+
+    const fn f(self) -> u32 { self.src.f() / self.ppre1 }
+}
+
+impl Freq for PClk1 {
+    fn freq(self) -> u32 { self.f() }
 }
 
 /// The APB2 (High Speed Advanced Peripheral Bus) peripheral clock.
@@ -235,8 +381,17 @@ pub struct PClk2 {
     ppre2: u32,
 }
 
-impl Freq for PClk2 {
-    fn freq(self) -> u32 {
-        self.src.freq() / self.ppre2
+impl PClk2 {
+    #[must_use]
+    const fn new(src: HClk, ppre2: u32) -> PClk2 {
+        let pclk2 = PClk2 { src, ppre2 };
+        assert!(pclk2.f() <= PCLK2_MAX);
+        pclk2
     }
+
+    const fn f(self) -> u32 { self.src.f() / self.ppre2 }
+}
+
+impl Freq for PClk2 {
+    fn freq(self) -> u32 { self.f() }
 }
