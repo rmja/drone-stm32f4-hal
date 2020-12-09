@@ -1,19 +1,23 @@
 use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
+use core::marker::PhantomData;
 use config::{BaudRate, ClkPol, FirstBit};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
+use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
     use super::*;
 
-    pub struct SpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken> {
+    pub struct SpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
         /// Spi peripheral.
         pub spi: SpiPeriph<Spi>,
         /// Spi global interrupt.
         pub spi_int: SpiInt,
+        /// Spi clock.
+        pub clk: ConfiguredClk<Clk>,
         /// The baud rate.
         pub baud_rate: BaudRate,
         /// The clock polarity.
@@ -22,22 +26,71 @@ pub mod config {
         pub first_bit: FirstBit,
     }
 
-    impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiSetup<Spi, SpiInt> {
-        /// Create a new spi setup with sensible defaults.
-        pub fn new(
-            spi: SpiPeriph<Spi>,
-            spi_int: SpiInt,
-            baud_rate: BaudRate,
-        ) -> SpiSetup<Spi, SpiInt> {
-            SpiSetup {
-                spi,
-                spi_int,
-                baud_rate,
-                clk_pol: ClkPol::Low,
-                first_bit: FirstBit::Msb,
-            }
+    fn new_setup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken>(
+        spi: SpiPeriph<Spi>,
+        spi_int: SpiInt,
+        clk: ConfiguredClk<Clk>,
+        baud_rate: BaudRate,
+    ) -> SpiSetup<Spi, SpiInt, Clk> {
+        SpiSetup {
+            spi,
+            spi_int,
+            clk,
+            baud_rate,
+            clk_pol: ClkPol::Low,
+            first_bit: FirstBit::Msb,
         }
     }
+
+    macro_rules! spi_setup {
+        ($name:ident, $spi:ident, $pclk:ident) => {
+            impl<SpiInt: IntToken> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
+                /// Create a new spi setup with sensible defaults.
+                pub fn $name(spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>, spi_int: SpiInt, clk: ConfiguredClk<$pclk>, baud_rate: BaudRate) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
+                    new_setup(spi, spi_int, clk, baud_rate)
+                }
+            }
+        };
+    }
+
+    spi_setup!(spi1, Spi1, PClk2);
+    spi_setup!(spi2, Spi2, PClk2);
+
+    #[cfg(any(
+        stm32_mcu = "stm32f401",
+        stm32_mcu = "stm32f405",
+        stm32_mcu = "stm32f407",
+        stm32_mcu = "stm32f411",
+        stm32_mcu = "stm32f412",
+        stm32_mcu = "stm32f413",
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f429",
+        stm32_mcu = "stm32f446",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(spi3, Spi3, PClk1);
+
+    #[cfg(any(
+        stm32_mcu = "stm32f413",
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f446",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(spi4, Spi4, PClk2);
+
+    #[cfg(any(
+        stm32_mcu = "stm32f410",
+        stm32_mcu = "stm32f413",
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(spi5, Spi5, PClk2);
+
+    #[cfg(any(
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(spi6, Spi6, PClk2);
 
     /// Spi tx/rx dma channel setup.
     pub struct SpiDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
@@ -52,42 +105,8 @@ pub mod config {
     }
 
     pub enum BaudRate {
-        Max { baud_rate: u32, f_pclk: u32 },
+        Max(u32),
         Custom(Prescaler),
-    }
-
-    impl BaudRate {
-        pub fn max(baud_rate: u32, f_pclk: u32) -> BaudRate {
-            BaudRate::Max { baud_rate, f_pclk }
-        }
-
-        pub(crate) fn br(&self) -> u32 {
-            let presc = match self {
-                BaudRate::Max { baud_rate, f_pclk } => match f_pclk / baud_rate {
-                    0 => unreachable!(),
-                    1..=2 => Prescaler::Div2,
-                    3..=4 => Prescaler::Div4,
-                    5..=8 => Prescaler::Div8,
-                    9..=16 => Prescaler::Div16,
-                    17..=32 => Prescaler::Div32,
-                    33..=64 => Prescaler::Div64,
-                    65..=128 => Prescaler::Div128,
-                    _ => Prescaler::Div256,
-                },
-                BaudRate::Custom(prescaler) => *prescaler,
-            };
-
-            match presc {
-                Prescaler::Div2 => 0b000,
-                Prescaler::Div4 => 0b001,
-                Prescaler::Div8 => 0b010,
-                Prescaler::Div16 => 0b011,
-                Prescaler::Div32 => 0b100,
-                Prescaler::Div64 => 0b101,
-                Prescaler::Div128 => 0b110,
-                Prescaler::Div256 => 0b111,
-            }
-        }
     }
 
     #[derive(Copy, Clone, PartialEq)]
@@ -115,26 +134,29 @@ pub mod config {
     }
 }
 
-pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken> {
+pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
     spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
+    clk: PhantomData<Clk>,
 }
 
-impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
+impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
     #[must_use]
-    pub fn init(setup: config::SpiSetup<Spi, SpiInt>) -> SpiDrv<Spi, SpiInt> {
+    pub fn init(setup: config::SpiSetup<Spi, SpiInt, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
         let config::SpiSetup {
             spi,
             spi_int,
+            clk,
             baud_rate,
             clk_pol,
             first_bit,
         } = setup;
-        let mut drv = SpiDrv {
+        let mut drv = Self {
             spi: spi.into(),
             spi_int,
+            clk: PhantomData,
         };
-        drv.init_spi(baud_rate, clk_pol, first_bit);
+        drv.init_spi(clk, baud_rate, clk_pol, first_bit);
         drv
     }
 
@@ -171,7 +193,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
         master
     }
 
-    fn init_spi(&mut self, baud_rate: BaudRate, clk_pol: ClkPol, first_bit: FirstBit) {
+    fn init_spi(&mut self, clk: ConfiguredClk<Clk>, baud_rate: BaudRate, clk_pol: ClkPol, first_bit: FirstBit) {
         use self::config::*;
 
         // Enable spi clock.
@@ -190,7 +212,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
             }
 
             // Baud rate control.
-            r.br().write(v, baud_rate.br());
+            r.br().write(v, spi_br(clk, baud_rate));
 
             // Master configuration.
             r.mstr().set(v);
@@ -222,6 +244,36 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken> SpiDrv<Spi, SpiInt> {
             handle_spi_err::<Spi>(&val, sr);
             fib::Yielded::<(), !>(())
         });
+    }
+}
+
+fn spi_br<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
+    use config::*;
+    let f_pclk = clk.freq();
+    let presc = match baud_rate {
+        BaudRate::Max(baud_rate) => match f_pclk / baud_rate {
+            0 => unreachable!(),
+            1..=2 => Prescaler::Div2,
+            3..=4 => Prescaler::Div4,
+            5..=8 => Prescaler::Div8,
+            9..=16 => Prescaler::Div16,
+            17..=32 => Prescaler::Div32,
+            33..=64 => Prescaler::Div64,
+            65..=128 => Prescaler::Div128,
+            _ => Prescaler::Div256,
+        },
+        BaudRate::Custom(prescaler) => prescaler,
+    };
+
+    match presc {
+        Prescaler::Div2 => 0b000,
+        Prescaler::Div4 => 0b001,
+        Prescaler::Div8 => 0b010,
+        Prescaler::Div16 => 0b011,
+        Prescaler::Div32 => 0b100,
+        Prescaler::Div64 => 0b101,
+        Prescaler::Div128 => 0b110,
+        Prescaler::Div256 => 0b111,
     }
 }
 

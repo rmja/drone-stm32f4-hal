@@ -1,6 +1,6 @@
 //! The root task.
 
-use crate::{thr, thr::ThrsInit, Regs};
+use crate::{Regs, consts, thr, thr::ThrsInit};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -13,7 +13,7 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_hal::{
     gpio::{GpioPinCfg, GpioPinSpeed},
-    rcc::RccSetup,
+    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     spi::{config::*, traits::*, SpiDrv, SpiIface},
 };
 
@@ -63,30 +63,28 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let dma2 = periph_dma2!(reg);
     dma2.rcc_busenr_dmaen.set_bit();
 
-    let rcc = RccSetup {
-        rcc_cr: reg.rcc_cr,
-        rcc_pllcfgr: reg.rcc_pllcfgr,
-        rcc_cfgr: reg.rcc_cfgr,
-        rcc_cir: reg.rcc_cir,
-
-        flash_acr: reg.flash_acr,
-        pwr_cr: reg.pwr_cr,
-        pwr_csr: reg.pwr_csr,
-        thr_rcc: thr.rcc,
+    let rcc_setup = RccSetup {
+        rcc: periph_rcc!(reg),
+        rcc_int: thr.rcc,
     };
+    let rcc = Rcc::init(rcc_setup);
+    let pwr = Pwr::init(periph_pwr!(reg));
+    let flash = Flash::init(periph_flash!(reg));
 
-    reg.rcc_apb1enr.modify(|r| r.set_pwren());
-
+    let hseclk = rcc.stabilize(consts::HSECLK).root_wait();
+    let pll = rcc
+        .select(consts::PLLSRC_HSECLK, hseclk)
+        .stabilize(consts::PLL)
+        .root_wait();
+    let pclk1 = rcc.configure(consts::PCLK1);
+    let pclk2 = rcc.configure(consts::PCLK2);
+    pwr.enable_od();
+    flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
     swo::flush();
-    rcc.apply().root_wait();
+    swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
+    rcc.select(consts::SYSCLK_PLL, pll.p());
 
-    swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
-
-    let setup = SpiSetup::new(
-        periph_spi1!(reg),
-        thr.spi_1,
-        BaudRate::max(10_000_000, 90_000_000),
-    );
+    let setup = SpiSetup::spi1(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
     let rx_setup = SpiDmaSetup {
         dma: periph_dma2_ch2!(reg),
         dma_int: thr.dma_2_ch_2,

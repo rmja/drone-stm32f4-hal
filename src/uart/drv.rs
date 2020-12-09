@@ -51,6 +51,7 @@ pub mod config {
     macro_rules! uart_setup {
         ($name:ident, $uart:ident, $pclk:ident) => {
             impl<UartInt: IntToken> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
+                /// Create a new 9600 8N1 uart setup with sensible defaults.
                 pub fn $name(uart: UartPeriph<drone_stm32_map::periph::uart::$uart>, uart_int: UartInt, clk: ConfiguredClk<$pclk>) -> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
                     new_setup(uart, uart_int, clk)
                 }
@@ -341,7 +342,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         });
         self.uart.uart_brr.store_reg(|r, v| {
             // Baud rate.
-            let (div_man, div_frac) = brr(clk, baud_rate, oversampling);
+            let (div_man, div_frac) = uart_brr(clk, baud_rate, oversampling);
             r.div_mantissa().write(v, div_man);
             r.div_fraction().write(v, div_frac);
         });
@@ -365,7 +366,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 }
 
-fn brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, oversampling: u32) -> (u32, u32) {
+fn uart_brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, oversampling: u32) -> (u32, u32) {
     match baud_rate {
         config::BaudRate::Nominal(baud_rate) => {
             // Compute the uart divider for use by the baud rate register
