@@ -118,8 +118,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         // The uart transmission complete flag (TC) is cleared
         // by the sequence: Read status register (SR) and write data register (DR).
         // We read the status register here, and the dma writes the DR.
-        // self.uart.uart_sr.load_val();
-        drv.uart.uart_sr.tc().clear_bit();
+        drv.uart.uart_sr.load_val();
 
         // Clear any outstanding fifo error interrupt flag by settings its clear register.
         drv.dma.dma_ifcr_cfeif.set_bit();
