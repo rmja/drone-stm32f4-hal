@@ -27,7 +27,7 @@ pub mod config {
         /// Stop bits.
         pub stop_bits: StopBits,
         /// Oversampling mode.
-        pub oversampling: Oversampling,
+        pub oversampling: u32,
     }
 
     /// Create a new uart setup with sensible defaults.
@@ -44,7 +44,7 @@ pub mod config {
             data_bits: DataBits::Eight,
             parity: Parity::None,
             stop_bits: StopBits::One,
-            oversampling: Oversampling::By16,
+            oversampling: 16,
         }
     }
 
@@ -222,12 +222,6 @@ pub mod config {
         #[doc = "2 stop bits."]
         Two,
     }
-
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum Oversampling {
-        By8,
-        By16,
-    }
 }
 
 /// Uart driver.
@@ -251,6 +245,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
             parity,
             oversampling,
         } = setup;
+        assert!(oversampling == 8 || oversampling == 16);
         let mut drv = Self {
             uart: uart.into(),
             uart_int,
@@ -309,7 +304,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         data_bits: config::DataBits,
         parity: config::Parity,
         stop_bits: config::StopBits,
-        oversampling: config::Oversampling,
+        oversampling: u32,
     ) {
         use self::config::*;
 
@@ -336,7 +331,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
             }
 
             // Oversampling.
-            if oversampling == Oversampling::By8 {
+            if oversampling == 8 {
                 r.over8().set(v);
             }
         });
@@ -378,7 +373,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 }
 
-fn brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, oversampling: config::Oversampling) -> (u32, u32) {
+fn brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, oversampling: u32) -> (u32, u32) {
     match baud_rate {
         config::BaudRate::Nominal(baud_rate) => {
             // Compute the uart divider for use by the baud rate register
@@ -395,7 +390,7 @@ fn brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, ove
             //
             // Note that 25 * f_pclk fits safely in a u32 as max f_pclk = 90_000_000.
             let f_pclk = clk.freq();
-            let over8 = (oversampling == config::Oversampling::By8) as u32;
+            let over8 = (oversampling == 8) as u32;
             let div100 = (25 * f_pclk) / (2 * (2 - over8) * baud_rate);
             let div_man = div100 / 100; // The mantissa part is: (100 * USARTDIV) / 100
             let rem100 = div100 - div_man * 100; // The reminder after the division: (100 * USARTDIV) % 100
