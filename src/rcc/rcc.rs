@@ -4,6 +4,7 @@ use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::reg;
 use fib::FiberFuture;
 
+/// Rcc controller setup.
 pub struct RccSetup<RccInt: IntToken> {
     /// Rcc peripheral.
     pub rcc: RccPeriph,
@@ -11,6 +12,7 @@ pub struct RccSetup<RccInt: IntToken> {
     pub rcc_int: RccInt,
 }
 
+/// Rcc controller.
 pub struct Rcc<RccInt: IntToken> {
     rcc: RccDiverged,
     rcc_int: RccInt,
@@ -30,23 +32,24 @@ impl<RccInt: IntToken> Rcc<RccInt> {
 pub mod traits {
     use super::*;
 
-    pub trait StabilingClkCtrl<Clk> {
-        /// Enables the clock and completes the future when the clock has stabilized.
-        fn enable(&self, clk: Clk) -> FiberFuture<()>;
+    pub trait ClkCtrl<Clk> {
+        /// Configures the clock `clk`.
+        fn configure(&self, clk: Clk);
     }
 
-    pub trait MuxCtrl<Mux> {
-        fn select<Src: MuxableSrc<Mux>>(&self, src: Src) {
-            let mux = src.src_mux();
-            self.select_mux(mux);
-        }
+    pub trait StabilingClkCtrl<Clk> {
+        /// Enables the clock `clk  and completes the future when the clock has stabilized.
+        fn stabilize(&self, clk: Clk) -> FiberFuture<()>;
+    }
 
-        fn select_mux(&self, mux: Mux);
+    pub trait MuxCtrl<MuxSignal> {
+        /// Selects the source signal of the associated mux.
+        fn select(&self, signal: MuxSignal);
     }
 }
 
 impl<RccInt: IntToken> StabilingClkCtrl<HseClk> for Rcc<RccInt> {
-    fn enable(&self, _clk: HseClk) -> FiberFuture<()> {
+    fn stabilize(&self, _clk: HseClk) -> FiberFuture<()> {
         // Enable ready interrupt.
         self.rcc.rcc_cir.modify(|r| r.set_hserdyie());
 
@@ -67,13 +70,31 @@ impl<RccInt: IntToken> StabilingClkCtrl<HseClk> for Rcc<RccInt> {
         // Enable the clock.
         self.rcc.rcc_cr.modify(|r| r.set_hseon());
 
-        // Wait for the clock to enable.
+        // Wait for the clock to stabilize.
         hserdy
     }
 }
 
+impl<RccInt: IntToken> ClkCtrl<Pll> for Rcc<RccInt> {
+    fn configure(&self, clk: Pll) {
+        self.rcc.rcc_pllcfgr.modify(|r| {
+            let pllp = match clk.p.div {
+                2 => 0b00,
+                4 => 0b01,
+                6 => 0b10,
+                8 => 0b11,
+                _ => unreachable!(),
+            };
+            r.write_pllm(clk.vco.src.m)
+                .write_plln(clk.vco.n)
+                .write_pllp(pllp)
+                .write_pllq(clk.q.div)
+        });
+    }
+}
+
 impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
-    fn enable(&self, clk: Pll) -> FiberFuture<()> {
+    fn stabilize(&self, _clk: Pll) -> FiberFuture<()> {
         // Enable ready interrupt.
         self.rcc.rcc_cir.modify(|r| r.set_pllrdyie());
 
@@ -91,44 +112,61 @@ impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
             }
         }));
 
-        // Configure the PLL.
-        self.rcc.rcc_pllcfgr.modify(|r| {
-            let pllp = match clk.p.div {
-                2 => 0b00,
-                4 => 0b01,
-                6 => 0b10,
-                8 => 0b11,
-                _ => unreachable!(),
-            };
-            r.write_pllm(clk.vco.src.m)
-                .write_plln(clk.vco.n)
-                .write_pllp(pllp)
-                .write_pllq(clk.q.div)
-        });
-
         // Enable the clock.
         self.rcc.rcc_cr.modify(|r| r.set_pllon());
 
-        // Wait for the clock to enable.
+        // Wait for the clock to stabilize.
         pllrdy
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<PllSrcMux> for Rcc<RccInt> {
-    fn select_mux(&self, mux: PllSrcMux) {
-        match mux {
-            PllSrcMux::Hsi(_) => self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc()),
-            PllSrcMux::Hse(_) => self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc()),
+impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
+    fn configure(&self, clk: PClk1) {
+        self.rcc.rcc_cfgr.modify(|r| {
+            let ppre1 = match clk.ppre1 {
+                1 => 0b000,
+                2 => 0b100,
+                4 => 0b101,
+                8 => 0b110,
+                16 => 0b111,
+                _ => unreachable!(),
+            };
+            r.write_ppre1(ppre1)
+        });
+    }
+}
+
+impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
+    fn configure(&self, clk: PClk2) {
+        self.rcc.rcc_cfgr.modify(|r| {
+            let ppre2 = match clk.ppre2 {
+                1 => 0b000,
+                2 => 0b100,
+                4 => 0b101,
+                8 => 0b110,
+                16 => 0b111,
+                _ => unreachable!(),
+            };
+            r.write_ppre2(ppre2)
+        });
+    }
+}
+
+impl<RccInt: IntToken> MuxCtrl<PllSrcMuxSignal> for Rcc<RccInt> {
+    fn select(&self, signal: PllSrcMuxSignal) {
+        match signal {
+            PllSrcMuxSignal::Hsi(_) => self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc()),
+            PllSrcMuxSignal::Hse(_) => self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc()),
         }
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<SysClkMux> for Rcc<RccInt> {
-    fn select_mux(&self, mux: SysClkMux) {
-        let sw = match mux {
-            SysClkMux::Hsi(_) => 0b00,
-            SysClkMux::Hse(_) => 0b01,
-            SysClkMux::Pll(_) => 0b10,
+impl<RccInt: IntToken> MuxCtrl<SysClkMuxSignal> for Rcc<RccInt> {
+    fn select(&self, signal: SysClkMuxSignal) {
+        let sw = match signal {
+            SysClkMuxSignal::Hsi(_) => 0b00,
+            SysClkMuxSignal::Hse(_) => 0b01,
+            SysClkMuxSignal::Pll(_) => 0b10,
         };
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(sw));
     }
