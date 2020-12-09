@@ -95,6 +95,11 @@ pub const PCLK2_MAX: u32 = SYSCLK_MAX / 2;
 /// Maximum APB1, low speed peripheral clock frequency.
 pub const PCLK1_MAX: u32 = PCLK2_MAX / 2;
 
+pub struct Mux<Signal> {
+    _signal: PhantomData<Signal>
+}
+
+
 pub trait Freq {
     fn freq(self) -> u32;
 }
@@ -134,6 +139,9 @@ pub enum PllSrcMuxSignal {
     Hsi(HsiClk),
     Hse(HseClk),
 }
+
+/// The pll clock source mux.
+pub const PLLSRC_MUX: Mux<PllSrcMuxSignal> = Mux { _signal: PhantomData };
 
 impl PllSrcMuxSignal {
     pub const fn f(self) -> u32 {
@@ -228,6 +236,7 @@ impl<Out> Freq for PllClk<Out> {
     fn freq(self) -> u32 { self.f() }
 }
 
+#[derive(Copy, Clone)]
 pub struct Pll {
     pub vco: PllVco,
     /// Pll division factor for system clock.
@@ -259,6 +268,8 @@ impl Pll {
     }
 }
 
+/// The system clock source mux.
+
 /// The system clock source signal.
 #[derive(Copy, Clone)]
 pub enum SysClkMuxSignal {
@@ -266,6 +277,8 @@ pub enum SysClkMuxSignal {
     Hse(HseClk),
     Pll(PllClk<PllP>),
 }
+
+pub const SYSCLK_MUX: Mux<SysClkMuxSignal> = Mux { _signal: PhantomData };
 
 impl SysClkMuxSignal {
     pub const fn f(self) -> u32 {

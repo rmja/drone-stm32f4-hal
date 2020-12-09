@@ -1,5 +1,6 @@
 use self::traits::*;
 use crate::{clktree::*, diverged::RccDiverged, periph::RccPeriph};
+use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::reg;
 use fib::FiberFuture;
@@ -30,26 +31,50 @@ impl<RccInt: IntToken> Rcc<RccInt> {
 }
 
 pub mod traits {
+    use core::ops::Deref;
+
     use super::*;
+
+    pub struct ConfiguredClk<Clk> {
+        pub(crate) clk: Clk,
+    }
+
+    impl<Clk> Deref for ConfiguredClk<Clk> {
+        type Target = Clk;
+
+        fn deref(&self) -> &Self::Target {
+            &self.clk
+        }
+    }
+
+    impl ConfiguredClk<Pll> {
+        pub fn p(self) -> ConfiguredClk<PllClk<PllP>> {
+            ConfiguredClk { clk: self.clk.p }
+        }
+
+        pub fn q(self) -> ConfiguredClk<PllClk<PllQ>> {
+            ConfiguredClk { clk: self.clk.q }
+        }
+    }
 
     pub trait ClkCtrl<Clk> {
         /// Configures the clock `clk`.
-        fn configure(&self, clk: Clk);
+        fn configure(&self, clk: Clk) -> ConfiguredClk<Clk>;
     }
 
     pub trait StabilingClkCtrl<Clk> {
-        /// Enables the clock `clk  and completes the future when the clock has stabilized.
-        fn stabilize(&self, clk: Clk) -> FiberFuture<()>;
+        /// Configures the clock `clk`  and completes the future when the clock has stabilized.
+        fn stabilize(&self, clk: Clk) -> FiberFuture<ConfiguredClk<Clk>>;
     }
 
-    pub trait MuxCtrl<MuxSignal> {
-        /// Selects the source signal of the associated mux.
-        fn select(&self, signal: MuxSignal);
+    pub trait MuxCtrl<MuxSignal, Clk> {
+        /// Select the source clock signal of a mux.
+        fn select(&self, signal: MuxSignal, clk: ConfiguredClk<Clk>);
     }
 }
 
 impl<RccInt: IntToken> StabilingClkCtrl<HseClk> for Rcc<RccInt> {
-    fn stabilize(&self, _clk: HseClk) -> FiberFuture<()> {
+    fn stabilize(&self, clk: HseClk) -> FiberFuture<ConfiguredClk<HseClk>> {
         // Enable ready interrupt.
         self.rcc.rcc_cir.modify(|r| r.set_hserdyie());
 
@@ -61,7 +86,7 @@ impl<RccInt: IntToken> StabilingClkCtrl<HseClk> for Rcc<RccInt> {
         let hserdy = self.rcc_int.add_future(fib::new_fn(move || {
             if hserdyf.read_bit() {
                 hserdyc.set_bit();
-                fib::Complete(())
+                fib::Complete(ConfiguredClk { clk })
             } else {
                 fib::Yielded(())
             }
@@ -75,8 +100,26 @@ impl<RccInt: IntToken> StabilingClkCtrl<HseClk> for Rcc<RccInt> {
     }
 }
 
-impl<RccInt: IntToken> ClkCtrl<Pll> for Rcc<RccInt> {
-    fn configure(&self, clk: Pll) {
+impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
+    fn stabilize(&self, clk: Pll) -> FiberFuture<ConfiguredClk<Pll>> {
+        // Enable ready interrupt.
+        self.rcc.rcc_cir.modify(|r| r.set_pllrdyie());
+
+        let reg::rcc::Cir {
+            pllrdyc, pllrdyf, ..
+        } = self.rcc.rcc_cir;
+
+        // Attach a listener that will notify us when the clock has stabilized.
+        let pllrdy = self.rcc_int.add_future(fib::new_fn(move || {
+            if pllrdyf.read_bit() {
+                pllrdyc.set_bit();
+                fib::Complete(ConfiguredClk { clk })
+            } else {
+                fib::Yielded(())
+            }
+        }));
+
+        // Configure the clock.
         self.rcc.rcc_pllcfgr.modify(|r| {
             let pllp = match clk.p.div {
                 2 => 0b00,
@@ -90,27 +133,6 @@ impl<RccInt: IntToken> ClkCtrl<Pll> for Rcc<RccInt> {
                 .write_pllp(pllp)
                 .write_pllq(clk.q.div)
         });
-    }
-}
-
-impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
-    fn stabilize(&self, _clk: Pll) -> FiberFuture<()> {
-        // Enable ready interrupt.
-        self.rcc.rcc_cir.modify(|r| r.set_pllrdyie());
-
-        let reg::rcc::Cir {
-            pllrdyc, pllrdyf, ..
-        } = self.rcc.rcc_cir;
-
-        // Attach a listener that will notify us when the clock has stabilized.
-        let pllrdy = self.rcc_int.add_future(fib::new_fn(move || {
-            if pllrdyf.read_bit() {
-                pllrdyc.set_bit();
-                fib::Complete(())
-            } else {
-                fib::Yielded(())
-            }
-        }));
 
         // Enable the clock.
         self.rcc.rcc_cr.modify(|r| r.set_pllon());
@@ -121,7 +143,7 @@ impl<RccInt: IntToken> StabilingClkCtrl<Pll> for Rcc<RccInt> {
 }
 
 impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
-    fn configure(&self, clk: PClk1) {
+    fn configure(&self, clk: PClk1) -> ConfiguredClk<PClk1> {
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre1 = match clk.ppre1 {
                 1 => 0b000,
@@ -133,11 +155,12 @@ impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
             };
             r.write_ppre1(ppre1)
         });
+        ConfiguredClk { clk }
     }
 }
 
 impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
-    fn configure(&self, clk: PClk2) {
+    fn configure(&self, clk: PClk2) -> ConfiguredClk<PClk2> {
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre2 = match clk.ppre2 {
                 1 => 0b000,
@@ -149,25 +172,41 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
             };
             r.write_ppre2(ppre2)
         });
+        ConfiguredClk { clk }
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<PllSrcMuxSignal> for Rcc<RccInt> {
-    fn select(&self, signal: PllSrcMuxSignal) {
-        match signal {
-            PllSrcMuxSignal::Hsi(_) => self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc()),
-            PllSrcMuxSignal::Hse(_) => self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc()),
-        }
+impl<RccInt: IntToken> MuxCtrl<PllSrcMuxSignal, HsiClk> for Rcc<RccInt> {
+    fn select(&self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HsiClk>) {
+        assert!(matches!(signal, PllSrcMuxSignal::Hsi { .. }));
+        self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc());
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<SysClkMuxSignal> for Rcc<RccInt> {
-    fn select(&self, signal: SysClkMuxSignal) {
-        let sw = match signal {
-            SysClkMuxSignal::Hsi(_) => 0b00,
-            SysClkMuxSignal::Hse(_) => 0b01,
-            SysClkMuxSignal::Pll(_) => 0b10,
-        };
-        self.rcc.rcc_cfgr.modify(|r| r.write_sw(sw));
+impl<RccInt: IntToken> MuxCtrl<PllSrcMuxSignal, HseClk> for Rcc<RccInt> {
+    fn select(&self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HseClk>) {
+        assert!(matches!(signal, PllSrcMuxSignal::Hse { .. }));
+        self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc());
+    }
+}
+
+impl<RccInt: IntToken> MuxCtrl<SysClkMuxSignal, HsiClk> for Rcc<RccInt> {
+    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HsiClk>) {
+        assert!(matches!(signal, SysClkMuxSignal::Hsi { .. }));
+        self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b00));
+    }
+}
+
+impl<RccInt: IntToken> MuxCtrl<SysClkMuxSignal, HseClk> for Rcc<RccInt> {
+    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HseClk>) {
+        assert!(matches!(signal, SysClkMuxSignal::Hse { .. }));
+        self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b01));
+    }
+}
+
+impl<RccInt: IntToken> MuxCtrl<SysClkMuxSignal, PllClk<PllP>> for Rcc<RccInt> {
+    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<PllClk<PllP>>) {
+        assert!(matches!(signal, SysClkMuxSignal::Pll { .. }));
+        self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b10));
     }
 }

@@ -96,22 +96,17 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let pwr = Pwr::init(periph_pwr!(reg));
     let flash = Flash::init(periph_flash!(reg));
 
-    let hseclk = consts::HSECLK.f();
-    let pll = consts::HCLK.f();
-    let pclk1 = consts::PCLK1.f();
-    let pclk2 = consts::PCLK2.f();
-
-    rcc.stabilize(consts::HSECLK).root_wait();
-    rcc.select(consts::PLLSRC_HSECLK);
-    rcc.configure(consts::PLL);
-    rcc.stabilize(consts::PLL).root_wait();
-    rcc.configure(consts::PCLK1);
-    rcc.configure(consts::PCLK2);
+    let hseclk = rcc.stabilize(consts::HSECLK).root_wait();
+    rcc.select(consts::PLLSRC_HSECLK, hseclk);
+    let pll = rcc.stabilize(consts::PLL).root_wait();
+    let pclk1 = rcc.configure(consts::PCLK1);
+    let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_od();
     flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
     swo::flush();
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
-    rcc.select(consts::SYSCLK_PLL);
+    rcc.select(consts::SYSCLK_PLL, pll.p());
+
 
     let setup = UartSetup::new(
         periph_usart2!(reg),
