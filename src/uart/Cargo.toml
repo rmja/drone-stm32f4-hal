@@ -23,4 +23,5 @@ path = "lib.rs"
 drone-core = { version = "0.13.0", path = "../../../drone-core" }
 drone-cortexm = { version = "0.13.0", path = "../../../drone-cortexm" }
 drone-stm32-map = { version = "0.13.0", features = ["dma", "uart"], path = "../../../drone-stm32-map"  }
+drone-stm32f4-rcc-drv = { version = "0.1.0", path = "../rcc"  }
 futures = { version = "0.3.0", default-features = false }
