@@ -35,6 +35,7 @@ pub mod traits {
 
     use super::*;
 
+    #[derive(Copy, Clone)]
     pub struct ConfiguredClk<Clk> {
         pub(crate) clk: Clk,
     }

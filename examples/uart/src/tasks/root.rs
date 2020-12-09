@@ -22,7 +22,11 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{Flash, Pwr, Rcc, RccSetup, periph_flash, periph_pwr, periph_rcc, traits::*}, uart::{config::*, UartDrv}};
+use drone_stm32f4_hal::{
+    gpio::{GpioPinCfg, GpioPinSpeed},
+    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
+    uart::{config::*, UartDrv},
+};
 
 /// The root task handler.
 #[inline(never)]
@@ -97,7 +101,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let flash = Flash::init(periph_flash!(reg));
 
     let hseclk = rcc.stabilize(consts::HSECLK).root_wait();
-    let pll = rcc.select(consts::PLLSRC_HSECLK, hseclk).stabilize(consts::PLL).root_wait();
+    let pll = rcc
+        .select(consts::PLLSRC_HSECLK, hseclk)
+        .stabilize(consts::PLL)
+        .root_wait();
     let pclk1 = rcc.configure(consts::PCLK1);
     let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_od();
@@ -106,12 +113,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
-
-    let setup = UartSetup::new(
-        periph_usart2!(reg),
-        thr.usart_2,
-        BaudRate::nominal(9_600, consts::PCLK1.f()),
-    );
+    let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
     let rx_setup = UartDmaSetup {
         dma: periph_dma1_ch5!(reg),
         dma_int: thr.dma_1_ch_5,
