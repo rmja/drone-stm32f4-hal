@@ -97,8 +97,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let flash = Flash::init(periph_flash!(reg));
 
     let hseclk = rcc.stabilize(consts::HSECLK).root_wait();
-    rcc.select(consts::PLLSRC_HSECLK, hseclk);
-    let pll = rcc.stabilize(consts::PLL).root_wait();
+    let pll = rcc.select(consts::PLLSRC_HSECLK, hseclk).stabilize(consts::PLL).root_wait();
     let pclk1 = rcc.configure(consts::PCLK1);
     let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_od();
