@@ -21,7 +21,7 @@ pub mod config {
         /// Baud rate.
         pub baud_rate: BaudRate,
         /// Data bits.
-        pub data_bits: DataBits,
+        pub data_bits: u32,
         /// Parity.
         pub parity: Parity,
         /// Stop bits.
@@ -41,7 +41,7 @@ pub mod config {
             uart_int,
             clk,
             baud_rate: BaudRate::Nominal(9_600),
-            data_bits: DataBits::Eight,
+            data_bits: 8,
             parity: Parity::None,
             stop_bits: StopBits::One,
             oversampling: 16,
@@ -193,15 +193,6 @@ pub mod config {
         Raw { div_man: u32, div_frac: u32 },
     }
 
-    /// Uart data bits.
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum DataBits {
-        #[doc = "8 data bits."]
-        Eight,
-        #[doc = "9 data bits."]
-        Nine,
-    }
-
     /// Uart parity.
     #[derive(Copy, Clone, PartialEq)]
     pub enum Parity {
@@ -245,6 +236,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
             parity,
             oversampling,
         } = setup;
+        assert!(data_bits == 8 || data_bits == 9);
         assert!(oversampling == 8 || oversampling == 16);
         let mut drv = Self {
             uart: uart.into(),
@@ -301,7 +293,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         &mut self,
         clk: ConfiguredClk<Clk>,
         baud_rate: config::BaudRate,
-        data_bits: config::DataBits,
+        data_bits: u32,
         parity: config::Parity,
         stop_bits: config::StopBits,
         oversampling: u32,
@@ -316,7 +308,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
             // Do not enable uart before it is fully configured.
 
             // Word length.
-            if data_bits == DataBits::Nine {
+            if data_bits == 9 {
                 r.m().set(v);
             }
 
