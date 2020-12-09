@@ -8,6 +8,7 @@
 #[macro_use]
 extern crate alloc;
 
+pub mod consts;
 pub mod tasks;
 pub mod thr;
 

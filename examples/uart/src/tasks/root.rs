@@ -1,6 +1,6 @@
 //! The root task.
 
-use crate::{thr, thr::ThrsInit, Regs};
+use crate::{consts, thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -22,14 +22,7 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{
-    gpio::{GpioPinCfg, GpioPinSpeed},
-    rcc::RccSetup,
-    uart::{
-        config::{BaudRate, UartDmaSetup, UartSetup},
-        UartDrv,
-    },
-};
+use drone_stm32f4_hal::{gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{Flash, Pwr, Rcc, RccSetup, periph_flash, periph_pwr, periph_rcc, traits::*}, uart::{config::*, UartDrv}};
 
 /// The root task handler.
 #[inline(never)]
@@ -95,29 +88,35 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let dma1 = periph_dma1!(reg);
     dma1.rcc_busenr_dmaen.set_bit();
 
-    let rcc = RccSetup {
-        rcc_cr: reg.rcc_cr,
-        rcc_pllcfgr: reg.rcc_pllcfgr,
-        rcc_cfgr: reg.rcc_cfgr,
-        rcc_cir: reg.rcc_cir,
-
-        flash_acr: reg.flash_acr,
-        pwr_cr: reg.pwr_cr,
-        pwr_csr: reg.pwr_csr,
-        thr_rcc: thr.rcc,
+    let rcc_setup = RccSetup {
+        rcc: periph_rcc!(reg),
+        rcc_int: thr.rcc,
     };
+    let rcc = Rcc::init(rcc_setup);
+    let pwr = Pwr::init(periph_pwr!(reg));
+    let flash = Flash::init(periph_flash!(reg));
 
-    reg.rcc_apb1enr.modify(|r| r.set_pwren());
+    let hseclk = consts::HSECLK.f();
+    let pll = consts::HCLK.f();
+    let pclk1 = consts::PCLK1.f();
+    let pclk2 = consts::PCLK2.f();
 
+    rcc.stabilize(consts::HSECLK).root_wait();
+    rcc.select(consts::PLLSRC_HSECLK);
+    rcc.configure(consts::PLL);
+    rcc.stabilize(consts::PLL).root_wait();
+    rcc.configure(consts::PCLK1);
+    rcc.configure(consts::PCLK2);
+    pwr.enable_od();
+    flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
     swo::flush();
-    rcc.apply().root_wait();
-
-    swo::update_prescaler(180_000_000 / log::baud_rate!() - 1);
+    swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
+    rcc.select(consts::SYSCLK_PLL);
 
     let setup = UartSetup::new(
         periph_usart2!(reg),
         thr.usart_2,
-        BaudRate::nominal(9_600, 90_000_000),
+        BaudRate::nominal(9_600, consts::PCLK1.f()),
     );
     let rx_setup = UartDmaSetup {
         dma: periph_dma1_ch5!(reg),
