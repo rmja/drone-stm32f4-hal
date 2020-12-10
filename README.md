@@ -99,8 +99,108 @@ The next couple of lines enables over-drive (available in e.g. stm32f429) for hi
 There are currently a few bugs. The driver is not complete.
 
 ## UART
+The uart driver uses any of the stm32 uart periperals together with their corresponding dma rx/tx streams to achieve asynchronous read and write operations with minimal cpu overhead.
 
-* [Uart driver echo example](./examples/uart/src/tasks/root.rs)
+There is a working [Drone OS] example application in the [examples folder](./examples/uart/).
+The driver is initially setup like the following:
+
+```rust
+thr.usart_2.enable_int();
+
+// TODO: PIN
+GpioPinCfg::from(periph_gpio_a2!(reg)) // TX.
+        .into_af7()
+        .into_pp()
+        .with_speed(GpioPinSpeed::VeryHighSpeed);
+GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
+    .into_af7()
+    .into_pp()
+    .with_speed(GpioPinSpeed::VeryHighSpeed);
+
+// TODO: DMA
+let dma1 = periph_dma1!(reg);
+dma1.rcc_busenr_dmaen.set_bit();
+
+let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
+let uart_drv = UartDrv::init(setup);
+```
+
+The usart interrupt is first enabled in the nvic.
+The rx/tx pins are then configured, and passed together with the usart peripheral, the usart thread, and the configured periheral clock to the `UartSetup` initialization function, creating a uart `setup` structure. The default setup is `9600/8N1`.
+Any other setting can be specified on the public properties of `setup` (the `setup` variable must be declared `mut` in this case).
+The setup is finally passed to the driver initialization function.
+
+The rx and tx operation of the driver are completely separated, and each of them needs further initiation before use.
+
+### TX Operation
+Completing the setup for tx operation looks like this:
+```rust
+let tx_setup = UartDmaSetup {
+    dma: periph_dma1_ch6!(reg),
+    dma_int: thr.dma_1_ch_6,
+    dma_ch: 4,
+    dma_pl: 1, // Priority level: medium
+};
+let mut tx_drv = uart_drv.init_tx(tx_setup);
+```
+
+With `tx_drv` we are now finally able to do some communication.
+The uart is not started at this time.
+For this we must invoke the `start()` function which returns a guard that stops the transmitter when dropped.
+We can start writing to the uart after it is started:
+
+```rust
+let mut tx = tx_drv.start();
+tx.write(b"Hello World!\n").await;
+tx.write(b"Drone OS is awesome!\n").await;
+tx.flush().await;
+drop(tx);
+```
+
+The driver supports multiple subsequent calls to the `write()` function which is an asynchronous call that returns a future that completes _when the dma controller is ready to receive more bytes to be written_.
+In this way it is possible to fully saturate the uart even for fast baud rates, without any "spacings" due to a software design with multiple `write()` calls.
+In the example this have the effect that the `\n` character after the Hello World! write is completely adjacent to the `D` when expecting the uart tx line.
+As a consequence of this design: When `write()` completes this does not mean that the data have actually been sent.
+For this we use `flush()` which, when returned tells that all data are completely transmitted at which time it is safe to stop the uart.
+
+### RX Operation
+The rx part of the driver is initialized like the following:
+
+```rust
+let rx_setup = UartDmaSetup {
+    dma: periph_dma1_ch5!(reg),
+    dma_int: thr.dma_1_ch_5,
+    dma_ch: 4,
+    dma_pl: 1, // Priority level: medium
+};
+let mut rx_drv = uart_drv.init_rx(rx_setup);
+```
+
+Again, as for the tx part, the driver is not yet ready to receive. For this we need to start the receiver:
+
+```rust
+let rx_ring_buf = vec![0; 256].into_boxed_slice();
+let mut rx = rx_drv.start(rx_ring_buf);
+
+loop {
+  let mut buf = [0; 16];
+  match rx.read(&mut buf).await {
+    Ok(n) => {
+      // Data is available in the slice &buf[..n].
+    }
+    Err(e) => {
+      // The ring buffer has overflowed.
+    }
+  };
+}
+
+drop(rx);
+```
+
+The driver is started with the ring buffer `rx_ring_buf`. This buffer is internally assigned to the dma controller, and must be sufficiently large to store received bytes before they are consumed using the `read()` function by the user. `read()` returns a future with the number of bytes read. This number may be smaller than the size of the provided read buffer. It returns immediately if there is _any_ data readily available in the ring buffer, or in the future _as soon as there is data available_. More specifically for `n = read(&buf).await?`, we have `1 <= n <= len(buf)`.
+This is not using busy waiting on data to become available, but is achieved internally by registering a [Drone OS] [fiber](https://book.drone-os.com/fibers.html) that completes when any data becomes available in the dma controller and therefore the ring buffer.
+
+The `read()` method may return an error if `read()` is not called fast enough, in which case it can happen that the ring buffer has overflowed since the last call to `read()`.
 
 ## References
 
