@@ -11,12 +11,7 @@ use drone_stm32_map::periph::{
     },
     spi::periph_spi1,
 };
-use drone_stm32f4_hal::{
-    dma::{config::*, DmaCfg},
-    gpio::{GpioPinCfg, GpioPinSpeed},
-    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-    spi::{config::*, prelude::*, SpiDrv, SpiIface},
-};
+use drone_stm32f4_hal::{dma::{config::*, DmaCfg}, gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup}, spi::{SpiDrv, chipctrl::*, config::*, prelude::*}};
 
 /// The root task handler.
 #[inline(never)]
@@ -92,14 +87,14 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Initialize spi.
     let setup = SpiSetup::init(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
     let spi_drv = SpiDrv::init(setup);
-    let spi_master = spi_drv.init_master(miso_dma, mosi_dma);
+    let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
-    // let iface = SpiIface::new(cs_pin);
+    let chip = SpiChip::init(cs_pin);
 
-    // spi_master.select(&iface);
-    // let tx_buf = [1, 2, 3, 4].as_ref();
-    // spi_master.write(tx_buf).root_wait();
-    // spi_master.deselect(&iface);
+    spi_master.select(&chip);
+    let tx_buf = [1, 2, 3, 4].as_ref();
+    spi_master.write(tx_buf).root_wait();
+    spi_master.deselect(&chip);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
