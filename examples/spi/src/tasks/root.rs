@@ -15,7 +15,7 @@ use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-    spi::{config::*, traits::*, SpiDrv, SpiIface},
+    spi::{config::*, prelude::*, SpiDrv, SpiIface},
 };
 
 /// The root task handler.
@@ -92,7 +92,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Initialize spi.
     let setup = SpiSetup::init(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
     let spi_drv = SpiDrv::init(setup);
-    let mut spi_master = spi_drv.init_spi1_master(miso_dma, mosi_dma);
+    let spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
     // let iface = SpiIface::new(cs_pin);
 

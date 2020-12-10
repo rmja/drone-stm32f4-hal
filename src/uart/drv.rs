@@ -73,7 +73,6 @@ pub mod config {
     uart_setup_init!(Uart4, PClk1);
     uart_setup_init!(Uart5, PClk1);
     uart_setup_init!(Usart6, PClk2);
-
     #[cfg(any(
         stm32_mcu = "stm32f405",
         stm32_mcu = "stm32f407",
@@ -83,7 +82,6 @@ pub mod config {
         stm32_mcu = "stm32f469",
     ))]
     uart_setup_init!(Uart7, PClk1);
-
     #[cfg(any(
         stm32_mcu = "stm32f405",
         stm32_mcu = "stm32f407",
@@ -94,10 +92,8 @@ pub mod config {
         stm32_mcu = "stm32f469",
     ))]
     uart_setup_init!(Uart8, PClk1);
-
     #[cfg(any(stm32_mcu = "stm32f413",))]
     uart_setup_init!(Uart9, PClk2);
-
     #[cfg(any(stm32_mcu = "stm32f413",))]
     uart_setup_init!(Uart10, PClk2);
 
@@ -163,14 +159,14 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
 
     pub(crate) fn init_rx_impl<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
         &self,
-        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
+        rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
         let DmaChCfg {
             dma_ch,
             dma_int,
             dma_pl,
             ..
-        } = dma_cfg;
+        } = rx_cfg;
         let mut rx = UartRxDrv {
             uart: &self.uart,
             uart_int: &self.uart_int,
@@ -183,14 +179,14 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
 
     pub(crate) fn init_tx_impl<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
         &self,
-        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
+        tx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
         let DmaChCfg {
             dma_ch,
             dma_int,
             dma_pl,
             ..
-        } = dma_cfg;
+        } = tx_cfg;
         let mut tx = UartTxDrv {
             uart: &self.uart,
             uart_int: &self.uart_int,
@@ -283,7 +279,7 @@ pub trait UartRxDrvInit<
     Clk: PClkToken,
 >
 {
-    /// Obtain a configured [`UartRxDrv`] from a configured dma channel.
+    /// Initialize a [`UartRxDrv`] from a configured dma channel.
     fn init_rx<DmaInt: IntToken>(
         &self,
         dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
@@ -298,10 +294,10 @@ pub trait UartTxDrvInit<
     Clk: PClkToken,
 >
 {
-    /// Obtain a configured [`UartTxDrv`] from a configured dma channel.
+    /// Initialize a [`UartTxDrv`] from a configured dma channel.
     fn init_tx<DmaInt: IntToken>(
         &self,
-        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
+        rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
@@ -318,14 +314,14 @@ macro_rules! rx_drv_init {
         {
             fn init_rx<DmaInt: IntToken>(
                 &self,
-                dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
+                rx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
             ) -> UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                self.init_rx_impl(dma_cfg)
+                self.init_rx_impl(rx_cfg)
             }
         }
     };
@@ -344,14 +340,14 @@ macro_rules! tx_drv_init {
         {
             fn init_tx<DmaInt: IntToken>(
                 &self,
-                dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
+                tx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
             ) -> UartTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                self.init_tx_impl(dma_cfg)
+                self.init_tx_impl(tx_cfg)
             }
         }
     };
@@ -374,7 +370,6 @@ rx_drv_init!(Usart6, Dma2Ch1, DmaStCh5);
 rx_drv_init!(Usart6, Dma2Ch2, DmaStCh5);
 tx_drv_init!(Usart6, Dma2Ch6, DmaStCh5);
 tx_drv_init!(Usart6, Dma2Ch7, DmaStCh5);
-
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -384,7 +379,6 @@ tx_drv_init!(Usart6, Dma2Ch7, DmaStCh5);
     stm32_mcu = "stm32f469",
 ))]
 rx_drv_init!(Uart7, Dma1Ch3, DmaStCh5);
-
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -394,7 +388,6 @@ rx_drv_init!(Uart7, Dma1Ch3, DmaStCh5);
     stm32_mcu = "stm32f469",
 ))]
 tx_drv_init!(Uart7, Dma1Ch1, DmaStCh5);
-
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -404,7 +397,6 @@ tx_drv_init!(Uart7, Dma1Ch1, DmaStCh5);
     stm32_mcu = "stm32f469",
 ))]
 rx_drv_init!(Uart8, Dma1Ch6, DmaStCh5);
-
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
