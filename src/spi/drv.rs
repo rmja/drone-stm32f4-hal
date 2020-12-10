@@ -1,12 +1,12 @@
 use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
 use config::{BaudRate, ClkPol, FirstBit};
-use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh3, DmaStChToken};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh3, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
@@ -39,8 +39,7 @@ pub mod config {
 
     macro_rules! spi_setup {
         ($spi:ident, $pclk:ident) => {
-            impl<SpiInt: IntToken>
-                SpiSetupInit<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+            impl<SpiInt: IntToken> SpiSetupInit<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
                 for SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
             {
                 fn init(
@@ -255,9 +254,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
 
 // TODO: Do this with macros
 
-impl<SpiInt: IntToken, Clk: PClkToken>
-    SpiDrv<drone_stm32_map::periph::spi::Spi1, SpiInt, Clk>
-{
+impl<SpiInt: IntToken, Clk: PClkToken> SpiDrv<drone_stm32_map::periph::spi::Spi1, SpiInt, Clk> {
     /// Configures the spi driver in master-mode for full duplex operation.
     pub fn init_spi1_master<DmaRxInt: IntToken, DmaTxInt: IntToken>(
         &self,

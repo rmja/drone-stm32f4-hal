@@ -4,9 +4,8 @@
 mod drv;
 
 pub use self::drv::{
-    config,
-    DmaCfg, DmaChCfg, DmaStCh0, DmaStCh1, DmaStCh2, DmaStCh3, DmaStCh4,
-    DmaStCh5, DmaStCh6, DmaStCh7, DmaStChToken,
+    config, DmaCfg, DmaChCfg, DmaStCh0, DmaStCh1, DmaStCh2, DmaStCh3, DmaStCh4, DmaStCh5, DmaStCh6,
+    DmaStCh7, DmaStChToken,
 };
 
 pub mod prelude {

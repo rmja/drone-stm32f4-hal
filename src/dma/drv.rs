@@ -1,10 +1,10 @@
+use self::config::*;
 use core::marker::PhantomData;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::dma::{
     ch::{DmaChMap, DmaChPeriph},
     DmaMap, DmaPeriph,
 };
-use self::config::*;
 
 pub struct DmaStCh0;
 pub struct DmaStCh1;

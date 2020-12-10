@@ -4,17 +4,9 @@ use crate::{consts, thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::{
-        periph_dma1,
-        periph_dma1_ch5,
-        periph_dma1_ch6,
-    },
+    dma::{periph_dma1, periph_dma1_ch5, periph_dma1_ch6},
     gpio::{
-        periph_gpio_a2,
-        periph_gpio_a3,
-        periph_gpio_a_head,
-        periph_gpio_b10,
-        periph_gpio_b2,
+        periph_gpio_a2, periph_gpio_a3, periph_gpio_a_head, periph_gpio_b10, periph_gpio_b2,
         periph_gpio_b_head,
     },
     uart::{periph_usart2, periph_usart3},
@@ -23,7 +15,7 @@ use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-    uart::{config::*, UartDrv},
+    uart::{config::*, prelude::*, UartDrv},
 };
 
 /// The root task handler.
@@ -99,8 +91,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Initialize uart.
     let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
     let uart_drv = UartDrv::init(setup);
-    let mut rx_drv = uart_drv.init_usart1_rx(rx_dma);
-    let mut tx_drv = uart_drv.init_usart1_tx(tx_dma);
+    let mut rx_drv = uart_drv.init_rx(rx_dma);
+    let mut tx_drv = uart_drv.init_tx(tx_dma);
 
     // Enable receiver.
     let rx_ring_buf = vec![0; 10].into_boxed_slice();
