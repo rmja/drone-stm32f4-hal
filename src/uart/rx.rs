@@ -28,13 +28,13 @@ pub enum RxError {
 impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
     UartRxDrv<'drv, Uart, UartInt, DmaRx, DmaRxInt>
 {
-    pub(crate) fn init_dma_rx(&mut self, channel: u32, priority: u32) {
+    pub(crate) fn init_dma_rx(&mut self, chsel: u32, priority: u32) {
         let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
         self.dma.dma_cpar.store_reg(|r, v| {
             r.pa().write(v, address as u32); // peripheral address
         });
         self.dma.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, channel); // channel selection
+            r.chsel().write(v, chsel); // stream channel selection
             r.pl().write(v, priority); // priority level
             r.msize().write(v, 0b00); // byte (8-bit)
             r.psize().write(v, 0b00); // byte (8-bit)

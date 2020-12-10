@@ -22,11 +22,7 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{
-    gpio::{GpioPinCfg, GpioPinSpeed},
-    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-    uart::{config::*, UartDrv},
-};
+use drone_stm32f4_hal::{dma::{DmaChSetup, DmaCfg}, gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup}, uart::{config::*, UartDrv}};
 
 /// The root task handler.
 #[inline(never)]
@@ -42,9 +38,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     thr.usart_2.enable_int();
     thr.dma_1_ch_5.enable_int();
     thr.dma_1_ch_6.enable_int();
-    // thr.usart_3.enable_int();
-    // thr.dma_1_ch_1.enable_int();
-    // thr.dma_1_ch_3.enable_int();
 
     // Enable IO port clock.
     let gpio_a = periph_gpio_a_head!(reg);
@@ -61,14 +54,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    // GpioPinCfg::from(periph_gpio_c10!(reg))
-    //     .into_af7()
-    //     .into_pp()
-    //     .with_speed(GpioPinSpeed::VeryHighSpeed);
-    // GpioPinCfg::from(periph_gpio_c11!(reg))
-    //     .into_af7()
-    //     .into_pp()
-    //     .with_speed(GpioPinSpeed::VeryHighSpeed);
 
     // Disable IO port clock.
     gpio_a.rcc_busenr_gpioen.clear_bit();
@@ -82,15 +67,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_output()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-
-    // let mut dbg2 = GpioPinCfg::from(periph_gpio_b10!(reg))
-    //     .into_output()
-    //     .into_pp()
-    //     .with_speed(GpioPinSpeed::VeryHighSpeed);
-
-    // Enable DMA clock.
-    let dma1 = periph_dma1!(reg);
-    dma1.rcc_busenr_dmaen.set_bit();
 
     let rcc_setup = RccSetup {
         rcc: periph_rcc!(reg),
@@ -114,38 +90,18 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
     let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
-    let rx_setup = UartDmaSetup {
-        dma: periph_dma1_ch5!(reg),
-        dma_int: thr.dma_1_ch_5,
-        dma_ch: 4,
-        dma_pl: 1, // Priority level: medium
-    };
-    let tx_setup = UartDmaSetup {
-        dma: periph_dma1_ch6!(reg),
-        dma_int: thr.dma_1_ch_6,
-        dma_ch: 4,
-        dma_pl: 1, // Priority level: medium
-    };
 
-    // let setup = UartSetup::default(periph_usart3!(reg), thr.usart_3);
-    // let tx_setup = UartDmaSetup {
-    //     dma: periph_dma1_ch3!(reg),
-    //     dma_int: thr.dma_1_ch_3,
-    //     dma_ch: 4,
-    //     dma_pl: 1, // Priority level: medium
-    // };
-    // let rx_setup = UartDmaSetup {
-    //     dma: periph_dma1_ch1!(reg),
-    //     dma_int: thr.dma_1_ch_1,
-    //     dma_ch: 4,
-    //     dma_pl: 1, // Priority level: medium
-    // };
+    let dma1 = DmaCfg::init(periph_dma1!(reg));
+    let rx_setup = DmaChSetup::dma1_ch5_stch4(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
+    let rx_dma = dma1.init_ch(rx_setup);
+    let tx_setup = DmaChSetup::dma1_ch6_stch4(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
+    let tx_dma = dma1.init_ch(tx_setup);
 
     let uart_drv = UartDrv::init(setup);
-    let mut tx_drv = uart_drv.init_tx(tx_setup);
+    let mut tx_drv = uart_drv.init_tx(tx_dma);
 
     let rx_ring_buf = vec![0; 10].into_boxed_slice();
-    let mut rx_drv = uart_drv.init_rx(rx_setup);
+    let mut rx_drv = uart_drv.init_rx(rx_dma);
 
     // Enable receiver.
     let mut rx = rx_drv.start(rx_ring_buf);

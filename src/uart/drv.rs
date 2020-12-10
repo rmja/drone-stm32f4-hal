@@ -5,6 +5,7 @@ use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
     uart::{traits::*, UartMap, UartPeriph},
 };
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
@@ -50,12 +51,18 @@ pub mod config {
 
     macro_rules! uart_setup {
         ($name:ident, $uart:ident, $pclk:ident) => {
-            impl<UartInt: IntToken> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
+            impl<UartInt: IntToken>
+                UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
+            {
                 /// Create a new 9600 8N1 uart setup with sensible defaults.
-                pub fn $name(uart: UartPeriph<drone_stm32_map::periph::uart::$uart>, uart_int: UartInt, clk: ConfiguredClk<$pclk>) -> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
+                pub fn $name(
+                    uart: UartPeriph<drone_stm32_map::periph::uart::$uart>,
+                    uart_int: UartInt,
+                    clk: ConfiguredClk<$pclk>,
+                ) -> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
                     new_setup(uart, uart_int, clk)
                 }
-            }        
+            }
         };
     }
 
@@ -129,7 +136,7 @@ pub mod config {
         stm32_mcu = "stm32f469",
     ))]
     uart_setup!(uart5, Uart5, PClk1);
-    
+
     #[cfg(any(
         stm32_mcu = "stm32f401",
         stm32_mcu = "stm32f405",
@@ -166,27 +173,11 @@ pub mod config {
     ))]
     uart_setup!(uart8, Uart8, PClk1);
 
-    #[cfg(any(
-        stm32_mcu = "stm32f413",
-    ))]
+    #[cfg(any(stm32_mcu = "stm32f413",))]
     uart_setup!(uart9, Uart9, PClk2);
 
-    #[cfg(any(
-        stm32_mcu = "stm32f413",
-    ))]
+    #[cfg(any(stm32_mcu = "stm32f413",))]
     uart_setup!(uart10, Uart10, PClk2);
-
-    /// Uart tx/rx dma channel setup.
-    pub struct UartDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
-        /// DMA channel peripheral.
-        pub dma: DmaChPeriph<DmaCh>,
-        /// DMA channel interrupt.
-        pub dma_int: DmaInt,
-        /// DMA channel number.
-        pub dma_ch: u32,
-        /// DMA channel priority level.
-        pub dma_pl: u32,
-    }
 
     #[derive(Copy, Clone)]
     pub enum BaudRate {
@@ -249,44 +240,44 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 
     /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
-    pub fn init_tx<DmaCh: DmaChMap, DmaInt: IntToken>(
+    pub fn init_tx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
         &self,
-        setup: config::UartDmaSetup<DmaCh, DmaInt>,
+        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let config::UartDmaSetup {
-            dma,
-            dma_int,
+        let DmaChCfg {
             dma_ch,
+            dma_int,
             dma_pl,
-        } = setup;
+            ..
+        } = dma_cfg;
         let mut tx = UartTxDrv {
             uart: &self.uart,
             uart_int: &self.uart_int,
-            dma: dma.into(),
+            dma: dma_ch.into(),
             dma_int,
         };
-        tx.init_dma_tx(dma_ch, dma_pl);
+        tx.init_dma_tx(DmaStCh::num(), dma_pl);
         tx
     }
 
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn init_rx<DmaCh: DmaChMap, DmaInt: IntToken>(
+    pub fn init_rx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
         &self,
-        setup: config::UartDmaSetup<DmaCh, DmaInt>,
+        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let config::UartDmaSetup {
-            dma,
-            dma_int,
+        let DmaChCfg {
             dma_ch,
+            dma_int,
             dma_pl,
-        } = setup;
+            ..
+        } = dma_cfg;
         let mut rx = UartRxDrv {
             uart: &self.uart,
             uart_int: &self.uart_int,
-            dma: dma.into(),
+            dma: dma_ch.into(),
             dma_int,
         };
-        rx.init_dma_rx(dma_ch, dma_pl);
+        rx.init_dma_rx(DmaStCh::num(), dma_pl);
         rx
     }
 
@@ -366,7 +357,11 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 }
 
-fn uart_brr<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: config::BaudRate, oversampling: u32) -> (u32, u32) {
+fn uart_brr<Clk: PClkToken>(
+    clk: ConfiguredClk<Clk>,
+    baud_rate: config::BaudRate,
+    oversampling: u32,
+) -> (u32, u32) {
     match baud_rate {
         config::BaudRate::Nominal(baud_rate) => {
             // Compute the uart divider for use by the baud rate register

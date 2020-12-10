@@ -135,7 +135,7 @@ The rx and tx operation of the driver are completely separated, and each of them
 ### TX Operation
 Completing the setup for tx operation looks like this:
 ```rust
-let tx_setup = UartDmaSetup {
+let tx_setup = DmaChSetup {
     dma: periph_dma1_ch6!(reg),
     dma_int: thr.dma_1_ch_6,
     dma_ch: 4,
@@ -167,7 +167,7 @@ For this we use `flush()` which, when returned tells that all data are completel
 The rx part of the driver is initialized like the following:
 
 ```rust
-let rx_setup = UartDmaSetup {
+let rx_setup = DmaChSetup {
     dma: periph_dma1_ch5!(reg),
     dma_int: thr.dma_1_ch_5,
     dma_ch: 4,

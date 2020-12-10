@@ -5,6 +5,9 @@
 #![allow(clippy::doc_markdown)]
 #![no_std]
 
+#[cfg(feature = "dma")]
+pub extern crate drone_stm32f4_dma_drv as dma;
+
 #[cfg(feature = "gpio")]
 pub extern crate drone_stm32f4_gpio_drv as gpio;
 
