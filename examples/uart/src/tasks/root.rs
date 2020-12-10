@@ -23,7 +23,7 @@ use drone_stm32_map::periph::{
     uart::{periph_usart2, periph_usart3},
 };
 use drone_stm32f4_hal::{
-    dma::{DmaCfg, DmaChSetup},
+    dma::{DmaCfg, DmaChSetup, prelude::*},
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     uart::{config::*, UartDrv},
@@ -97,9 +97,9 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
 
     let dma1 = DmaCfg::init(periph_dma1!(reg));
-    let rx_setup = DmaChSetup::dma1_ch5_stch4(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
+    let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
     let rx_dma = dma1.init_ch(rx_setup);
-    let tx_setup = DmaChSetup::dma1_ch6_stch4(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
+    let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
     let tx_dma = dma1.init_ch(tx_setup);
 
     let uart_drv = UartDrv::init(setup);
