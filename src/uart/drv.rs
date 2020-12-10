@@ -2,11 +2,12 @@ use crate::{diverged::UartDiverged, rx::UartRxDrv, tx::UartTxDrv};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::ch::{DmaChMap, DmaChPeriph},
+    dma::ch::DmaChMap,
     uart::{traits::*, UartMap, UartPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh4, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
+use self::config::*;
 
 pub mod config {
     use super::*;
@@ -31,36 +32,36 @@ pub mod config {
         pub oversampling: u32,
     }
 
-    /// Create a new uart setup with sensible defaults.
-    fn new_setup<Uart: UartMap, UartInt: IntToken, Clk: PClkToken>(
-        uart: UartPeriph<Uart>,
-        uart_int: UartInt,
-        clk: ConfiguredClk<Clk>,
-    ) -> UartSetup<Uart, UartInt, Clk> {
-        UartSetup {
-            uart,
-            uart_int,
-            clk,
-            baud_rate: BaudRate::Nominal(9_600),
-            data_bits: 8,
-            parity: Parity::None,
-            stop_bits: StopBits::One,
-            oversampling: 16,
-        }
+    pub trait UartSetupInit<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
+        /// Create a new uart setup with the default configuration parameters 9600/8N1.
+        fn init(
+            uart: UartPeriph<Uart>,
+            uart_int: UartInt,
+            clk: ConfiguredClk<Clk>,
+        ) -> UartSetup<Uart, UartInt, Clk>;
     }
 
     macro_rules! uart_setup {
-        ($name:ident, $uart:ident, $pclk:ident) => {
+        ($uart:ident, $pclk:ident) => {
             impl<UartInt: IntToken>
-                UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
+                UartSetupInit<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
+                for UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
             {
-                /// Create a new 9600 8N1 uart setup with sensible defaults.
-                pub fn $name(
+                fn init(
                     uart: UartPeriph<drone_stm32_map::periph::uart::$uart>,
                     uart_int: UartInt,
                     clk: ConfiguredClk<$pclk>,
                 ) -> UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
-                    new_setup(uart, uart_int, clk)
+                    Self {
+                        uart,
+                        uart_int,
+                        clk,
+                        baud_rate: BaudRate::Nominal(9_600),
+                        data_bits: 8,
+                        parity: Parity::None,
+                        stop_bits: StopBits::One,
+                        oversampling: 16,
+                    }
                 }
             }
         };
@@ -79,7 +80,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(usart1, Usart1, PClk2);
+    uart_setup!(Usart1, PClk2);
 
     #[cfg(any(
         stm32_mcu = "stm32f401",
@@ -94,7 +95,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(usart2, Usart2, PClk1);
+    uart_setup!(Usart2, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f405",
@@ -108,7 +109,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(usart3, Usart3, PClk1);
+    uart_setup!(Usart3, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f405",
@@ -121,7 +122,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(uart4, Uart4, PClk1);
+    uart_setup!(Uart4, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f405",
@@ -135,7 +136,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(uart5, Uart5, PClk1);
+    uart_setup!(Uart5, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f401",
@@ -150,7 +151,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(usart6, Usart6, PClk2);
+    uart_setup!(Usart6, PClk2);
 
     #[cfg(any(
         stm32_mcu = "stm32f405",
@@ -160,7 +161,7 @@ pub mod config {
         stm32_mcu = "stm32f437",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(uart7, Uart7, PClk1);
+    uart_setup!(Uart7, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f405",
@@ -171,13 +172,13 @@ pub mod config {
         stm32_mcu = "stm32f437",
         stm32_mcu = "stm32f469",
     ))]
-    uart_setup!(uart8, Uart8, PClk1);
+    uart_setup!(Uart8, PClk1);
 
     #[cfg(any(stm32_mcu = "stm32f413",))]
-    uart_setup!(uart9, Uart9, PClk2);
+    uart_setup!(Uart9, PClk2);
 
     #[cfg(any(stm32_mcu = "stm32f413",))]
-    uart_setup!(uart10, Uart10, PClk2);
+    uart_setup!(Uart10, PClk2);
 
     #[derive(Copy, Clone)]
     pub enum BaudRate {
@@ -217,8 +218,8 @@ pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
 impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Clk> {
     /// Sets up a new [`UartDrv`] from `setup` values.
     #[must_use]
-    pub fn init(setup: config::UartSetup<Uart, UartInt, Clk>) -> Self {
-        let config::UartSetup {
+    pub fn init(setup: UartSetup<Uart, UartInt, Clk>) -> Self {
+        let UartSetup {
             uart,
             uart_int,
             clk,
@@ -284,14 +285,12 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     fn init_uart(
         &mut self,
         clk: ConfiguredClk<Clk>,
-        baud_rate: config::BaudRate,
+        baud_rate: BaudRate,
         data_bits: u32,
-        parity: config::Parity,
-        stop_bits: config::StopBits,
+        parity: Parity,
+        stop_bits: StopBits,
         oversampling: u32,
     ) {
-        use self::config::*;
-
         // Enable uart clock.
         self.uart.rcc_busenr_uarten.set_bit();
 
@@ -393,11 +392,11 @@ impl<UartInt: IntToken, Clk: PClkToken>
 
 fn uart_brr<Clk: PClkToken>(
     clk: ConfiguredClk<Clk>,
-    baud_rate: config::BaudRate,
+    baud_rate: BaudRate,
     oversampling: u32,
 ) -> (u32, u32) {
     match baud_rate {
-        config::BaudRate::Nominal(baud_rate) => {
+        BaudRate::Nominal(baud_rate) => {
             // Compute the uart divider for use by the baud rate register
             // according to eqn. 1 in PM0090 §30.3.4 page 978.
             // The computation of the divisor is as follows:
@@ -426,7 +425,7 @@ fn uart_brr<Clk: PClkToken>(
 
             (div_man, div_frac)
         }
-        config::BaudRate::Raw { div_man, div_frac } => (div_man, div_frac),
+        BaudRate::Raw { div_man, div_frac } => (div_man, div_frac),
     }
 }
 

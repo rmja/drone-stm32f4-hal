@@ -119,7 +119,7 @@ GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
 
 let dma1 = DmaCfg::init(periph_dma1!(reg));
 
-let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
+let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
 let uart_drv = UartDrv::init(setup);
 ```
 

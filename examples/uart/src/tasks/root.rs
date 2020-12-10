@@ -23,7 +23,7 @@ use drone_stm32_map::periph::{
     uart::{periph_usart2, periph_usart3},
 };
 use drone_stm32f4_hal::{
-    dma::{DmaCfg, DmaChSetup, prelude::*},
+    dma::{config::*, DmaCfg},
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     uart::{config::*, UartDrv},
@@ -94,7 +94,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
-    let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
+    let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
 
     let dma1 = DmaCfg::init(periph_dma1!(reg));
     let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
