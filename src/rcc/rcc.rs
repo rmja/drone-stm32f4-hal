@@ -75,7 +75,11 @@ pub mod traits {
 
     pub trait MuxCtrl<RccInt: IntToken, MuxSignal, Clk> {
         /// Select the source clock signal of a mux.
-        fn select(&self, signal: MuxSignal, clk: ConfiguredClk<Clk>) -> SelectedClkBuilder<RccInt, Clk>;
+        fn select(
+            &self,
+            signal: MuxSignal,
+            clk: ConfiguredClk<Clk>,
+        ) -> SelectedClkBuilder<RccInt, Clk>;
     }
 }
 
@@ -185,41 +189,76 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
 }
 
 impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> {
-    fn select(&self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HsiClk>) -> SelectedClkBuilder<RccInt, HsiClk> {
+    fn select(
+        &self,
+        signal: PllSrcMuxSignal,
+        _clk: ConfiguredClk<HsiClk>,
+    ) -> SelectedClkBuilder<RccInt, HsiClk> {
         assert!(matches!(signal, PllSrcMuxSignal::Hsi { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc());
-        SelectedClkBuilder { rcc: self, _clk: PhantomData }
+        SelectedClkBuilder {
+            rcc: self,
+            _clk: PhantomData,
+        }
     }
 }
 
 impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> {
-    fn select(&self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HseClk>) -> SelectedClkBuilder<RccInt, HseClk> {
+    fn select(
+        &self,
+        signal: PllSrcMuxSignal,
+        _clk: ConfiguredClk<HseClk>,
+    ) -> SelectedClkBuilder<RccInt, HseClk> {
         assert!(matches!(signal, PllSrcMuxSignal::Hse { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc());
-        SelectedClkBuilder { rcc: self, _clk: PhantomData }
+        SelectedClkBuilder {
+            rcc: self,
+            _clk: PhantomData,
+        }
     }
 }
 
 impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> {
-    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HsiClk>) -> SelectedClkBuilder<RccInt, HsiClk> {
+    fn select(
+        &self,
+        signal: SysClkMuxSignal,
+        _clk: ConfiguredClk<HsiClk>,
+    ) -> SelectedClkBuilder<RccInt, HsiClk> {
         assert!(matches!(signal, SysClkMuxSignal::Hsi { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b00));
-        SelectedClkBuilder { rcc: self, _clk: PhantomData }
+        SelectedClkBuilder {
+            rcc: self,
+            _clk: PhantomData,
+        }
     }
 }
 
 impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> {
-    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HseClk>) -> SelectedClkBuilder<RccInt, HseClk> {
+    fn select(
+        &self,
+        signal: SysClkMuxSignal,
+        _clk: ConfiguredClk<HseClk>,
+    ) -> SelectedClkBuilder<RccInt, HseClk> {
         assert!(matches!(signal, SysClkMuxSignal::Hse { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b01));
-        SelectedClkBuilder { rcc: self, _clk: PhantomData }
+        SelectedClkBuilder {
+            rcc: self,
+            _clk: PhantomData,
+        }
     }
 }
 
 impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<RccInt> {
-    fn select(&self, signal: SysClkMuxSignal, _clk: ConfiguredClk<PllClk<PllP>>) -> SelectedClkBuilder<RccInt, PllClk<PllP>> {
+    fn select(
+        &self,
+        signal: SysClkMuxSignal,
+        _clk: ConfiguredClk<PllClk<PllP>>,
+    ) -> SelectedClkBuilder<RccInt, PllClk<PllP>> {
         assert!(matches!(signal, SysClkMuxSignal::Pll { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b10));
-        SelectedClkBuilder { rcc: self, _clk: PhantomData }
+        SelectedClkBuilder {
+            rcc: self,
+            _clk: PhantomData,
+        }
     }
 }

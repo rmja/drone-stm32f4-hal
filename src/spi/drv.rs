@@ -1,6 +1,6 @@
 use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
-use core::marker::PhantomData;
 use config::{BaudRate, ClkPol, FirstBit};
+use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
@@ -46,7 +46,12 @@ pub mod config {
         ($name:ident, $spi:ident, $pclk:ident) => {
             impl<SpiInt: IntToken> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
                 /// Create a new spi setup with sensible defaults.
-                pub fn $name(spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>, spi_int: SpiInt, clk: ConfiguredClk<$pclk>, baud_rate: BaudRate) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
+                pub fn $name(
+                    spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>,
+                    spi_int: SpiInt,
+                    clk: ConfiguredClk<$pclk>,
+                    baud_rate: BaudRate,
+                ) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
                     new_setup(spi, spi_int, clk, baud_rate)
                 }
             }
@@ -86,10 +91,7 @@ pub mod config {
     ))]
     spi_setup!(spi5, Spi5, PClk2);
 
-    #[cfg(any(
-        stm32_mcu = "stm32f427",
-        stm32_mcu = "stm32f469",
-    ))]
+    #[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
     spi_setup!(spi6, Spi6, PClk2);
 
     /// Spi tx/rx dma channel setup.
@@ -193,7 +195,13 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         master
     }
 
-    fn init_spi(&mut self, clk: ConfiguredClk<Clk>, baud_rate: BaudRate, clk_pol: ClkPol, first_bit: FirstBit) {
+    fn init_spi(
+        &mut self,
+        clk: ConfiguredClk<Clk>,
+        baud_rate: BaudRate,
+        clk_pol: ClkPol,
+        first_bit: FirstBit,
+    ) {
         use self::config::*;
 
         // Enable spi clock.
