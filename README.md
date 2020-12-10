@@ -117,9 +117,7 @@ GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
     .into_pp()
     .with_speed(GpioPinSpeed::VeryHighSpeed);
 
-// TODO: DMA
-let dma1 = periph_dma1!(reg);
-dma1.rcc_busenr_dmaen.set_bit();
+let dma1 = DmaCfg::init(periph_dma1!(reg));
 
 let setup = UartSetup::usart2(periph_usart2!(reg), thr.usart_2, pclk1);
 let uart_drv = UartDrv::init(setup);
@@ -135,13 +133,9 @@ The rx and tx operation of the driver are completely separated, and each of them
 ### TX Operation
 Completing the setup for tx operation looks like this:
 ```rust
-let tx_setup = DmaChSetup {
-    dma: periph_dma1_ch6!(reg),
-    dma_int: thr.dma_1_ch_6,
-    dma_ch: 4,
-    dma_pl: 1, // Priority level: medium
-};
-let mut tx_drv = uart_drv.init_tx(tx_setup);
+let tx_setup = DmaChSetup::dma1_ch6_stch4(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
+let tx_dma = dma1.init_ch(tx_setup);
+let mut tx_drv = uart_drv.init_tx(tx_dma);
 ```
 
 With `tx_drv` we are now finally able to do some communication.
@@ -167,12 +161,8 @@ For this we use `flush()` which, when returned tells that all data are completel
 The rx part of the driver is initialized like the following:
 
 ```rust
-let rx_setup = DmaChSetup {
-    dma: periph_dma1_ch5!(reg),
-    dma_int: thr.dma_1_ch_5,
-    dma_ch: 4,
-    dma_pl: 1, // Priority level: medium
-};
+let rx_setup = DmaChSetup::dma1_ch5_stch4(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
+let rx_dma = dma1.init_ch(rx_setup);
 let mut rx_drv = uart_drv.init_rx(rx_setup);
 ```
 
