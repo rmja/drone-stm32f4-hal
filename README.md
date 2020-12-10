@@ -93,7 +93,7 @@ We start by _stabilizing_ the `HSE` clock, meaning that 1) we configure it accor
 
 Moving on, we can now select the `HSE` clock signal as the source for our PLL. The `select()` method requires a `ConfiguredClk<Clk>` so we are guaranteed that the source clock has actually stabilized prior to selecting it as input. Only after that has happened are we able to stablizie the PLL and wait for it to become ready. After this, we can easily configure the peripheral clocks (This could have been done at any time, so there is no need to inforce any guarantees on prior stabilization of clocks).
 
-The next couple of lines enables over-drive (available in e.g. stm32f429) for high-speed operation, sets the correct flash latency for the mcu in the specified voltage range, configures the `swo` for [logging](https://book.drone-os.com/bluepill-blink/full-speed.html). Lastly we are ready to select the PLL's `PLL_P` output as the source for the sysclk, effectively setting the desired 180MHz mcu speed.
+The next couple of lines enables over-drive (available in e.g. stm32f429) for high-speed operation, sets the correct flash latency for the mcu in the specified voltage range, configures the swo for [logging](https://book.drone-os.com/bluepill-blink/full-speed.html). Lastly we are ready to select the PLL's `PLL_P` output as the source for the sysclk, effectively setting the desired 180MHz mcu speed.
 
 ## SPI
 There are currently a few bugs. The driver is not complete.
