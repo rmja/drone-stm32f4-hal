@@ -13,12 +13,15 @@ Add the crate to your `Cargo.toml` dependencies:
 drone-stm32f4-hal = { git = "https://github.com/rmja/drone-stm32f4-hal", features = ["..."] }
 ```
 
-The list of features is currently the following:
+A feature maps to a peripheral driver. There are the following low-level drivers:
+* `dma` Dma primitives for uniform configuration across other, dma-dependent drivers.
+* `gpio` Type safe pin-setup configuration primitives.
+* `rcc` Type safe clock configuration model, and a rcc, pwr, and flash driver.
 
-* `gpio` A set of type safe pin-setup configuration utilities.
-* `rcc` A type safe clock configuration model, and a rcc, pwr, and flash driver.
-* `spi` A dma driven, future based spi driver.
-* `uart` A dma driven, future based uart driver.
+The low-level drivers are dependencies of these  drivers:
+
+* `spi` Dma driven, future based spi driver.
+* `uart` Dma driven, future based uart driver.
 
 ## GPIO
 ...
