@@ -22,7 +22,12 @@ use drone_stm32_map::periph::{
     },
     uart::{periph_usart2, periph_usart3},
 };
-use drone_stm32f4_hal::{dma::{DmaChSetup, DmaCfg}, gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup}, uart::{config::*, UartDrv}};
+use drone_stm32f4_hal::{
+    dma::{DmaCfg, DmaChSetup},
+    gpio::{GpioPinCfg, GpioPinSpeed},
+    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
+    uart::{config::*, UartDrv},
+};
 
 /// The root task handler.
 #[inline(never)]
@@ -98,12 +103,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let tx_dma = dma1.init_ch(tx_setup);
 
     let uart_drv = UartDrv::init(setup);
-    let mut tx_drv = uart_drv.init_tx(tx_dma);
-
-    let rx_ring_buf = vec![0; 10].into_boxed_slice();
-    let mut rx_drv = uart_drv.init_rx(rx_dma);
+    let mut rx_drv = uart_drv.init_usart1_rx(rx_dma);
+    let mut tx_drv = uart_drv.init_usart1_tx(tx_dma);
 
     // Enable receiver.
+    let rx_ring_buf = vec![0; 10].into_boxed_slice();
     let mut rx = rx_drv.start(rx_ring_buf);
 
     {

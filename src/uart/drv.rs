@@ -5,7 +5,7 @@ use drone_stm32_map::periph::{
     dma::ch::{DmaChMap, DmaChPeriph},
     uart::{traits::*, UartMap, UartPeriph},
 };
-use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh4, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
@@ -239,29 +239,8 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         drv
     }
 
-    /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
-    pub fn init_tx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
-        &self,
-        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-    ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let DmaChCfg {
-            dma_ch,
-            dma_int,
-            dma_pl,
-            ..
-        } = dma_cfg;
-        let mut tx = UartTxDrv {
-            uart: &self.uart,
-            uart_int: &self.uart_int,
-            dma: dma_ch.into(),
-            dma_int,
-        };
-        tx.init_dma_tx(DmaStCh::num(), dma_pl);
-        tx
-    }
-
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn init_rx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
+    pub(crate) fn init_rx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
         &self,
         dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
@@ -279,6 +258,27 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         };
         rx.init_dma_rx(DmaStCh::num(), dma_pl);
         rx
+    }
+
+    /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
+    pub(crate) fn init_tx<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
+        &self,
+        dma_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
+    ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
+        let DmaChCfg {
+            dma_ch,
+            dma_int,
+            dma_pl,
+            ..
+        } = dma_cfg;
+        let mut tx = UartTxDrv {
+            uart: &self.uart,
+            uart_int: &self.uart_int,
+            dma: dma_ch.into(),
+            dma_int,
+        };
+        tx.init_dma_tx(DmaStCh::num(), dma_pl);
+        tx
     }
 
     fn init_uart(
@@ -354,6 +354,40 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
             handle_uart_err::<Uart>(&val, sr);
             fib::Yielded::<(), !>(())
         });
+    }
+}
+
+// TODO: Do this with macros
+
+impl<UartInt: IntToken, Clk: PClkToken>
+    UartDrv<drone_stm32_map::periph::uart::Usart2, UartInt, Clk>
+{
+    pub fn init_usart1_rx<DmaInt: IntToken>(
+        &self,
+        dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::Dma1Ch5, DmaStCh4, DmaInt>,
+    ) -> UartRxDrv<
+        drone_stm32_map::periph::uart::Usart2,
+        UartInt,
+        drone_stm32_map::periph::dma::ch::Dma1Ch5,
+        DmaInt,
+    > {
+        self.init_rx(dma_cfg)
+    }
+}
+
+impl<UartInt: IntToken, Clk: PClkToken>
+    UartDrv<drone_stm32_map::periph::uart::Usart2, UartInt, Clk>
+{
+    pub fn init_usart1_tx<DmaInt: IntToken>(
+        &self,
+        dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::Dma1Ch6, DmaStCh4, DmaInt>,
+    ) -> UartTxDrv<
+        drone_stm32_map::periph::uart::Usart2,
+        UartInt,
+        drone_stm32_map::periph::dma::ch::Dma1Ch6,
+        DmaInt,
+    > {
+        self.init_tx(dma_cfg)
     }
 }
 
