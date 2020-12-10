@@ -249,7 +249,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 
     /// Obtain a configured [`UartTxDrv`] from dma `setup` values.
-    pub fn tx<DmaCh: DmaChMap, DmaInt: IntToken>(
+    pub fn init_tx<DmaCh: DmaChMap, DmaInt: IntToken>(
         &self,
         setup: config::UartDmaSetup<DmaCh, DmaInt>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
@@ -270,7 +270,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 
     /// Obtain a configured [`UartRxDrv`] from dma `setup` values.
-    pub fn rx<DmaCh: DmaChMap, DmaInt: IntToken>(
+    pub fn init_rx<DmaCh: DmaChMap, DmaInt: IntToken>(
         &self,
         setup: config::UartDmaSetup<DmaCh, DmaInt>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {

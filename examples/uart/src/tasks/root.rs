@@ -142,16 +142,16 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // };
 
     let uart_drv = UartDrv::init(setup);
-    let mut tx_drv = uart_drv.tx(tx_setup);
+    let mut tx_drv = uart_drv.init_tx(tx_setup);
 
     let rx_ring_buf = vec![0; 10].into_boxed_slice();
-    let mut rx_drv = uart_drv.rx(rx_setup);
+    let mut rx_drv = uart_drv.init_rx(rx_setup);
 
     // Enable receiver.
-    let mut rx = rx_drv.sess(rx_ring_buf);
+    let mut rx = rx_drv.start(rx_ring_buf);
 
     {
-        let mut tx = tx_drv.sess();
+        let mut tx = tx_drv.start();
         tx.write(b"Write a lowercase word:\n").root_wait();
         tx.flush().root_wait();
     }
@@ -185,7 +185,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         // This enables full saturation of the uart.
 
         // Enable transmitter.
-        let mut tx = tx_drv.sess();
+        let mut tx = tx_drv.start();
 
         dbg1.set();
         tx.write(upper.into_bytes().as_ref()).root_wait();

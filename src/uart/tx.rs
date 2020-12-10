@@ -55,7 +55,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken
     }
 
     /// Enable tx operation for the uart peripheral and return a guard that disables the transmitter when dropped.
-    pub fn sess(&mut self) -> TxGuard<Uart, UartInt, DmaTx, DmaTxInt> {
+    pub fn start(&mut self) -> TxGuard<Uart, UartInt, DmaTx, DmaTxInt> {
         // Enable transmitter.
         self.uart.uart_cr1.modify_reg(|r, v| {
             r.te().set(v);

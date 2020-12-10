@@ -65,7 +65,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
     /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
     /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the reception.
     /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
-    pub fn sess(&mut self, ring_buf: Box<[u8]>) -> RxGuard<Uart, UartInt, DmaRx, DmaRxInt> {
+    pub fn start(&mut self, ring_buf: Box<[u8]>) -> RxGuard<Uart, UartInt, DmaRx, DmaRxInt> {
         let mut rx = RxGuard {
             drv: self,
             ring_buf,
