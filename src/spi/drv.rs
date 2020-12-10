@@ -1,9 +1,10 @@
 use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
 use config::{BaudRate, ClkPol, FirstBit};
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh3, DmaStChToken};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::ch::{DmaChMap, DmaChPeriph},
+    dma::ch::DmaChMap,
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
@@ -26,40 +27,43 @@ pub mod config {
         pub first_bit: FirstBit,
     }
 
-    fn new_setup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken>(
-        spi: SpiPeriph<Spi>,
-        spi_int: SpiInt,
-        clk: ConfiguredClk<Clk>,
-        baud_rate: BaudRate,
-    ) -> SpiSetup<Spi, SpiInt, Clk> {
-        SpiSetup {
-            spi,
-            spi_int,
-            clk,
-            baud_rate,
-            clk_pol: ClkPol::Low,
-            first_bit: FirstBit::Msb,
-        }
+    pub trait SpiSetupInit<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
+        /// Create a new spi setup with sensible defaults.
+        fn init(
+            spi: SpiPeriph<Spi>,
+            spi_int: SpiInt,
+            clk: ConfiguredClk<Clk>,
+            baud_rate: BaudRate,
+        ) -> SpiSetup<Spi, SpiInt, Clk>;
     }
 
     macro_rules! spi_setup {
-        ($name:ident, $spi:ident, $pclk:ident) => {
-            impl<SpiInt: IntToken> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
-                /// Create a new spi setup with sensible defaults.
-                pub fn $name(
+        ($spi:ident, $pclk:ident) => {
+            impl<SpiInt: IntToken>
+                SpiSetupInit<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+                for SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+            {
+                fn init(
                     spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>,
                     spi_int: SpiInt,
                     clk: ConfiguredClk<$pclk>,
                     baud_rate: BaudRate,
                 ) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
-                    new_setup(spi, spi_int, clk, baud_rate)
+                    Self {
+                        spi,
+                        spi_int,
+                        clk,
+                        baud_rate,
+                        clk_pol: ClkPol::Low,
+                        first_bit: FirstBit::Msb,
+                    }
                 }
             }
         };
     }
 
-    spi_setup!(spi1, Spi1, PClk2);
-    spi_setup!(spi2, Spi2, PClk2);
+    spi_setup!(Spi1, PClk2);
+    spi_setup!(Spi2, PClk2);
 
     #[cfg(any(
         stm32_mcu = "stm32f401",
@@ -73,7 +77,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    spi_setup!(spi3, Spi3, PClk1);
+    spi_setup!(Spi3, PClk1);
 
     #[cfg(any(
         stm32_mcu = "stm32f413",
@@ -81,7 +85,7 @@ pub mod config {
         stm32_mcu = "stm32f446",
         stm32_mcu = "stm32f469",
     ))]
-    spi_setup!(spi4, Spi4, PClk2);
+    spi_setup!(Spi4, PClk2);
 
     #[cfg(any(
         stm32_mcu = "stm32f410",
@@ -89,22 +93,10 @@ pub mod config {
         stm32_mcu = "stm32f427",
         stm32_mcu = "stm32f469",
     ))]
-    spi_setup!(spi5, Spi5, PClk2);
+    spi_setup!(Spi5, PClk2);
 
     #[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
-    spi_setup!(spi6, Spi6, PClk2);
-
-    /// Spi tx/rx dma channel setup.
-    pub struct SpiDmaSetup<DmaCh: DmaChMap, DmaInt: IntToken> {
-        /// DMA channel peripheral.
-        pub dma: DmaChPeriph<DmaCh>,
-        /// DMA channel interrupt.
-        pub dma_int: DmaInt,
-        /// DMA channel number.
-        pub dma_ch: u32,
-        /// DMA channel priority level.
-        pub dma_pl: u32,
-    }
+    spi_setup!(Spi6, PClk2);
 
     pub enum BaudRate {
         Max(u32),
@@ -162,24 +154,30 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         drv
     }
 
-    /// Configures the driver in master-mode for full duplex operation.
-    pub fn master<DmaRxCh: DmaChMap, DmaRxInt: IntToken, DmaTxCh: DmaChMap, DmaTxInt: IntToken>(
-        &mut self,
-        rx_setup: config::SpiDmaSetup<DmaRxCh, DmaRxInt>,
-        tx_setup: config::SpiDmaSetup<DmaTxCh, DmaTxInt>,
+    fn init_master<
+        DmaRxCh: DmaChMap,
+        DmaRxStCh: DmaStChToken,
+        DmaRxInt: IntToken,
+        DmaTxCh: DmaChMap,
+        DmaTxStCh: DmaStChToken,
+        DmaTxInt: IntToken,
+    >(
+        &self,
+        miso_dma: DmaChCfg<DmaRxCh, DmaRxStCh, DmaRxInt>,
+        mosi_dma: DmaChCfg<DmaTxCh, DmaTxStCh, DmaTxInt>,
     ) -> SpiMasterDrv<Spi, SpiInt, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt> {
-        let config::SpiDmaSetup {
-            dma: dma_rx,
+        let DmaChCfg {
+            dma_ch: dma_rx,
             dma_int: dma_rx_int,
-            dma_ch: dma_rx_ch,
             dma_pl: dma_rx_pl,
-        } = rx_setup;
-        let config::SpiDmaSetup {
-            dma: dma_tx,
+            ..
+        } = miso_dma;
+        let DmaChCfg {
+            dma_ch: dma_tx,
             dma_int: dma_tx_int,
-            dma_ch: dma_tx_ch,
             dma_pl: dma_tx_pl,
-        } = tx_setup;
+            ..
+        } = mosi_dma;
         let mut master = SpiMasterDrv {
             spi: &self.spi,
             spi_int: &self.spi_int,
@@ -189,8 +187,8 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             dma_tx_int,
         };
 
-        master.init_dma_rx(dma_rx_ch, dma_rx_pl);
-        master.init_dma_tx(dma_tx_ch, dma_tx_pl);
+        master.init_dma_rx(DmaRxStCh::num(), dma_rx_pl);
+        master.init_dma_tx(DmaTxStCh::num(), dma_tx_pl);
 
         master
     }
@@ -252,6 +250,28 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             handle_spi_err::<Spi>(&val, sr);
             fib::Yielded::<(), !>(())
         });
+    }
+}
+
+// TODO: Do this with macros
+
+impl<SpiInt: IntToken, Clk: PClkToken>
+    SpiDrv<drone_stm32_map::periph::spi::Spi1, SpiInt, Clk>
+{
+    /// Configures the spi driver in master-mode for full duplex operation.
+    pub fn init_spi1_master<DmaRxInt: IntToken, DmaTxInt: IntToken>(
+        &self,
+        miso_dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::Dma2Ch2, DmaStCh3, DmaRxInt>,
+        mosi_dma_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::Dma2Ch3, DmaStCh3, DmaTxInt>,
+    ) -> SpiMasterDrv<
+        drone_stm32_map::periph::spi::Spi1,
+        SpiInt,
+        drone_stm32_map::periph::dma::ch::Dma2Ch2,
+        DmaRxInt,
+        drone_stm32_map::periph::dma::ch::Dma2Ch3,
+        DmaTxInt,
+    > {
+        self.init_master(miso_dma_cfg, mosi_dma_cfg)
     }
 }
 

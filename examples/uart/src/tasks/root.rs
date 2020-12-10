@@ -8,13 +8,10 @@ use drone_stm32_map::periph::{
         periph_dma1,
         periph_dma1_ch5,
         periph_dma1_ch6,
-        // periph_dma1_ch1,
-        // periph_dma1_ch3,
     },
     gpio::{
         periph_gpio_a2,
         periph_gpio_a3,
-        // periph_gpio_c_head, periph_gpio_c10, periph_gpio_c11,
         periph_gpio_a_head,
         periph_gpio_b10,
         periph_gpio_b2,
@@ -47,8 +44,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Enable IO port clock.
     let gpio_a = periph_gpio_a_head!(reg);
     gpio_a.rcc_busenr_gpioen.set_bit();
-    // let gpio_c = periph_gpio_c_head!(reg);
-    // gpio_c.rcc_busenr_gpioen.set_bit();
 
     // Configure UART GPIO pins.
     GpioPinCfg::from(periph_gpio_a2!(reg)) // TX.
@@ -62,7 +57,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Disable IO port clock.
     gpio_a.rcc_busenr_gpioen.clear_bit();
-    // gpio_c.rcc_busenr_gpioen.clear_bit();
 
     // Configure debug pins used for capturing logic analyzer shots.
     let gpio_b = periph_gpio_b_head!(reg);
@@ -73,6 +67,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
 
+    // Initialize clocks.
     let rcc_setup = RccSetup {
         rcc: periph_rcc!(reg),
         rcc_int: thr.rcc,
@@ -94,14 +89,15 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
-    let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
-
+    // Initialize dma.
     let dma1 = DmaCfg::init(periph_dma1!(reg));
     let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
     let rx_dma = dma1.init_ch(rx_setup);
     let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
     let tx_dma = dma1.init_ch(tx_setup);
 
+    // Initialize uart.
+    let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
     let uart_drv = UartDrv::init(setup);
     let mut rx_drv = uart_drv.init_usart1_rx(rx_dma);
     let mut tx_drv = uart_drv.init_usart1_tx(tx_dma);

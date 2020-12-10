@@ -1,6 +1,6 @@
 //! The root task.
 
-use crate::{Regs, consts, thr, thr::ThrsInit};
+use crate::{consts, thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -12,6 +12,7 @@ use drone_stm32_map::periph::{
     spi::periph_spi1,
 };
 use drone_stm32f4_hal::{
+    dma::{config::*, DmaCfg},
     gpio::{GpioPinCfg, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     spi::{config::*, traits::*, SpiDrv, SpiIface},
@@ -59,10 +60,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Disable IO port clock.
     gpio_a.rcc_busenr_gpioen.clear_bit();
 
-    // Enable DMA clock.
-    let dma2 = periph_dma2!(reg);
-    dma2.rcc_busenr_dmaen.set_bit();
-
+    // Initialize clocks.
     let rcc_setup = RccSetup {
         rcc: periph_rcc!(reg),
         rcc_int: thr.rcc,
@@ -84,29 +82,24 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
-    let setup = SpiSetup::spi1(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
-    let rx_setup = SpiDmaSetup {
-        dma: periph_dma2_ch2!(reg),
-        dma_int: thr.dma_2_ch_2,
-        dma_ch: 3,
-        dma_pl: 1, // Priority level: medium
-    };
-    let tx_setup = SpiDmaSetup {
-        dma: periph_dma2_ch3!(reg),
-        dma_int: thr.dma_2_ch_3,
-        dma_ch: 3,
-        dma_pl: 1, // Priority level: medium
-    };
+    // Initialize dma.
+    let dma2 = DmaCfg::init(periph_dma2!(reg));
+    let miso_setup = DmaChSetup::init(periph_dma2_ch2!(reg), thr.dma_2_ch_2);
+    let miso_dma = dma2.init_ch(miso_setup);
+    let mosi_setup = DmaChSetup::init(periph_dma2_ch3!(reg), thr.dma_2_ch_3);
+    let mosi_dma = dma2.init_ch(mosi_setup);
 
-    let mut spi_drv = SpiDrv::init(setup);
-    let mut spi_master = spi_drv.master(rx_setup, tx_setup);
+    // Initialize spi.
+    let setup = SpiSetup::init(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
+    let spi_drv = SpiDrv::init(setup);
+    let mut spi_master = spi_drv.init_spi1_master(miso_dma, mosi_dma);
 
-    let iface = SpiIface::new(cs_pin);
+    // let iface = SpiIface::new(cs_pin);
 
-    spi_master.select(&iface);
-    let tx_buf = [1, 2, 3, 4].as_ref();
-    spi_master.write(tx_buf).root_wait();
-    spi_master.deselect(&iface);
+    // spi_master.select(&iface);
+    // let tx_buf = [1, 2, 3, 4].as_ref();
+    // spi_master.write(tx_buf).root_wait();
+    // spi_master.deselect(&iface);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
