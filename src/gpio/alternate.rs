@@ -1,5 +1,5 @@
 use crate::{
-    drv::{
+    pin::{
         AlternateMode, DontCare, NoPull, OpenDrainType, PinAfToken, PinPullToken, PinSpeed,
         PinTypeToken, PullDown, PullUp, PushPullType,
     },

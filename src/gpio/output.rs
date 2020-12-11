@@ -1,6 +1,6 @@
 use crate::{
-    drv::{
-        DontCare, NoPull, OpenDrainType, OutputMode, PinAfToken, PinModeToken, PinPullToken,
+    pin::{
+        DontCare, NoPull, OpenDrainType, OutputMode, PinPullToken,
         PinSpeed, PinTypeToken, PullDown, PullUp, PushPullType,
     },
     GpioPin, GpioPinSpeed,

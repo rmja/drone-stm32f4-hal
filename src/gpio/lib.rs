@@ -1,16 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod alternate;
-mod drv;
 mod head;
 mod input;
 mod output;
+mod pin;
 
-pub use self::drv::{GpioPin, GpioPinSpeed, OutputMode, PinPullToken, PinTypeToken};
+pub use self::pin::{GpioPin, GpioPinSpeed, OutputMode, PinPullToken, PinTypeToken};
 pub use self::head::GpioHead;
 
 pub mod prelude {
-    pub use crate::drv::{
+    pub use crate::pin::{
         AlternateMode, InputMode, NoPull, OutputMode, PinAfToken, PinPullToken, PinSpeed,
         PinTypeToken, PullDown, PullUp,
         PinAf0,
