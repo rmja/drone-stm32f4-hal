@@ -6,14 +6,14 @@ use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::{periph_dma1, periph_dma1_ch5, periph_dma1_ch6},
     gpio::{
-        periph_gpio_a2, periph_gpio_a3, periph_gpio_a_head, periph_gpio_b10, periph_gpio_b2,
+        periph_gpio_a2, periph_gpio_a3, periph_gpio_a_head, periph_gpio_b2,
         periph_gpio_b_head,
     },
-    uart::{periph_usart2, periph_usart3},
+    uart::periph_usart2,
 };
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
-    gpio::{GpioPinCfg, GpioPinSpeed},
+    gpio::{GpioPinCfg, GpioPinSpeed, prelude::*},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     uart::{config::*, prelude::*, UartDrv},
 };
@@ -38,12 +38,12 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     gpio_a.rcc_busenr_gpioen.set_bit();
 
     // Configure UART GPIO pins.
-    GpioPinCfg::from(periph_gpio_a2!(reg)) // TX.
-        .into_af7()
+    let pin_tx = GpioPinCfg::build(periph_gpio_a2!(reg))
+        .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
-        .into_af7()
+    let pin_rx = GpioPinCfg::build(periph_gpio_a3!(reg))
+        .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
 
@@ -54,7 +54,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let gpio_b = periph_gpio_b_head!(reg);
     gpio_b.rcc_busenr_gpioen.set_bit(); // Enable IO port clock
 
-    let mut dbg1 = GpioPinCfg::from(periph_gpio_b2!(reg))
+    let mut dbg1 = GpioPinCfg::build(periph_gpio_b2!(reg))
         .into_output()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
@@ -91,8 +91,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Initialize uart.
     let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
     let uart_drv = UartDrv::init(setup);
-    let mut rx_drv = uart_drv.init_rx(rx_dma);
-    let mut tx_drv = uart_drv.init_tx(tx_dma);
+    let mut rx_drv = uart_drv.init_rx(rx_dma, pin_rx);
+    let mut tx_drv = uart_drv.init_tx(tx_dma, pin_tx);
 
     // Enable receiver.
     let rx_ring_buf = vec![0; 10].into_boxed_slice();
