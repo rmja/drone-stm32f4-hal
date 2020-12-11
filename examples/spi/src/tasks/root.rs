@@ -11,7 +11,12 @@ use drone_stm32_map::periph::{
     },
     spi::periph_spi1,
 };
-use drone_stm32f4_hal::{dma::{config::*, DmaCfg}, gpio::{GpioPinCfg, GpioPinSpeed}, rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup}, spi::{SpiDrv, chipctrl::*, config::*, prelude::*}};
+use drone_stm32f4_hal::{
+    dma::{config::*, DmaCfg},
+    gpio::{prelude::*, GpioPinCfg, GpioPinSpeed},
+    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
+    spi::{chipctrl::*, config::*, prelude::*, SpiDrv},
+};
 
 /// The root task handler.
 #[inline(never)]
@@ -35,22 +40,21 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     gpio_b.rcc_busenr_gpioen.set_bit();
 
     // Configure SPI GPIO pins.
-    GpioPinCfg::from(periph_gpio_a5!(reg)) // Clock.
-        .into_af5()
+    let pin_clk = GpioPinCfg::build(periph_gpio_a5!(reg))
+        .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    GpioPinCfg::from(periph_gpio_a6!(reg)) // MISO.
-        .into_af5()
+    let pin_miso = GpioPinCfg::build(periph_gpio_a6!(reg))
+        .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    GpioPinCfg::from(periph_gpio_a7!(reg)) // MOSI.
-        .into_af5()
+    let pin_mosi = GpioPinCfg::build(periph_gpio_a7!(reg))
+        .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let cs_pin = GpioPinCfg::from(periph_gpio_b1!(reg))
+    let pin_cs = GpioPinCfg::build(periph_gpio_b1!(reg))
         .into_output()
-        .with_speed(GpioPinSpeed::HighSpeed)
-        .pin();
+        .with_speed(GpioPinSpeed::HighSpeed);
 
     // Disable IO port clock.
     gpio_a.rcc_busenr_gpioen.clear_bit();
@@ -85,11 +89,21 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let mosi_dma = dma2.init_ch(mosi_setup);
 
     // Initialize spi.
-    let setup = SpiSetup::init(periph_spi1!(reg), thr.spi_1, pclk2, BaudRate::Max(10_000_000));
+    let setup = SpiSetup::init(
+        periph_spi1!(reg),
+        thr.spi_1,
+        SpiPins {
+            pin_clk,
+            pin_miso,
+            pin_mosi,
+        },
+        pclk2,
+        BaudRate::Max(10_000_000),
+    );
     let spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
-    let chip = SpiChip::init(cs_pin);
+    let chip = SpiChip::init(pin_cs);
 
     spi_master.select(&chip);
     let tx_buf = [1, 2, 3, 4].as_ref();

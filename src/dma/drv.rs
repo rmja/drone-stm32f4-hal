@@ -20,7 +20,7 @@ pub trait DmaStChToken {
     fn num() -> u32;
 }
 
-macro_rules! stch_num {
+macro_rules! stch_token {
     ($stch:ident, $num:expr) => {
         impl DmaStChToken for $stch {
             fn num() -> u32 {
@@ -30,14 +30,14 @@ macro_rules! stch_num {
     };
 }
 
-stch_num!(DmaStCh0, 0);
-stch_num!(DmaStCh1, 1);
-stch_num!(DmaStCh2, 2);
-stch_num!(DmaStCh3, 3);
-stch_num!(DmaStCh4, 4);
-stch_num!(DmaStCh5, 5);
-stch_num!(DmaStCh6, 6);
-stch_num!(DmaStCh7, 7);
+stch_token!(DmaStCh0, 0);
+stch_token!(DmaStCh1, 1);
+stch_token!(DmaStCh2, 2);
+stch_token!(DmaStCh3, 3);
+stch_token!(DmaStCh4, 4);
+stch_token!(DmaStCh5, 5);
+stch_token!(DmaStCh6, 6);
+stch_token!(DmaStCh7, 7);
 
 pub mod config {
     use super::*;

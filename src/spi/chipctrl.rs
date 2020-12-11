@@ -1,45 +1,54 @@
 use crate::master::SpiMasterDrv;
-use drone_cortexm::{reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::{
-    dma::ch::DmaChMap,
-    gpio::pin::{GpioPinMap, GpioPinPeriph},
-    spi::SpiMap,
-};
+use drone_cortexm::thr::prelude::*;
+use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::SpiMap};
+use drone_stm32f4_gpio_drv::{GpioPinCfg, OutputMode, PinPullToken, PinTypeToken};
 
-pub struct SpiChip<CsPin: GpioPinMap> {
-    cs: GpioPinPeriph<CsPin>,
+pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> {
+    cs: GpioPinCfg<Pin, OutputMode, PinType, PinPull>,
 }
 
-impl<CsPin: GpioPinMap> SpiChip<CsPin> {
-    pub fn init(cs: GpioPinPeriph<CsPin>) -> Self {
-        // Set output pin by writing BS (bit set) to the bit set/reset register.
-        cs.gpio_bsrr_bs.set_bit();
+impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
+    pub fn init(cs: GpioPinCfg<Pin, OutputMode, PinType, PinPull>) -> Self {
+        // Set the CS pin to high.
+        cs.set();
         Self { cs }
     }
 }
 
 pub trait ChipCtrl {
-    fn select<CsPin: GpioPinMap>(&mut self, chip: &SpiChip<CsPin>);
-    fn deselect<CsPin: GpioPinMap>(&mut self, chip: &SpiChip<CsPin>);
+    fn select<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
+        &mut self,
+        chip: &SpiChip<CsPin, PinType, PinPull>,
+    );
+    fn deselect<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
+        &mut self,
+        chip: &SpiChip<CsPin, PinType, PinPull>,
+    );
 }
 
 impl<
-    'drv,
-    Spi: SpiMap,
-    SpiInt: IntToken,
-    DmaRx: DmaChMap,
-    DmaRxInt: IntToken,
-    DmaTx: DmaChMap,
-    DmaTxInt: IntToken,
-> ChipCtrl for SpiMasterDrv<'drv, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+        'drv,
+        Spi: SpiMap,
+        SpiInt: IntToken,
+        DmaRx: DmaChMap,
+        DmaRxInt: IntToken,
+        DmaTx: DmaChMap,
+        DmaTxInt: IntToken,
+    > ChipCtrl for SpiMasterDrv<'drv, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
-    fn select<CsPin: GpioPinMap>(&mut self, chip: &SpiChip<CsPin>) {
-        // Clear output pin by writing BR (bit reset) to the bit set/reset register.
-        chip.cs.gpio_bsrr_br.set_bit();
+    fn select<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
+        &mut self,
+        chip: &SpiChip<CsPin, PinType, PinPull>,
+    ) {
+        // Clear the CS pin to low.
+        chip.cs.clear();
     }
 
-    fn deselect<CsPin: GpioPinMap>(&mut self, chip: &SpiChip<CsPin>) {
-        // Set output pin by writing BS (bit set) to the bit set/reset register.
-        chip.cs.gpio_bsrr_bs.set_bit();
+    fn deselect<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
+        &mut self,
+        chip: &SpiChip<CsPin, PinType, PinPull>,
+    ) {
+        // Set the CS pin to high.
+        chip.cs.set();
     }
 }
