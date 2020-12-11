@@ -13,7 +13,7 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
-    gpio::{prelude::*, GpioPinCfg, GpioPinSpeed},
+    gpio::{prelude::*, GpioPin, GpioPinSpeed},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     spi::{chipctrl::*, config::*, prelude::*, SpiDrv},
 };
@@ -40,19 +40,19 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     gpio_b.rcc_busenr_gpioen.set_bit();
 
     // Configure SPI GPIO pins.
-    let pin_clk = GpioPinCfg::build(periph_gpio_a5!(reg))
+    let pin_clk = GpioPin::init(periph_gpio_a5!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_miso = GpioPinCfg::build(periph_gpio_a6!(reg))
+    let pin_miso = GpioPin::init(periph_gpio_a6!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_mosi = GpioPinCfg::build(periph_gpio_a7!(reg))
+    let pin_mosi = GpioPin::init(periph_gpio_a7!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_cs = GpioPinCfg::build(periph_gpio_b1!(reg))
+    let pin_cs = GpioPin::init(periph_gpio_b1!(reg))
         .into_output()
         .with_speed(GpioPinSpeed::HighSpeed);
 

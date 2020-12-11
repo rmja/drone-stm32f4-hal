@@ -13,7 +13,7 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
-    gpio::{GpioPinCfg, GpioPinSpeed, prelude::*},
+    gpio::{GpioHead, GpioPin, GpioPinSpeed, prelude::*},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     uart::{config::*, prelude::*, UartDrv},
 };
@@ -34,27 +34,27 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     thr.dma_1_ch_6.enable_int();
 
     // Enable IO port clock.
-    let gpio_a = periph_gpio_a_head!(reg);
-    gpio_a.rcc_busenr_gpioen.set_bit();
+    let port_a = GpioHead::init(periph_gpio_a_head!(reg));
 
     // Configure UART GPIO pins.
-    let pin_tx = GpioPinCfg::build(periph_gpio_a2!(reg))
+    let pin_tx = GpioPin::init(periph_gpio_a2!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_rx = GpioPinCfg::build(periph_gpio_a3!(reg))
+    let pin_rx = GpioPin::init(periph_gpio_a3!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
 
-    // Disable IO port clock.
-    gpio_a.rcc_busenr_gpioen.clear_bit();
+    unsafe {
+        port_a.disable_clk();
+    }
 
     // Configure debug pins used for capturing logic analyzer shots.
     let gpio_b = periph_gpio_b_head!(reg);
     gpio_b.rcc_busenr_gpioen.set_bit(); // Enable IO port clock
 
-    let mut dbg1 = GpioPinCfg::build(periph_gpio_b2!(reg))
+    let mut dbg1 = GpioPin::init(periph_gpio_b2!(reg))
         .into_output()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);

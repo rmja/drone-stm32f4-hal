@@ -8,7 +8,7 @@ use drone_stm32_map::periph::{
     uart::{traits::*, UartMap, UartPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh4, DmaStCh5, DmaStCh7, DmaStChToken};
-use drone_stm32f4_gpio_drv::{GpioPinCfg, prelude::*};
+use drone_stm32f4_gpio_drv::{GpioPin, prelude::*};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
@@ -289,7 +289,7 @@ pub trait UartRxDrvInit<
     fn init_rx<DmaInt: IntToken>(
         &self,
         rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-        rx_pin: GpioPinCfg<Pin, AlternateMode<PinAf>, PinType, PinPull>,
+        rx_pin: GpioPin<Pin, AlternateMode<PinAf>, PinType, PinPull>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
@@ -309,7 +309,7 @@ pub trait UartTxDrvInit<
     fn init_tx<DmaInt: IntToken>(
         &self,
         tx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-        tx_pin: GpioPinCfg<Pin, AlternateMode<PinAf>, PinType, PinPull>,
+        tx_pin: GpioPin<Pin, AlternateMode<PinAf>, PinType, PinPull>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
@@ -331,7 +331,7 @@ macro_rules! rx_drv_init {
             fn init_rx<DmaInt: IntToken>(
                 &self,
                 rx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
-                rx_pin: GpioPinCfg<drone_stm32_map::periph::gpio::pin::$pin, AlternateMode<$pin_af>, PinType, PinPull>,
+                rx_pin: GpioPin<drone_stm32_map::periph::gpio::pin::$pin, AlternateMode<$pin_af>, PinType, PinPull>,
             ) -> UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
@@ -362,7 +362,7 @@ macro_rules! tx_drv_init {
             fn init_tx<DmaInt: IntToken>(
                 &self,
                 tx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
-                tx_pin: GpioPinCfg<drone_stm32_map::periph::gpio::pin::$pin, AlternateMode<$pin_af>, PinType, PinPull>,
+                tx_pin: GpioPin<drone_stm32_map::periph::gpio::pin::$pin, AlternateMode<$pin_af>, PinType, PinPull>,
             ) -> UartTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,

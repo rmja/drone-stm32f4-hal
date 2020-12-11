@@ -1,14 +1,14 @@
 use crate::master::SpiMasterDrv;
 use drone_cortexm::thr::prelude::*;
 use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::SpiMap};
-use drone_stm32f4_gpio_drv::{GpioPinCfg, OutputMode, PinPullToken, PinTypeToken};
+use drone_stm32f4_gpio_drv::{GpioPin, OutputMode, PinPullToken, PinTypeToken};
 
 pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> {
-    cs: GpioPinCfg<Pin, OutputMode, PinType, PinPull>,
+    cs: GpioPin<Pin, OutputMode, PinType, PinPull>,
 }
 
 impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
-    pub fn init(cs: GpioPinCfg<Pin, OutputMode, PinType, PinPull>) -> Self {
+    pub fn init(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
         // Set the CS pin to high.
         cs.set();
         Self { cs }

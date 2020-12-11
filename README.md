@@ -111,11 +111,11 @@ The driver is initially setup like the following:
 thr.usart_2.enable_int();
 
 // TODO: PIN
-GpioPinCfg::from(periph_gpio_a2!(reg)) // TX.
+GpioPin::from(periph_gpio_a2!(reg)) // TX.
         .into_af7()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-GpioPinCfg::from(periph_gpio_a3!(reg)) // RX.
+GpioPin::from(periph_gpio_a3!(reg)) // RX.
     .into_af7()
     .into_pp()
     .with_speed(GpioPinSpeed::VeryHighSpeed);

@@ -8,7 +8,7 @@ use drone_stm32_map::periph::{
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh0, DmaStCh3, DmaStChToken};
-use drone_stm32f4_gpio_drv::{prelude::*, GpioPinCfg};
+use drone_stm32f4_gpio_drv::{prelude::*, GpioPin};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
@@ -26,9 +26,9 @@ pub mod config {
         MosiPull: PinPullToken,
         Af: PinAfToken,
     > {
-        pub pin_clk: GpioPinCfg<ClkPin, AlternateMode<Af>, ClkType, ClkPull>,
-        pub pin_miso: GpioPinCfg<MisoPin, AlternateMode<Af>, MisoType, MisoPull>,
-        pub pin_mosi: GpioPinCfg<MosiPin, AlternateMode<Af>, MosiType, MosiPull>,
+        pub pin_clk: GpioPin<ClkPin, AlternateMode<Af>, ClkType, ClkPull>,
+        pub pin_miso: GpioPin<MisoPin, AlternateMode<Af>, MisoType, MisoPull>,
+        pub pin_mosi: GpioPin<MosiPin, AlternateMode<Af>, MosiType, MosiPull>,
     }
 
     pub struct SpiSetup<

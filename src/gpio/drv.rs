@@ -5,7 +5,7 @@ use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::pin::{GpioPinMap, GpioPinPeriph};
 
 /// Pin configuration.
-pub struct GpioPinCfg<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
+pub struct GpioPin<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
     pub(crate) pin: GpioPinPeriph<Pin>,
     mode: PhantomData<Mode>,
     type_: PhantomData<Type>,
@@ -120,9 +120,9 @@ pub enum GpioPinSpeed {
 }
 
 impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken>
-    GpioPinCfg<Pin, Mode, Type, Pull>
+    GpioPin<Pin, Mode, Type, Pull>
 {
-    pub(crate) fn new(pin: GpioPinPeriph<Pin>) -> GpioPinCfg<Pin, Mode, Type, Pull> {
+    pub(crate) fn new(pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, Mode, Type, Pull> {
         Self {
             pin,
             mode: PhantomData,
@@ -132,15 +132,15 @@ impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken
     }
 }
 
-impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare, DontCare, DontCare> {
+impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     /// Create a new pin configuration from a pin peripheral.
-    pub fn build(pin: GpioPinPeriph<Pin>) -> GpioPinCfg<Pin, DontCare, DontCare, DontCare> {
+    pub fn init(pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare> {
         Self::new(pin)
     }
 
-    // pub fn into_disabled(self) -> GpioPinCfg<Disabled, DontCare, DontCare> {
+    // pub fn into_disabled(self) -> GpioPin<Disabled, DontCare, DontCare> {
     //     self.periph.modify(|_r, w| w.enable.disabled());
-    //     GpioPinCfg {
+    //     GpioPin {
     //         periph: self.periph,
     //         enabled: Disabled,
     //         _direction: DontCare,
@@ -148,13 +148,13 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare, DontCare, DontCare> {
     //     }
     // }
 
-    // pub fn into_enabled_input(self) -> GpioPinCfg<Enabled, Input, HighZ> {
+    // pub fn into_enabled_input(self) -> GpioPin<Enabled, Input, HighZ> {
     //     self.periph.modify(|_r, w| {
     //         w.enable.enabled()
     //         ._direction.input()
     //         .input_mode.high_z()
     //     });
-    //     GpioPinCfg {
+    //     GpioPin {
     //         periph: self.periph,
     //         enabled: Enabled,
     //         _direction: Input,
@@ -163,16 +163,16 @@ impl<Pin: GpioPinMap> GpioPinCfg<Pin, DontCare, DontCare, DontCare> {
     // }
 
     /// Set pin into general purpose output mode.
-    pub fn into_output(self) -> GpioPinCfg<Pin, OutputMode, DontCare, DontCare> {
+    pub fn into_output(self) -> GpioPin<Pin, OutputMode, DontCare, DontCare> {
         self.pin.gpio_moder_moder.write_bits(0b01);
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 
     // Set pin into alternate function mode.
-    pub fn into_af<Af: PinAfToken>(self) -> GpioPinCfg<Pin, AlternateMode<Af>, DontCare, DontCare> {
+    pub fn into_af<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
         self.pin.gpio_afr_afr.write_bits(Af::num());
         self.pin.gpio_moder_moder.write_bits(0b10);
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 }
 

@@ -2,10 +2,12 @@
 
 mod alternate;
 mod drv;
+mod head;
 mod input;
 mod output;
 
-pub use self::drv::{GpioPinCfg, GpioPinSpeed, OutputMode, PinPullToken, PinTypeToken};
+pub use self::drv::{GpioPin, GpioPinSpeed, OutputMode, PinPullToken, PinTypeToken};
+pub use self::head::GpioHead;
 
 pub mod prelude {
     pub use crate::drv::{

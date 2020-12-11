@@ -3,48 +3,48 @@ use crate::{
         DontCare, NoPull, OpenDrainType, OutputMode, PinAfToken, PinModeToken, PinPullToken,
         PinSpeed, PinTypeToken, PullDown, PullUp, PushPullType,
     },
-    GpioPinCfg, GpioPinSpeed,
+    GpioPin, GpioPinSpeed,
 };
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::pin::GpioPinMap;
 
-impl<Pin: GpioPinMap> GpioPinCfg<Pin, OutputMode, DontCare, DontCare> {
+impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, DontCare, DontCare> {
     /// Let pin type be push/pull.
-    pub fn into_pp(self) -> GpioPinCfg<Pin, OutputMode, PushPullType, DontCare> {
+    pub fn into_pp(self) -> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
         self.pin.gpio_otyper_ot.clear_bit();
         self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 
     /// Let pin type be open-drain.
-    pub fn into_od(self) -> GpioPinCfg<Pin, OutputMode, OpenDrainType, DontCare> {
+    pub fn into_od(self) -> GpioPin<Pin, OutputMode, OpenDrainType, DontCare> {
         self.pin.gpio_otyper_ot.set_bit();
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 }
 
-impl<Pin: GpioPinMap> GpioPinCfg<Pin, OutputMode, PushPullType, DontCare> {
+impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
     /// No pull-up nor pull-down.
-    pub fn into_nopull(self) -> GpioPinCfg<Pin, OutputMode, PushPullType, NoPull> {
+    pub fn into_nopull(self) -> GpioPin<Pin, OutputMode, PushPullType, NoPull> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b00);
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 
     /// Let pin be pulled-up.
-    pub fn into_pullup(self) -> GpioPinCfg<Pin, OutputMode, PushPullType, PullUp> {
+    pub fn into_pullup(self) -> GpioPin<Pin, OutputMode, PushPullType, PullUp> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b01);
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 
     /// Let pin be pulled-down.
-    pub fn into_pulldown(self) -> GpioPinCfg<Pin, OutputMode, PushPullType, PullDown> {
+    pub fn into_pulldown(self) -> GpioPin<Pin, OutputMode, PushPullType, PullDown> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b10);
-        GpioPinCfg::new(self.pin)
+        GpioPin::new(self.pin)
     }
 }
 
 impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken>
-    GpioPinCfg<Pin, OutputMode, Type, Pull>
+    GpioPin<Pin, OutputMode, Type, Pull>
 {
     /// Set output pin high.
     pub fn set(&self) {
@@ -60,9 +60,9 @@ impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken>
 }
 
 impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> PinSpeed
-    for GpioPinCfg<Pin, OutputMode, Type, Pull>
+    for GpioPin<Pin, OutputMode, Type, Pull>
 {
-    fn with_speed(self, speed: GpioPinSpeed) -> GpioPinCfg<Pin, OutputMode, Type, Pull> {
+    fn with_speed(self, speed: GpioPinSpeed) -> GpioPin<Pin, OutputMode, Type, Pull> {
         self.pin.gpio_ospeedr_ospeedr.write_bits(match speed {
             GpioPinSpeed::LowSpeed => 0,
             GpioPinSpeed::MediumSpeed => 1,
