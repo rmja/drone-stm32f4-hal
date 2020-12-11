@@ -1,14 +1,14 @@
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::head::{GpioHeadMap,GpioHeadPeriph};
 
-pub struct GpioHead<Gpio: GpioHeadMap> {
-    port: GpioHeadPeriph<Gpio>,
+pub struct GpioHead<Head: GpioHeadMap> {
+    port: GpioHeadPeriph<Head>,
 }
 
-impl<Gpio: GpioHeadMap> GpioHead<Gpio> {
+impl<Head: GpioHeadMap> GpioHead<Head> {
     /// Initialize a new gpio port head.
     #[must_use]
-    pub fn init(port: GpioHeadPeriph<Gpio>) -> GpioHead<Gpio> {
+    pub fn init(port: GpioHeadPeriph<Head>) -> GpioHead<Head> {
         port.rcc_busenr_gpioen.set_bit();
         Self { port }
     }

@@ -11,6 +11,7 @@ pub use self::head::GpioHead;
 
 pub mod prelude {
     pub use crate::pin::{
+        PinInit,
         AlternateMode, InputMode, NoPull, OutputMode, PinAfToken, PinPullToken, PinSpeed,
         PinTypeToken, PullDown, PullUp,
         PinAf0,

@@ -37,11 +37,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let port_a = GpioHead::init(periph_gpio_a_head!(reg));
 
     // Configure UART GPIO pins.
-    let pin_tx = GpioPin::init(periph_gpio_a2!(reg))
+    let pin_tx = port_a.init_pin(periph_gpio_a2!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_rx = GpioPin::init(periph_gpio_a3!(reg))
+    let pin_rx = port_a.init_pin(periph_gpio_a3!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);

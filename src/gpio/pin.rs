@@ -3,6 +3,7 @@
 use core::marker::PhantomData;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::pin::{GpioPinMap, GpioPinPeriph};
+use crate::head::GpioHead;
 
 /// Pin configuration.
 pub struct GpioPin<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
@@ -131,6 +132,27 @@ impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken
         }
     }
 }
+
+
+pub trait PinInit<Pin: GpioPinMap> {
+    /// Create a new pin configuration from a pin peripheral.
+    fn init_pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare>;
+}
+
+macro_rules! pin_init {
+    ($head:ident, $pin:ident) => {
+        impl PinInit<drone_stm32_map::periph::gpio::pin::$pin> for GpioHead<drone_stm32_map::periph::gpio::head::$head> {
+            fn init_pin(&self, pin: GpioPinPeriph<drone_stm32_map::periph::gpio::pin::$pin>) -> GpioPin<drone_stm32_map::periph::gpio::pin::$pin, DontCare, DontCare, DontCare> {
+                GpioPin::new(pin)
+            }
+        }
+    };
+}
+
+pin_init!(GpioAHead, GpioA0);
+pin_init!(GpioAHead, GpioA1);
+pin_init!(GpioAHead, GpioA2);
+pin_init!(GpioAHead, GpioA3);
 
 impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     /// Create a new pin configuration from a pin peripheral.
