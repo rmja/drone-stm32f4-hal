@@ -243,6 +243,22 @@ This is not using busy waiting on data to become available, but is achieved inte
 
 The `read()` method may return an error if `read()` is not called fast enough, in which case it can happen that the ring buffer has overflowed since the last call to `read()`.
 
+## Supported Devices
+
+| stm32_mcu |
+|-----------|
+| stm32f401 |
+| stm32f405 |
+| stm32f407 |
+| stm32f410 |
+| stm32f411 |
+| stm32f412 |
+| stm32f413 |
+| stm32f427 |
+| stm32f429 |
+| stm32f446 |
+| stm32f469 |
+
 ## References
 
 * [STM32F429 PM0090 reference manual](https://www.st.com/resource/en/reference_manual/dm00031020.pdf)
