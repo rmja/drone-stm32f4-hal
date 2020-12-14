@@ -98,7 +98,7 @@ Moving on, we can now select the `HSE` clock signal as the source for our PLL. T
 The next couple of lines enables over-drive (available in e.g. stm32f429) for high-speed operation, sets the correct flash latency for the mcu in the specified voltage range, configures the swo for [logging](https://book.drone-os.com/bluepill-blink/full-speed.html). Lastly we are ready to select the PLL's `PLL_P` output as the source for the sysclk, effectively setting the desired 180MHz mcu speed.
 
 ## GPIO
-The gpio features includes a set of types that makes it easy and safe to configure ports and their respective pins.
+The `gpio` feature includes a set of types that makes it easy and safe to configure ports and their respective pins.
 Consider the following example that configures pin `A5` into alternate-function mode, with push/pull type, and for high speed operation.
 
 ```rust
@@ -110,16 +110,36 @@ let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
   .into_pp()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 ```
-The `pin_sck` has type `GpioPin<GpioA5, AlternateMode<Af>, PushPullType, NoPull>` where `Af` is any of the alternate function marker types `PinAf0,...,PinAf15`. It is not needed to explicitly specify the alternate function, as it is included in the function prototypes for any drivers that uses a pin.
+The `pin_sck` has type `GpioPin<GpioA5, AlternateMode<Af>, PushPullType, NoPull>` where `Af` is any of the alternate function marker types `PinAf0,...,PinAf15`.
+It is not needed to explicitly specify the alternate function,
+as it is included in the function prototypes for any drivers that uses a pin, and so its type information flows "backwards" into the configuration of the pin.
 
 The clock for `gpio_a` is enabled when it is constructed as the clock is required when configuring the gpio.
 The clock should be explicitly disabled if so desired. This is unsafe, as special care should be taken if operating with disabled gpio clocks:
 
 ```rust
 unsafe {
-  port_a.disable_clock();
+  port_a.disable_clock(); // Explicitly disable clock - use with care!
 }
 ```
+
+## DMA
+The `dma` driver is simple, but includes type safety features for other drivers.
+Consider the following lines of code from the [uart example](./examples/uart/src/thr/root.rs):
+
+```rust
+let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
+let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma_1_ch_5));
+```
+`rx_dma` has type `DmaChCfg<Dma1Ch5, DmaStCh, DmaInt>` where `Dma1Ch5` means "DMA1 _stream_ 5".
+ST has changed the nomenclature for newer mcu's, and [Drone OS] uses the new naming scheme.
+The F4 series operate with _streams_ and _channels_.
+We call the channels within a stream a "stream channel" to avoid confusion.
+
+`DmaStCh` may be any of `DmaStCh0,...,DmaStCh7` as there 8 possible stream channels within a stream.
+As for the alternate function mode in the gpio driver,
+the actual stream channel is not explicitly specified,
+as this information flows back into the type of `rx_dma` when the variable is actually used.
 
 ## SPI
 There are currently a few bugs. The driver is not complete.
