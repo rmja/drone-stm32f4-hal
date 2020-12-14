@@ -4,65 +4,20 @@ use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    gpio::pin::GpioPinMap,
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh0, DmaStCh3, DmaStChToken};
-use drone_stm32f4_gpio_drv::{prelude::*, GpioPin};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
     use super::*;
+    pub use crate::pins::*;
 
-    pub struct SpiPins<
-        ClkPin: GpioPinMap,
-        ClkType: PinTypeToken,
-        ClkPull: PinPullToken,
-        MisoPin: GpioPinMap,
-        MisoType: PinTypeToken,
-        MisoPull: PinPullToken,
-        MosiPin: GpioPinMap,
-        MosiType: PinTypeToken,
-        MosiPull: PinPullToken,
-        Af: PinAfToken,
-    > {
-        pub pin_clk: GpioPin<ClkPin, AlternateMode<Af>, ClkType, ClkPull>,
-        pub pin_miso: GpioPin<MisoPin, AlternateMode<Af>, MisoType, MisoPull>,
-        pub pin_mosi: GpioPin<MosiPin, AlternateMode<Af>, MosiType, MosiPull>,
-    }
-
-    pub struct SpiSetup<
-        Spi: SpiMap + SpiCr1,
-        SpiInt: IntToken,
-        ClkPin: GpioPinMap,
-        ClkType: PinTypeToken,
-        ClkPull: PinPullToken,
-        MisoPin: GpioPinMap,
-        MisoType: PinTypeToken,
-        MisoPull: PinPullToken,
-        MosiPin: GpioPinMap,
-        MosiType: PinTypeToken,
-        MosiPull: PinPullToken,
-        Af: PinAfToken,
-        Clk: PClkToken,
-    > {
+    pub struct SpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
         /// Spi peripheral.
         pub spi: SpiPeriph<Spi>,
         /// Spi global interrupt.
         pub spi_int: SpiInt,
-        /// Spi pins.
-        pub spi_pins: SpiPins<
-            ClkPin,
-            ClkType,
-            ClkPull,
-            MisoPin,
-            MisoType,
-            MisoPull,
-            MosiPin,
-            MosiType,
-            MosiPull,
-            Af,
-        >,
         /// Spi clock.
         pub clk: ConfiguredClk<Clk>,
         /// The baud rate.
@@ -73,135 +28,32 @@ pub mod config {
         pub first_bit: FirstBit,
     }
 
-    pub trait SpiSetupInit<
-        Spi: SpiMap + SpiCr1,
-        SpiInt: IntToken,
-        ClkPin: GpioPinMap,
-        ClkType: PinTypeToken,
-        ClkPull: PinPullToken,
-        MisoPin: GpioPinMap,
-        MisoType: PinTypeToken,
-        MisoPull: PinPullToken,
-        MosiPin: GpioPinMap,
-        MosiType: PinTypeToken,
-        MosiPull: PinPullToken,
-        Af: PinAfToken,
-        Clk: PClkToken,
-    >
-    {
+    pub trait NewSpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
         /// Create a new spi setup with sensible defaults.
-        fn init(
+        fn new(
             spi: SpiPeriph<Spi>,
             spi_int: SpiInt,
-            spi_pins: SpiPins<
-                ClkPin,
-                ClkType,
-                ClkPull,
-                MisoPin,
-                MisoType,
-                MisoPull,
-                MosiPin,
-                MosiType,
-                MosiPull,
-                Af,
-            >,
+            pins: SpiPins<Spi, Defined, Defined, Defined>,
             clk: ConfiguredClk<Clk>,
             baud_rate: BaudRate,
-        ) -> SpiSetup<
-            Spi,
-            SpiInt,
-            ClkPin,
-            ClkType,
-            ClkPull,
-            MisoPin,
-            MisoType,
-            MisoPull,
-            MosiPin,
-            MosiType,
-            MosiPull,
-            Af,
-            Clk,
-        >;
+        ) -> SpiSetup<Spi, SpiInt, Clk>;
     }
 
     macro_rules! spi_setup {
-        ($spi:ident, $clk_pin:ident, $miso_pin:ident, $mosi_pin:ident, $pin_af:ident, $pclk:ident) => {
-            impl<
-                    SpiInt: IntToken,
-                    ClkType: PinTypeToken,
-                    ClkPull: PinPullToken,
-                    MisoType: PinTypeToken,
-                    MisoPull: PinPullToken,
-                    MosiType: PinTypeToken,
-                    MosiPull: PinPullToken,
-                >
-                SpiSetupInit<
-                    drone_stm32_map::periph::spi::$spi,
-                    SpiInt,
-                    drone_stm32_map::periph::gpio::pin::$clk_pin,
-                    ClkType,
-                    ClkPull,
-                    drone_stm32_map::periph::gpio::pin::$miso_pin,
-                    MisoType,
-                    MisoPull,
-                    drone_stm32_map::periph::gpio::pin::$mosi_pin,
-                    MosiType,
-                    MosiPull,
-                    $pin_af,
-                    $pclk,
-                >
-                for SpiSetup<
-                    drone_stm32_map::periph::spi::$spi,
-                    SpiInt,
-                    drone_stm32_map::periph::gpio::pin::$clk_pin,
-                    ClkType,
-                    ClkPull,
-                    drone_stm32_map::periph::gpio::pin::$miso_pin,
-                    MisoType,
-                    MisoPull,
-                    drone_stm32_map::periph::gpio::pin::$mosi_pin,
-                    MosiType,
-                    MosiPull,
-                    $pin_af,
-                    $pclk,
-                >
+        ($spi:ident, $pclk:ident) => {
+            impl<SpiInt: IntToken> NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+                for SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
             {
-                fn init(
+                fn new(
                     spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>,
                     spi_int: SpiInt,
-                    spi_pins: SpiPins<
-                        drone_stm32_map::periph::gpio::pin::$clk_pin,
-                        ClkType,
-                        ClkPull,
-                        drone_stm32_map::periph::gpio::pin::$miso_pin,
-                        MisoType,
-                        MisoPull,
-                        drone_stm32_map::periph::gpio::pin::$mosi_pin,
-                        MosiType,
-                        MosiPull,
-                        $pin_af,
-                    >,
+                    _pins: SpiPins<drone_stm32_map::periph::spi::$spi, Defined, Defined, Defined>,
                     clk: ConfiguredClk<$pclk>,
                     baud_rate: BaudRate,
-                ) -> SpiSetup<
-                    drone_stm32_map::periph::spi::$spi,
-                    SpiInt,
-                    drone_stm32_map::periph::gpio::pin::$clk_pin,
-                    ClkType,
-                    ClkPull,
-                    drone_stm32_map::periph::gpio::pin::$miso_pin,
-                    MisoType,
-                    MisoPull,
-                    drone_stm32_map::periph::gpio::pin::$mosi_pin,
-                    MosiType,
-                    MosiPull,
-                    $pin_af,
-                    $pclk,
-                > {
+                ) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
                     Self {
                         spi,
                         spi_int,
-                        spi_pins,
                         clk,
                         baud_rate,
                         clk_pol: ClkPol::Low,
@@ -211,42 +63,25 @@ pub mod config {
             }
         };
     }
-    // The mapping from SPI->AF is in the chips datasheet and not the technical manual.
-    // SPI1
-    // - CLK:  A5, B3
-    // - MISO: A6, B4
-    // - MOSI: A7, B5
-    spi_setup!(Spi1, GpioA5, GpioA6, GpioA7, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioA5, GpioA6, GpioB5, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioA5, GpioB4, GpioA7, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioA5, GpioB4, GpioB5, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioB3, GpioA6, GpioA7, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioB3, GpioA6, GpioB5, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioB3, GpioB4, GpioA7, PinAf5, PClk2);
-    spi_setup!(Spi1, GpioB3, GpioB4, GpioB5, PinAf5, PClk2);
-
-    // SPI1
-    // - CLK:  B10, B13, D3, I1
-    // - MISO: B14, C2, I2
-    // - MOSI: B15, C3, I3
-    // spi_setup!(Spi2, PinAf5, PClk2);
-    // spi_setup!(Spi3, PinAf5, PClk1);
-    // #[cfg(any(
-    //     stm32_mcu = "stm32f413",
-    //     stm32_mcu = "stm32f427",
-    //     stm32_mcu = "stm32f446",
-    //     stm32_mcu = "stm32f469",
-    // ))]
-    // spi_setup!(Spi4, PinAf5, PClk2);
-    // #[cfg(any(
-    //     stm32_mcu = "stm32f410",
-    //     stm32_mcu = "stm32f413",
-    //     stm32_mcu = "stm32f427",
-    //     stm32_mcu = "stm32f469",
-    // ))]
-    // spi_setup!(Spi5, PinAf5, PClk2);
-    // #[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
-    // spi_setup!(Spi6, PinAf5, PClk2);
+    spi_setup!(Spi1, PClk2);
+    spi_setup!(Spi2, PClk2);
+    spi_setup!(Spi3, PClk1);
+    #[cfg(any(
+        stm32_mcu = "stm32f413",
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f446",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(Spi4, PClk2);
+    #[cfg(any(
+        stm32_mcu = "stm32f410",
+        stm32_mcu = "stm32f413",
+        stm32_mcu = "stm32f427",
+        stm32_mcu = "stm32f469",
+    ))]
+    spi_setup!(Spi5, PClk2);
+    #[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
+    spi_setup!(Spi6, PClk2);
 
     pub enum BaudRate {
         Max(u32),
@@ -286,34 +121,7 @@ pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
 
 impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
     #[must_use]
-    pub fn init<
-        ClkPin: GpioPinMap,
-        ClkType: PinTypeToken,
-        ClkPull: PinPullToken,
-        MisoPin: GpioPinMap,
-        MisoType: PinTypeToken,
-        MisoPull: PinPullToken,
-        MosiPin: GpioPinMap,
-        MosiType: PinTypeToken,
-        MosiPull: PinPullToken,
-        Af: PinAfToken,
-    >(
-        setup: config::SpiSetup<
-            Spi,
-            SpiInt,
-            ClkPin,
-            ClkType,
-            ClkPull,
-            MisoPin,
-            MisoType,
-            MisoPull,
-            MosiPin,
-            MosiType,
-            MosiPull,
-            Af,
-            Clk,
-        >,
-    ) -> SpiDrv<Spi, SpiInt, Clk> {
+    pub fn init(setup: config::SpiSetup<Spi, SpiInt, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
         let mut drv = Self {
             spi: setup.spi.into(),
             spi_int: setup.spi_int,

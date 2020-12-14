@@ -6,7 +6,7 @@ pub mod chipctrl;
 mod diverged;
 mod drv;
 mod master;
-pub mod pins;
+mod pins;
 mod slave;
 
 pub use self::drv::{config, SpiDrv};
