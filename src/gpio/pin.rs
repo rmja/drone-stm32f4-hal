@@ -159,7 +159,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
 
 pub trait NewPin<Head: GpioHeadMap, Pin: GpioPinMap> {
     /// Create a new pin configuration from a pin peripheral.
-    fn new(head: &GpioHead<Head>, pin: GpioPinPeriph<Pin>) -> Self;
+    fn pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare>;
 }
 
 #[macro_export]
@@ -170,19 +170,14 @@ macro_rules! pin_init {
                 drone_stm32_map::periph::gpio::head::$head,
                 drone_stm32_map::periph::gpio::pin::$pin,
             >
-            for crate::pin::GpioPin<
-                drone_stm32_map::periph::gpio::pin::$pin,
-                crate::pin::DontCare,
-                crate::pin::DontCare,
-                crate::pin::DontCare,
-            >
+            for crate::head::GpioHead<drone_stm32_map::periph::gpio::head::$head>
         {
-            fn new(
-                _head: &crate::head::GpioHead<drone_stm32_map::periph::gpio::head::$head>,
+            fn pin(
+                &self,
                 pin: drone_stm32_map::periph::gpio::pin::GpioPinPeriph<
                     drone_stm32_map::periph::gpio::pin::$pin,
                 >,
-            ) -> Self {
+            ) -> crate::pin::GpioPin<drone_stm32_map::periph::gpio::pin::$pin, crate::pin::DontCare, crate::pin::DontCare, crate::pin::DontCare> {
                 crate::pin::GpioPin::from(pin)
             }
         }

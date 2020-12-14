@@ -37,11 +37,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let port_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 
     // Configure UART GPIO pins.
-    let pin_tx = GpioPin::new(&port_a, periph_gpio_a2!(reg))
+    let pin_tx = port_a.pin(periph_gpio_a2!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_rx = GpioPin::new(&port_a, periph_gpio_a3!(reg))
+    let pin_rx = port_a.pin(periph_gpio_a3!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
@@ -53,7 +53,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Configure debug pins used for capturing logic analyzer shots.
     let gpio_b = GpioHead::with_enabled_clock(periph_gpio_b_head!(reg));
 
-    let mut dbg1 = GpioPin::new(&gpio_b, periph_gpio_b2!(reg))
+    let mut dbg1 = gpio_b.pin(periph_gpio_b2!(reg))
         .into_output()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);

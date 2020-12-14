@@ -14,11 +14,11 @@ drone-stm32f4-hal = { git = "https://github.com/rmja/drone-stm32f4-hal", feature
 ```
 
 A feature maps to a peripheral driver. There are the following low-level drivers:
-* `dma` Dma primitives for uniform configuration across other, dma-dependent drivers.
-* `gpio` Type safe pin-setup configuration primitives.
 * `rcc` Type safe clock configuration model, and a rcc, pwr, and flash driver.
+* `gpio` Type safe pin-setup configuration primitives.
+* `dma` Dma primitives for uniform configuration across other, dma-dependent drivers.
 
-The low-level drivers are dependencies of these  drivers:
+There are the following more high-level drivers:
 
 * `spi` Dma driven, future based spi driver.
 * `uart` Dma driven, future based uart driver.
