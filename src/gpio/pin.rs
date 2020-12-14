@@ -1,9 +1,9 @@
 //! STM32F4 GPIO driver for Drone OS.
 
+use crate::head::GpioHead;
 use core::marker::PhantomData;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::pin::{GpioPinMap, GpioPinPeriph};
-use crate::head::GpioHead;
 
 /// Pin configuration.
 pub struct GpioPin<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
@@ -133,7 +133,6 @@ impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken
     }
 }
 
-
 pub trait PinInit<Pin: GpioPinMap> {
     /// Create a new pin configuration from a pin peripheral.
     fn init_pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare>;
@@ -141,8 +140,14 @@ pub trait PinInit<Pin: GpioPinMap> {
 
 macro_rules! pin_init {
     ($head:ident, $pin:ident) => {
-        impl PinInit<drone_stm32_map::periph::gpio::pin::$pin> for GpioHead<drone_stm32_map::periph::gpio::head::$head> {
-            fn init_pin(&self, pin: GpioPinPeriph<drone_stm32_map::periph::gpio::pin::$pin>) -> GpioPin<drone_stm32_map::periph::gpio::pin::$pin, DontCare, DontCare, DontCare> {
+        impl PinInit<drone_stm32_map::periph::gpio::pin::$pin>
+            for GpioHead<drone_stm32_map::periph::gpio::head::$head>
+        {
+            fn init_pin(
+                &self,
+                pin: GpioPinPeriph<drone_stm32_map::periph::gpio::pin::$pin>,
+            ) -> GpioPin<drone_stm32_map::periph::gpio::pin::$pin, DontCare, DontCare, DontCare>
+            {
                 GpioPin::new(pin)
             }
         }
@@ -190,7 +195,6 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
         GpioPin::new(self.pin)
     }
 
-    // Set pin into alternate function mode.
     pub fn into_af<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
         self.pin.gpio_afr_afr.write_bits(Af::num());
         self.pin.gpio_moder_moder.write_bits(0b10);

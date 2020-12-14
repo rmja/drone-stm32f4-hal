@@ -1,5 +1,5 @@
 use drone_cortexm::reg::prelude::*;
-use drone_stm32_map::periph::gpio::head::{GpioHeadMap,GpioHeadPeriph};
+use drone_stm32_map::periph::gpio::head::{GpioHeadMap, GpioHeadPeriph};
 
 pub struct GpioHead<Head: GpioHeadMap> {
     port: GpioHeadPeriph<Head>,

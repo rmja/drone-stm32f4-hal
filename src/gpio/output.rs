@@ -1,7 +1,7 @@
 use crate::{
     pin::{
-        DontCare, NoPull, OpenDrainType, OutputMode, PinPullToken,
-        PinSpeed, PinTypeToken, PullDown, PullUp, PushPullType,
+        DontCare, NoPull, OpenDrainType, OutputMode, PinPullToken, PinSpeed, PinTypeToken,
+        PullDown, PullUp, PushPullType,
     },
     GpioPin, GpioPinSpeed,
 };
@@ -43,9 +43,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
     }
 }
 
-impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken>
-    GpioPin<Pin, OutputMode, Type, Pull>
-{
+impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
     pub fn set(&self) {
         // Set output pin by writing BS (bit set) to the bit set/reset register.

@@ -297,7 +297,23 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         MosiType: PinTypeToken,
         MosiPull: PinPullToken,
         Af: PinAfToken,
-    >(setup: config::SpiSetup<Spi, SpiInt, ClkPin, ClkType, ClkPull, MisoPin, MisoType, MisoPull, MosiPin, MosiType, MosiPull, Af, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
+    >(
+        setup: config::SpiSetup<
+            Spi,
+            SpiInt,
+            ClkPin,
+            ClkType,
+            ClkPull,
+            MisoPin,
+            MisoType,
+            MisoPull,
+            MosiPin,
+            MosiType,
+            MosiPull,
+            Af,
+            Clk,
+        >,
+    ) -> SpiDrv<Spi, SpiInt, Clk> {
         let mut drv = Self {
             spi: setup.spi.into(),
             spi_int: setup.spi_int,
