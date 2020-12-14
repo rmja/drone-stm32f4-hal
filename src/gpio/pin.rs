@@ -169,15 +169,19 @@ macro_rules! pin_init {
             crate::pin::NewPin<
                 drone_stm32_map::periph::gpio::head::$head,
                 drone_stm32_map::periph::gpio::pin::$pin,
-            >
-            for crate::head::GpioHead<drone_stm32_map::periph::gpio::head::$head>
+            > for crate::head::GpioHead<drone_stm32_map::periph::gpio::head::$head>
         {
             fn pin(
                 &self,
                 pin: drone_stm32_map::periph::gpio::pin::GpioPinPeriph<
                     drone_stm32_map::periph::gpio::pin::$pin,
                 >,
-            ) -> crate::pin::GpioPin<drone_stm32_map::periph::gpio::pin::$pin, crate::pin::DontCare, crate::pin::DontCare, crate::pin::DontCare> {
+            ) -> crate::pin::GpioPin<
+                drone_stm32_map::periph::gpio::pin::$pin,
+                crate::pin::DontCare,
+                crate::pin::DontCare,
+                crate::pin::DontCare,
+            > {
                 crate::pin::GpioPin::from(pin)
             }
         }
