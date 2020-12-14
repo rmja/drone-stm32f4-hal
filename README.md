@@ -24,7 +24,9 @@ There are the following more high-level drivers:
 * `uart` Dma driven, future based uart driver.
 
 ## RCC
-A necessary but often complicated task when starting a new embedded application is to correctly configure the various clocks within the mcu. The `rcc` features contains two parts: 1) A clock tree configuration _model_, and 2) a set of _drivers_ that effectuate the model on boot.
+A necessary but often complicated task when starting a new embedded application is to correctly configure the various clocks within the mcu. The `rcc` feature contains two parts:
+1. A clock tree configuration _model_, and
+2. a set of _drivers_ that effectuate the model on boot.
 
 The following is the model configuration example from the [uart example app](https://github.com/rmja/drone-stm32f4-hal/blob/master/examples/uart/src/consts.rs):
 
@@ -79,7 +81,7 @@ let hseclk = rcc.stabilize(consts::HSECLK).await;
 let pll = rcc.select(consts::PLLSRC_HSECLK, hseclk).stabilize(consts::PLL).await;
 let pclk1 = rcc.configure(consts::PCLK1);
 let pclk2 = rcc.configure(consts::PCLK2);
-pwr.enable_od();
+pwr.enable_overdrive();
 flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
 swo::flush();
 swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);

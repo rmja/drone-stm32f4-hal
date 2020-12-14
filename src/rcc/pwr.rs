@@ -19,7 +19,7 @@ impl Pwr {
 pub mod traits {
     pub trait Overdriveable {
         /// Enable over-drive.
-        fn enable_od(&self);
+        fn enable_overdrive(&self);
     }
 }
 
@@ -30,7 +30,7 @@ pub mod traits {
     stm32_mcu = "stm32f437",
 ))]
 impl Overdriveable for Pwr {
-    fn enable_od(&self) {
+    fn enable_overdrive(&self) {
         // Enable the Over-drive mode and wait for the ODRDY flag to be set.
         self.pwr.pwr_cr.modify(|r| r.set_oden());
         loop {

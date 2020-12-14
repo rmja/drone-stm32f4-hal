@@ -74,7 +74,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .root_wait();
     let pclk1 = rcc.configure(consts::PCLK1);
     let pclk2 = rcc.configure(consts::PCLK2);
-    pwr.enable_od();
+    pwr.enable_overdrive();
     flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
     swo::flush();
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
