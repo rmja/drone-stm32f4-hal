@@ -23,9 +23,6 @@ There are the following more high-level drivers:
 * `spi` Dma driven, future based spi driver.
 * `uart` Dma driven, future based uart driver.
 
-## GPIO
-...
-
 ## RCC
 A necessary but often complicated task when starting a new embedded application is to correctly configure the various clocks within the mcu. The `rcc` features contains two parts: 1) A clock tree configuration _model_, and 2) a set of _drivers_ that effectuate the model on boot.
 
@@ -98,6 +95,30 @@ Moving on, we can now select the `HSE` clock signal as the source for our PLL. T
 
 The next couple of lines enables over-drive (available in e.g. stm32f429) for high-speed operation, sets the correct flash latency for the mcu in the specified voltage range, configures the swo for [logging](https://book.drone-os.com/bluepill-blink/full-speed.html). Lastly we are ready to select the PLL's `PLL_P` output as the source for the sysclk, effectively setting the desired 180MHz mcu speed.
 
+## GPIO
+The gpio features includes a set of types that makes it easy and safe to configure ports and their respective pins.
+Consider the following example that configures pin `A5` into alternate-function mode, with push/pull type, and for high speed operation.
+
+```rust
+use drone_stm32f4_hal::gpio::{prelude::*, GpioHead};
+
+let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
+let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
+```
+The `pin_sck` has type `GpioPin<GpioA5, AlternateMode<Af>, PushPullType, NoPull>` where `Af` is any of the alternate function marker types `PinAf0,...,PinAf15`. It is not needed to explicitly specify the alternate function, as it is included in the function prototypes for any drivers that uses a pin.
+
+The clock for `gpio_a` is enabled when it is constructed as the clock is required when configuring the gpio.
+The clock should be explicitly disabled if so desired. This is unsafe, as special care should be taken if operating with disabled gpio clocks:
+
+```rust
+unsafe {
+  port_a.disable_clock();
+}
+```
+
 ## SPI
 There are currently a few bugs. The driver is not complete.
 
@@ -110,24 +131,31 @@ The driver is initially setup like the following:
 ```rust
 thr.usart_2.enable_int();
 
-// TODO: PIN
-GpioPin::from(periph_gpio_a2!(reg)) // TX.
-        .into_af7()
-        .into_pp()
-        .with_speed(GpioPinSpeed::VeryHighSpeed);
-GpioPin::from(periph_gpio_a3!(reg)) // RX.
-    .into_af7()
-    .into_pp()
-    .with_speed(GpioPinSpeed::VeryHighSpeed);
+let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
+let pin_tx = gpio_a.pin(periph_gpio_a2!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
+let pin_rx = GpioPin::from(periph_gpio_a3!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
 
-let dma1 = DmaCfg::init(periph_dma1!(reg));
+let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
+let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma_1_ch_5));
+let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma_1_ch_6));
+
+let uart_pins = UartPins::new().tx(pin_tx).rx(pin_rx);
 
 let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
 let uart_drv = UartDrv::init(setup);
 ```
 
 The usart interrupt is first enabled in the nvic.
-The rx/tx pins are then configured, and passed together with the usart peripheral, the usart thread, and the configured periheral clock to the `UartSetup` initialization function, creating a uart `setup` structure. The default setup is `9600/8N1`.
+The rx/tx pins are then configured together with the dma's.
+A `uart_pins` variable is created that is used later when initializing the rx/tx operation.
+It should be noted that it is the assigned `uart_pins` that ultimately decides the alternate function of the two pins.
+The usart peripheral, the usart thread, and the configured periheral clock to the `UartSetup` initialization function, creating a uart `setup` structure. The default setup is `9600/8N1`.
 Any other setting can be specified on the public properties of `setup` (the `setup` variable must be declared `mut` in this case).
 The setup is finally passed to the driver initialization function.
 
@@ -137,8 +165,7 @@ The rx and tx operation of the driver are completely separated, and each of them
 Completing the setup for tx operation looks like this:
 ```rust
 let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
-let tx_dma = dma1.init_ch(tx_setup);
-let mut tx_drv = uart_drv.init_tx(tx_dma);
+let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);
 ```
 
 With `tx_drv` we are now finally able to do some communication.
@@ -165,8 +192,7 @@ The rx part of the driver is initialized like the following:
 
 ```rust
 let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
-let rx_dma = dma1.init_ch(rx_setup);
-let mut rx_drv = uart_drv.init_rx(rx_setup);
+let mut rx_drv = uart_drv.init_rx(rx_setup, &uart_pins);
 ```
 
 Again, as for the tx part, the driver is not yet ready to receive. For this we need to start the receiver:
