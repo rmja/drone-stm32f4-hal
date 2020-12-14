@@ -1,6 +1,3 @@
-//! STM32F4 GPIO driver for Drone OS.
-
-use crate::head::GpioHead;
 use core::marker::PhantomData;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::{
