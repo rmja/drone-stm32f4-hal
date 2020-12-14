@@ -32,7 +32,7 @@ macro_rules! pin_impl {
                 // Undefined, Miso, Mosi
             > for $type_name<$periph, $($pins_in),+>
         {
-            fn $fn_name(self, _pin: GpioPin<
+            fn $fn_name(self, _pin: drone_stm32f4_gpio_drv::GpioPin<
                 drone_stm32_map::periph::gpio::pin::$pin,
                 $mode,
                 Type,

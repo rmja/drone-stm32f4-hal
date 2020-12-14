@@ -5,6 +5,7 @@
 pub mod chipctrl;
 mod diverged;
 mod drv;
+mod mappings;
 mod master;
 mod pins;
 mod slave;
