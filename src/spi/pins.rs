@@ -44,8 +44,7 @@ pin_impl!(MisoPinExt for SpiPins<drone_stm32_map::periph::spi::Spi1, ...>.miso, 
 pin_impl!(MosiPinExt for SpiPins<drone_stm32_map::periph::spi::Spi1, ...>.mosi, GpioA7, AlternateMode<PinAf5>; Sck, Miso, Undefined => Sck, Miso, Defined);
 pin_impl!(MosiPinExt for SpiPins<drone_stm32_map::periph::spi::Spi1, ...>.mosi, GpioB5, AlternateMode<PinAf5>; Sck, Miso, Undefined => Sck, Miso, Defined);
 
-
 // SPI2
-    // - CLK:  B10, B13, D3, I1
-    // - MISO: B14, C2, I2
-    // - MOSI: B15, C3, I3
+// - CLK:  B10, B13, D3, I1
+// - MISO: B14, C2, I2
+// - MOSI: B15, C3, I3
