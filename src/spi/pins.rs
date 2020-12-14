@@ -1,9 +1,7 @@
 use core::marker::PhantomData;
 use drone_stm32_map::periph::gpio::pin::GpioPinMap;
 use drone_stm32_map::periph::spi::{SpiMap, SpiPeriph};
-use drone_stm32f4_gpio_drv::prelude::*;
-use drone_stm32f4_gpio_drv::GpioPin;
-use drone_stm32f4_gpio_drv::{pin_ext, pin_impl};
+use drone_stm32f4_gpio_drv::{pin_ext, pin_impl, prelude::*, GpioPin};
 
 pub struct Defined;
 pub struct Undefined;

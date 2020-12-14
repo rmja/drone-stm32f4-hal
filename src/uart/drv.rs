@@ -1,18 +1,17 @@
 use self::config::*;
-use crate::{diverged::UartDiverged, rx::UartRxDrv, tx::UartTxDrv};
+use crate::{diverged::UartDiverged, pins::*, rx::UartRxDrv, tx::UartTxDrv};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    gpio::pin::GpioPinMap,
     uart::{traits::*, UartMap, UartPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh4, DmaStCh5, DmaStCh7, DmaStChToken};
-use drone_stm32f4_gpio_drv::{prelude::*, GpioPin};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
     use super::*;
+    pub use crate::pins::*;
 
     /// Uart setup.
     pub struct UartSetup<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
@@ -278,18 +277,14 @@ pub trait UartRxDrvInit<
     UartInt: IntToken,
     DmaCh: DmaChMap,
     DmaStCh: DmaStChToken,
-    Pin: GpioPinMap,
-    PinAf: PinAfToken,
-    PinType: PinTypeToken,
-    PinPull: PinPullToken,
     Clk: PClkToken,
 >
 {
     /// Initialize a [`UartRxDrv`] from a configured dma channel.
-    fn init_rx<DmaInt: IntToken>(
+    fn init_rx<DmaInt: IntToken, Tx>(
         &self,
         rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-        rx_pin: GpioPin<Pin, AlternateMode<PinAf>, PinType, PinPull>,
+        rx_pins: &UartPins<Uart, Defined, Tx>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
@@ -298,45 +293,32 @@ pub trait UartTxDrvInit<
     UartInt: IntToken,
     DmaCh: DmaChMap,
     DmaStCh: DmaStChToken,
-    Pin: GpioPinMap,
-    PinAf: PinAfToken,
-    PinType: PinTypeToken,
-    PinPull: PinPullToken,
     Clk: PClkToken,
 >
 {
     /// Initialize a [`UartTxDrv`] from a configured dma channel.
-    fn init_tx<DmaInt: IntToken>(
+    fn init_tx<DmaInt: IntToken, Rx>(
         &self,
         tx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-        tx_pin: GpioPin<Pin, AlternateMode<PinAf>, PinType, PinPull>,
+        tx_pins: &UartPins<Uart, Rx, Defined>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
 macro_rules! rx_drv_init {
-    ($uart:ident, $ch:ident, $stch:ident, $pin:ident, $pin_af:ident) => {
-        impl<UartInt: IntToken, PinType: PinTypeToken, PinPull: PinPullToken, Clk: PClkToken>
+    ($uart:ident, $ch:ident, $stch:ident) => {
+        impl<UartInt: IntToken, Clk: PClkToken>
             UartRxDrvInit<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 $stch,
-                drone_stm32_map::periph::gpio::pin::$pin,
-                $pin_af,
-                PinType,
-                PinPull,
                 Clk,
             > for UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
-            fn init_rx<DmaInt: IntToken>(
+            fn init_rx<DmaInt: IntToken, Tx>(
                 &self,
                 rx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
-                rx_pin: GpioPin<
-                    drone_stm32_map::periph::gpio::pin::$pin,
-                    AlternateMode<$pin_af>,
-                    PinType,
-                    PinPull,
-                >,
+                _rx_pins: &UartPins<drone_stm32_map::periph::uart::$uart, Defined, Tx>,
             ) -> UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
@@ -350,29 +332,20 @@ macro_rules! rx_drv_init {
 }
 
 macro_rules! tx_drv_init {
-    ($uart:ident, $ch:ident, $stch:ident, $pin:ident, $pin_af:ident) => {
-        impl<UartInt: IntToken, PinType: PinTypeToken, PinPull: PinPullToken, Clk: PClkToken>
+    ($uart:ident, $ch:ident, $stch:ident) => {
+        impl<UartInt: IntToken, Clk: PClkToken>
             UartTxDrvInit<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 $stch,
-                drone_stm32_map::periph::gpio::pin::$pin,
-                $pin_af,
-                PinType,
-                PinPull,
                 Clk,
             > for UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
-            fn init_tx<DmaInt: IntToken>(
+            fn init_tx<DmaInt: IntToken, Rx>(
                 &self,
                 tx_cfg: DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
-                tx_pin: GpioPin<
-                    drone_stm32_map::periph::gpio::pin::$pin,
-                    AlternateMode<$pin_af>,
-                    PinType,
-                    PinPull,
-                >,
+                _tx_pins: &UartPins<drone_stm32_map::periph::uart::$uart, Rx, Defined>,
             ) -> UartTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
@@ -386,60 +359,58 @@ macro_rules! tx_drv_init {
 }
 
 // This configuration reflect the dma mappings in table 42 and 43 in PM0090.
-// rx_drv_init!(Usart1, Dma2Ch2, DmaStCh4);
-// rx_drv_init!(Usart1, Dma2Ch5, DmaStCh4);
-// tx_drv_init!(Usart1, Dma2Ch7, DmaStCh4);
-rx_drv_init!(Usart2, Dma1Ch5, DmaStCh4, GpioA3, PinAf7);
-tx_drv_init!(Usart2, Dma1Ch6, DmaStCh4, GpioA2, PinAf7);
-rx_drv_init!(Usart2, Dma1Ch5, DmaStCh4, GpioD6, PinAf7);
-tx_drv_init!(Usart2, Dma1Ch6, DmaStCh4, GpioD5, PinAf7);
-// rx_drv_init!(Usart3, Dma1Ch1, DmaStCh4);
-// tx_drv_init!(Usart3, Dma1Ch3, DmaStCh4);
-// tx_drv_init!(Usart3, Dma1Ch4, DmaStCh7);
-// rx_drv_init!(Uart4, Dma1Ch2, DmaStCh4);
-// tx_drv_init!(Uart4, Dma1Ch4, DmaStCh4);
-// rx_drv_init!(Uart5, Dma1Ch0, DmaStCh4);
-// tx_drv_init!(Uart5, Dma1Ch7, DmaStCh4);
-// rx_drv_init!(Usart6, Dma2Ch1, DmaStCh5);
-// rx_drv_init!(Usart6, Dma2Ch2, DmaStCh5);
-// tx_drv_init!(Usart6, Dma2Ch6, DmaStCh5);
-// tx_drv_init!(Usart6, Dma2Ch7, DmaStCh5);
-// #[cfg(any(
-//     stm32_mcu = "stm32f405",
-//     stm32_mcu = "stm32f407",
-//     stm32_mcu = "stm32f417",
-//     stm32_mcu = "stm32f427",
-//     stm32_mcu = "stm32f437",
-//     stm32_mcu = "stm32f469",
-// ))]
-// rx_drv_init!(Uart7, Dma1Ch3, DmaStCh5);
-// #[cfg(any(
-//     stm32_mcu = "stm32f405",
-//     stm32_mcu = "stm32f407",
-//     stm32_mcu = "stm32f417",
-//     stm32_mcu = "stm32f427",
-//     stm32_mcu = "stm32f437",
-//     stm32_mcu = "stm32f469",
-// ))]
-// tx_drv_init!(Uart7, Dma1Ch1, DmaStCh5);
-// #[cfg(any(
-//     stm32_mcu = "stm32f405",
-//     stm32_mcu = "stm32f407",
-//     stm32_mcu = "stm32f417",
-//     stm32_mcu = "stm32f427",
-//     stm32_mcu = "stm32f437",
-//     stm32_mcu = "stm32f469",
-// ))]
-// rx_drv_init!(Uart8, Dma1Ch6, DmaStCh5);
-// #[cfg(any(
-//     stm32_mcu = "stm32f405",
-//     stm32_mcu = "stm32f407",
-//     stm32_mcu = "stm32f417",
-//     stm32_mcu = "stm32f427",
-//     stm32_mcu = "stm32f437",
-//     stm32_mcu = "stm32f469",
-// ))]
-// tx_drv_init!(Uart8, Dma1Ch0, DmaStCh5);
+rx_drv_init!(Usart1, Dma2Ch2, DmaStCh4);
+rx_drv_init!(Usart1, Dma2Ch5, DmaStCh4);
+tx_drv_init!(Usart1, Dma2Ch7, DmaStCh4);
+rx_drv_init!(Usart2, Dma1Ch5, DmaStCh4);
+tx_drv_init!(Usart2, Dma1Ch6, DmaStCh4);
+rx_drv_init!(Usart3, Dma1Ch1, DmaStCh4);
+tx_drv_init!(Usart3, Dma1Ch3, DmaStCh4);
+tx_drv_init!(Usart3, Dma1Ch4, DmaStCh7);
+rx_drv_init!(Uart4, Dma1Ch2, DmaStCh4);
+tx_drv_init!(Uart4, Dma1Ch4, DmaStCh4);
+rx_drv_init!(Uart5, Dma1Ch0, DmaStCh4);
+tx_drv_init!(Uart5, Dma1Ch7, DmaStCh4);
+rx_drv_init!(Usart6, Dma2Ch1, DmaStCh5);
+rx_drv_init!(Usart6, Dma2Ch2, DmaStCh5);
+tx_drv_init!(Usart6, Dma2Ch6, DmaStCh5);
+tx_drv_init!(Usart6, Dma2Ch7, DmaStCh5);
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f469",
+))]
+rx_drv_init!(Uart7, Dma1Ch3, DmaStCh5);
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f469",
+))]
+tx_drv_init!(Uart7, Dma1Ch1, DmaStCh5);
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f469",
+))]
+rx_drv_init!(Uart8, Dma1Ch6, DmaStCh5);
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f417",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f437",
+    stm32_mcu = "stm32f469",
+))]
+tx_drv_init!(Uart8, Dma1Ch0, DmaStCh5);
 
 fn uart_brr<Clk: PClkToken>(
     clk: ConfiguredClk<Clk>,

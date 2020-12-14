@@ -34,27 +34,26 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     thr.dma_1_ch_6.enable_int();
 
     // Enable IO port clock.
-    let port_a = GpioHead::init(periph_gpio_a_head!(reg));
+    let port_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 
     // Configure UART GPIO pins.
-    let pin_tx = port_a.init_pin(periph_gpio_a2!(reg))
+    let pin_tx = GpioPin::new(&port_a, periph_gpio_a2!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_rx = port_a.init_pin(periph_gpio_a3!(reg))
+    let pin_rx = GpioPin::new(&port_a, periph_gpio_a3!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
 
     unsafe {
-        port_a.disable_clk();
+        port_a.disable_clock();
     }
 
     // Configure debug pins used for capturing logic analyzer shots.
-    let gpio_b = periph_gpio_b_head!(reg);
-    gpio_b.rcc_busenr_gpioen.set_bit(); // Enable IO port clock
+    let gpio_b = GpioHead::with_enabled_clock(periph_gpio_b_head!(reg));
 
-    let mut dbg1 = GpioPin::init(periph_gpio_b2!(reg))
+    let mut dbg1 = GpioPin::new(&gpio_b, periph_gpio_b2!(reg))
         .into_output()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
@@ -89,10 +88,13 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let tx_dma = dma1.init_ch(tx_setup);
 
     // Initialize uart.
+    let uart_pins = UartPins::new()
+        .tx(pin_tx)
+        .rx(pin_rx);
     let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
     let uart_drv = UartDrv::init(setup);
-    let mut rx_drv = uart_drv.init_rx(rx_dma, pin_rx);
-    let mut tx_drv = uart_drv.init_tx(tx_dma, pin_tx);
+    let mut rx_drv = uart_drv.init_rx(rx_dma, &uart_pins);
+    let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);
 
     // Enable receiver.
     let rx_ring_buf = vec![0; 10].into_boxed_slice();

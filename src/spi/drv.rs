@@ -1,5 +1,5 @@
+use self::config::*;
 use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
-use config::{BaudRate, ClkPol, FirstBit};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{

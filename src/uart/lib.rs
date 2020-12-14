@@ -4,6 +4,8 @@
 
 mod diverged;
 mod drv;
+mod mappings;
+mod pins;
 mod rx;
 mod tx;
 
