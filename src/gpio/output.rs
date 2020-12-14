@@ -13,13 +13,13 @@ impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, DontCare, DontCare> {
     pub fn into_pp(self) -> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
         self.pin.gpio_otyper_ot.clear_bit();
         self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
-        GpioPin::new(self.pin)
+        self.pin.into()
     }
 
     /// Let pin type be open-drain.
     pub fn into_od(self) -> GpioPin<Pin, OutputMode, OpenDrainType, DontCare> {
         self.pin.gpio_otyper_ot.set_bit();
-        GpioPin::new(self.pin)
+        self.pin.into()
     }
 }
 
@@ -27,19 +27,19 @@ impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
     /// No pull-up nor pull-down.
     pub fn into_nopull(self) -> GpioPin<Pin, OutputMode, PushPullType, NoPull> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b00);
-        GpioPin::new(self.pin)
+        self.pin.into()
     }
 
     /// Let pin be pulled-up.
     pub fn into_pullup(self) -> GpioPin<Pin, OutputMode, PushPullType, PullUp> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b01);
-        GpioPin::new(self.pin)
+        self.pin.into()
     }
 
     /// Let pin be pulled-down.
     pub fn into_pulldown(self) -> GpioPin<Pin, OutputMode, PushPullType, PullDown> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b10);
-        GpioPin::new(self.pin)
+        self.pin.into()
     }
 }
 
