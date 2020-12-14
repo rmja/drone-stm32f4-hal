@@ -67,15 +67,15 @@ pub mod config {
         VeryHigh,
     }
 
-    pub trait DmaChSetupInit<Dma: DmaMap, DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
+    pub trait NewDmaChSetup<Dma: DmaMap, DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
         /// Initialize a dma channel setup with medium priority level.
-        fn init(ch: DmaChPeriph<DmaCh>, int: DmaInt) -> DmaChSetup<Dma, DmaCh, DmaStCh, DmaInt>;
+        fn new(ch: DmaChPeriph<DmaCh>, int: DmaInt) -> DmaChSetup<Dma, DmaCh, DmaStCh, DmaInt>;
     }
 
     macro_rules! dma_setup {
         ($dma:ident, $ch:ident, $stch:ident) => {
             impl<DmaInt: IntToken>
-                DmaChSetupInit<
+                NewDmaChSetup<
                     drone_stm32_map::periph::dma::$dma,
                     drone_stm32_map::periph::dma::ch::$ch,
                     $stch,
@@ -88,7 +88,7 @@ pub mod config {
                     DmaInt,
                 >
             {
-                fn init(
+                fn new(
                     ch: DmaChPeriph<drone_stm32_map::periph::dma::ch::$ch>,
                     int: DmaInt,
                 ) -> DmaChSetup<
@@ -258,13 +258,13 @@ pub struct DmaChCfg<DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
 
 impl<Dma: DmaMap> DmaCfg<Dma> {
     /// Initialize a dma controller and enable its clock.
-    pub fn init(dma: DmaPeriph<Dma>) -> DmaCfg<Dma> {
+    pub fn with_enabled_clock(dma: DmaPeriph<Dma>) -> DmaCfg<Dma> {
         dma.rcc_busenr_dmaen.set_bit();
         Self { dma: PhantomData }
     }
 
     /// Initialize a dma channel.
-    pub fn init_ch<DmaCh: DmaChMap, StCh, DmaInt: IntToken>(
+    pub fn ch<DmaCh: DmaChMap, StCh, DmaInt: IntToken>(
         &self,
         setup: DmaChSetup<Dma, DmaCh, StCh, DmaInt>,
     ) -> DmaChCfg<DmaCh, StCh, DmaInt> {

@@ -13,7 +13,7 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
-    gpio::{prelude::*, GpioPin, GpioPinSpeed},
+    gpio::{prelude::*, GpioHead},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     spi::{chipctrl::*, config::*, prelude::*, SpiDrv},
 };
@@ -34,30 +34,30 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     thr.dma_2_ch_3.enable_int();
 
     // Enable IO port clock.
-    let gpio_a = periph_gpio_a_head!(reg);
-    let gpio_b = periph_gpio_b_head!(reg);
-    gpio_a.rcc_busenr_gpioen.set_bit();
-    gpio_b.rcc_busenr_gpioen.set_bit();
+    let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
+    let gpio_b = GpioHead::with_enabled_clock(periph_gpio_b_head!(reg));
 
     // Configure SPI GPIO pins.
-    let pin_clk = GpioPin::init(periph_gpio_a5!(reg))
+    let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_miso = GpioPin::init(periph_gpio_a6!(reg))
+    let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_mosi = GpioPin::init(periph_gpio_a7!(reg))
+    let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_cs = GpioPin::init(periph_gpio_b1!(reg))
+    let pin_cs = gpio_b.pin(periph_gpio_b1!(reg))
         .into_output()
         .with_speed(GpioPinSpeed::HighSpeed);
 
     // Disable IO port clock.
-    gpio_a.rcc_busenr_gpioen.clear_bit();
+    unsafe {
+        gpio_a.disable_clock();
+    }
 
     // Initialize clocks.
     let rcc_setup = RccSetup {
@@ -82,21 +82,16 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
     // Initialize dma.
-    let dma2 = DmaCfg::init(periph_dma2!(reg));
-    let miso_setup = DmaChSetup::init(periph_dma2_ch2!(reg), thr.dma_2_ch_2);
-    let miso_dma = dma2.init_ch(miso_setup);
-    let mosi_setup = DmaChSetup::init(periph_dma2_ch3!(reg), thr.dma_2_ch_3);
-    let mosi_dma = dma2.init_ch(mosi_setup);
+    let dma2 = DmaCfg::with_enabled_clock(periph_dma2!(reg));
+    let miso_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch2!(reg), thr.dma_2_ch_2));
+    let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma_2_ch_3));
 
     // Initialize spi.
-    let setup = SpiSetup::init(
+    let pins = SpiPins::new().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
+    let setup = SpiSetup::new(
         periph_spi1!(reg),
         thr.spi_1,
-        SpiPins {
-            pin_clk,
-            pin_miso,
-            pin_mosi,
-        },
+        pins,
         pclk2,
         BaudRate::Max(10_000_000),
     );

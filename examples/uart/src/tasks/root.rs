@@ -81,11 +81,9 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
     // Initialize dma.
-    let dma1 = DmaCfg::init(periph_dma1!(reg));
-    let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
-    let rx_dma = dma1.init_ch(rx_setup);
-    let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
-    let tx_dma = dma1.init_ch(tx_setup);
+    let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
+    let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma_1_ch_5));
+    let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma_1_ch_6));
 
     // Initialize uart.
     let uart_pins = UartPins::new()
