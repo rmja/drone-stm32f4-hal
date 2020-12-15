@@ -1,4 +1,6 @@
-mod abc;
+mod gpioa;
+mod gpiob;
+mod gpioc;
 
 #[cfg(any(
     stm32_mcu = "stm32f401",
@@ -12,7 +14,7 @@ mod abc;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod d;
+mod gpiod;
 
 #[cfg(any(
     stm32_mcu = "stm32f401",
@@ -26,7 +28,7 @@ mod d;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod e;
+mod gpioe;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -38,7 +40,7 @@ mod e;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod f;
+mod gpiof;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -50,18 +52,9 @@ mod f;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod g;
+mod gpiog;
 
-mod h;
-
-#[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
-))]
-mod i;
+mod gpioh;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -70,7 +63,7 @@ mod i;
     stm32_mcu = "stm32f429",
     stm32_mcu = "stm32f469",
 ))]
-mod j;
+mod gpioi;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -79,9 +72,20 @@ mod j;
     stm32_mcu = "stm32f429",
     stm32_mcu = "stm32f469",
 ))]
-mod k;
+mod gpioj;
 
-pub use self::abc::*;
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f469",
+))]
+mod gpiok;
+
+pub use self::gpioa::*;
+pub use self::gpiob::*;
+pub use self::gpioc::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f401",
@@ -95,7 +99,7 @@ pub use self::abc::*;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::d::*;
+pub use self::gpiod::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f401",
@@ -109,7 +113,7 @@ pub use self::d::*;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::e::*;
+pub use self::gpioe::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -121,7 +125,7 @@ pub use self::e::*;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::f::*;
+pub use self::gpiof::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -133,18 +137,9 @@ pub use self::f::*;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::g::*;
+pub use self::gpiog::*;
 
-pub use self::h::*;
-
-#[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
-))]
-pub use self::i::*;
+pub use self::gpioh::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -153,7 +148,7 @@ pub use self::i::*;
     stm32_mcu = "stm32f429",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::j::*;
+pub use self::gpioi::*;
 
 #[cfg(any(
     stm32_mcu = "stm32f405",
@@ -162,4 +157,13 @@ pub use self::j::*;
     stm32_mcu = "stm32f429",
     stm32_mcu = "stm32f469",
 ))]
-pub use self::k::*;
+pub use self::gpioj::*;
+
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f469",
+))]
+pub use self::gpiok::*;

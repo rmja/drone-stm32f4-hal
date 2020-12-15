@@ -1,0 +1,16 @@
+pin_init!(GpioCHead, GpioC0);
+pin_init!(GpioCHead, GpioC1);
+pin_init!(GpioCHead, GpioC2);
+pin_init!(GpioCHead, GpioC3);
+pin_init!(GpioCHead, GpioC4);
+pin_init!(GpioCHead, GpioC5);
+pin_init!(GpioCHead, GpioC6);
+pin_init!(GpioCHead, GpioC7);
+pin_init!(GpioCHead, GpioC8);
+pin_init!(GpioCHead, GpioC9);
+pin_init!(GpioCHead, GpioC10);
+pin_init!(GpioCHead, GpioC11);
+pin_init!(GpioCHead, GpioC12);
+pin_init!(GpioCHead, GpioC13);
+pin_init!(GpioCHead, GpioC14);
+pin_init!(GpioCHead, GpioC15);
