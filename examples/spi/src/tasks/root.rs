@@ -100,10 +100,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     let chip = SpiChip::init(pin_cs);
 
-    spi_master.select(&chip);
+    let selection = spi_master.select(&chip);
     let tx_buf = [1, 2, 3, 4].as_ref();
     spi_master.write(tx_buf).root_wait();
-    spi_master.deselect(&chip);
+    drop(selection);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();

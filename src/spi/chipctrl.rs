@@ -8,22 +8,46 @@ pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken
 }
 
 impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
+    /// Select the chip by setting the CS pin high.
+    fn select(&self) {
+        self.cs.set();
+    }
+
+    /// Deselect the chip by setting the CS pin low.
+    fn deselect(&self) {
+        self.cs.clear();
+    }
+}
+
+
+impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
+    /// Initialize a new `SpiChip` as deselected.
     pub fn init(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
-        // Set the CS pin to high.
-        cs.set();
-        Self { cs }
+        let chip = Self { cs };
+        chip.deselect();
+        chip
+    }
+}
+
+pub struct SelectGuard<'a, Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> {
+    chip: &'a SpiChip<Pin, PinType, PinPull>,
+}
+
+impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> Drop for SelectGuard<'_, Pin, PinType, PinPull> {
+    fn drop(&mut self) {
+        self.chip.deselect();
     }
 }
 
 pub trait ChipCtrl {
-    fn select<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
+    /// Select a specific chip and return a guard that deselects the chip when dropped.
+    fn select<'guard, Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
         &mut self,
-        chip: &SpiChip<CsPin, PinType, PinPull>,
-    );
-    fn deselect<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
-        &mut self,
-        chip: &SpiChip<CsPin, PinType, PinPull>,
-    );
+        chip: &'guard SpiChip<Pin, PinType, PinPull>,
+    ) -> SelectGuard<'guard, Pin, PinType, PinPull> {
+        chip.select();
+        SelectGuard { chip }
+    }
 }
 
 impl<
@@ -36,19 +60,4 @@ impl<
         DmaTxInt: IntToken,
     > ChipCtrl for SpiMasterDrv<'drv, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
-    fn select<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
-        &mut self,
-        chip: &SpiChip<CsPin, PinType, PinPull>,
-    ) {
-        // Clear the CS pin to low.
-        chip.cs.clear();
-    }
-
-    fn deselect<CsPin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken>(
-        &mut self,
-        chip: &SpiChip<CsPin, PinType, PinPull>,
-    ) {
-        // Set the CS pin to high.
-        chip.cs.set();
-    }
 }

@@ -6,7 +6,7 @@ use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
     spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
 };
-use drone_stm32f4_dma_drv::{DmaChCfg, DmaStCh0, DmaStCh3, DmaStChToken};
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 pub mod config {
