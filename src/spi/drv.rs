@@ -38,51 +38,7 @@ pub mod config {
             baud_rate: BaudRate,
         ) -> SpiSetup<Spi, SpiInt, Clk>;
     }
-
-    macro_rules! spi_setup {
-        ($spi:ident, $pclk:ident) => {
-            impl<SpiInt: IntToken> NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
-                for SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
-            {
-                fn new(
-                    spi: SpiPeriph<drone_stm32_map::periph::spi::$spi>,
-                    spi_int: SpiInt,
-                    _pins: SpiPins<drone_stm32_map::periph::spi::$spi, Defined, Defined, Defined>,
-                    clk: ConfiguredClk<$pclk>,
-                    baud_rate: BaudRate,
-                ) -> SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
-                    Self {
-                        spi,
-                        spi_int,
-                        clk,
-                        baud_rate,
-                        clk_pol: ClkPol::Low,
-                        first_bit: FirstBit::Msb,
-                    }
-                }
-            }
-        };
-    }
-    spi_setup!(Spi1, PClk2);
-    spi_setup!(Spi2, PClk2);
-    spi_setup!(Spi3, PClk1);
-    #[cfg(any(
-        stm32_mcu = "stm32f413",
-        stm32_mcu = "stm32f427",
-        stm32_mcu = "stm32f446",
-        stm32_mcu = "stm32f469",
-    ))]
-    spi_setup!(Spi4, PClk2);
-    #[cfg(any(
-        stm32_mcu = "stm32f410",
-        stm32_mcu = "stm32f413",
-        stm32_mcu = "stm32f427",
-        stm32_mcu = "stm32f469",
-    ))]
-    spi_setup!(Spi5, PClk2);
-    #[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
-    spi_setup!(Spi6, PClk2);
-
+    
     pub enum BaudRate {
         Max(u32),
         Custom(Prescaler),
@@ -112,6 +68,33 @@ pub mod config {
         Lsb,
     }
 }
+
+#[macro_export]
+macro_rules! spi_setup {
+    ($spi:ident, $pclk:ident) => {
+        impl<SpiInt: drone_cortexm::thr::IntToken> crate::drv::config::NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+            for crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+        {
+            fn new(
+                spi: drone_stm32_map::periph::spi::SpiPeriph<drone_stm32_map::periph::spi::$spi>,
+                spi_int: SpiInt,
+                _pins: crate::pins::SpiPins<drone_stm32_map::periph::spi::$spi, crate::pins::Defined, crate::pins::Defined, crate::pins::Defined>,
+                clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
+                baud_rate: crate::drv::config::BaudRate,
+            ) -> crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
+                Self {
+                    spi,
+                    spi_int,
+                    clk,
+                    baud_rate,
+                    clk_pol: crate::drv::config::ClkPol::Low,
+                    first_bit: crate::drv::config::FirstBit::Msb,
+                }
+            }
+        }
+    };
+}
+
 
 pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
     pub(crate) spi: SpiDiverged<Spi>,

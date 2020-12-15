@@ -1,7 +1,10 @@
 use crate::pins::{Defined, MisoPinExt, MosiPinExt, SckPinExt, SpiPins};
 use drone_stm32f4_dma_drv::DmaStCh0;
+use drone_stm32f4_rcc_drv::clktree::PClk2;
 use drone_stm32f4_gpio_drv::pin_impl;
 use drone_stm32f4_gpio_drv::prelude::*;
+
+spi_setup!(Spi2, PClk2);
 
 master_drv_init!(Spi2, Dma1Ch3, DmaStCh0, Dma1Ch4, DmaStCh0);
 
