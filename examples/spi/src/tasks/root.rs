@@ -104,9 +104,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         let selection = spi_master.select(&chip);
         let tx_buf = [1, 2, 3, 4].as_ref();
         let mut rx_buf = [0;4];
-        // spi_master.write(tx_buf).root_wait();
+        spi_master.write(tx_buf).root_wait();
+        spi_master.read(&mut rx_buf).root_wait();
         spi_master.xfer(tx_buf, &mut rx_buf).root_wait();
-        drop(selection);
+        drop(selection); // drop() deselects chip.
     }
 
     // Enter a sleep state on ISR exit.

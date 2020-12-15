@@ -114,7 +114,7 @@ pub mod config {
 }
 
 pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
-    spi: SpiDiverged<Spi>,
+    pub(crate) spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
     clk: PhantomData<Clk>,
 }
@@ -172,70 +172,15 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             fib::Yielded::<(), !>(())
         });
 
+        // Enable error interrupt
         self.spi.spi_cr2.store_reg(|r, v| {
-            // Enable error interrupt
             r.errie().set(v);
         });
-    }
-
-    pub(crate) fn init_master_impl<
-        DmaRxCh: DmaChMap,
-        DmaRxStCh: DmaStChToken,
-        DmaRxInt: IntToken,
-        DmaTxCh: DmaChMap,
-        DmaTxStCh: DmaStChToken,
-        DmaTxInt: IntToken,
-    >(
-        &self,
-        miso_cfg: DmaChCfg<DmaRxCh, DmaRxStCh, DmaRxInt>,
-        mosi_cfg: DmaChCfg<DmaTxCh, DmaTxStCh, DmaTxInt>,
-    ) -> SpiMasterDrv<Spi, SpiInt, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt> {
-        let DmaChCfg {
-            dma_ch: dma_rx,
-            dma_int: dma_rx_int,
-            dma_pl: dma_rx_pl,
-            ..
-        } = miso_cfg;
-        let DmaChCfg {
-            dma_ch: dma_tx,
-            dma_int: dma_tx_int,
-            dma_pl: dma_tx_pl,
-            ..
-        } = mosi_cfg;
-        let mut master = SpiMasterDrv {
-            spi: &self.spi,
-            spi_int: &self.spi_int,
-            dma_rx: dma_rx.into(),
-            dma_rx_int,
-            dma_tx: dma_tx.into(),
-            dma_tx_int,
-        };
-
-        self.spi.spi_cr1.modify_reg(|r, v| {
-            // Master configuration.
-            r.mstr().set(v);
-
-            // Use software slave management, i.e. the app controls slave selection.
-            // The hardware NSS pin is free for other use.
-            r.ssm().set(v);
-
-            // Internal slave select (required for master operation when software slave management (SSM) is being used).
-            r.ssi().set(v);
-
-            // Enable spi after being fully configured.
-            r.spe().set(v);
-        });
-
-        master.init_dma_rx(DmaRxStCh::num(), dma_rx_pl);
-        master.init_dma_tx(DmaTxStCh::num(), dma_tx_pl);
-
-        master
     }
 }
 
 pub trait SpiDrvInit<
     Spi: SpiMap + SpiCr1,
-    SpiInt: IntToken,
     DmaRxCh: DmaChMap,
     DmaRxStCh: DmaStChToken,
     DmaTxCh: DmaChMap,
@@ -246,7 +191,7 @@ pub trait SpiDrvInit<
         &self,
         miso_cfg: DmaChCfg<DmaRxCh, DmaRxStCh, DmaRxInt>,
         mosi_cfg: DmaChCfg<DmaTxCh, DmaTxStCh, DmaTxInt>,
-    ) -> SpiMasterDrv<Spi, SpiInt, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt>;
+    ) -> SpiMasterDrv<Spi, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt>;
 }
 
 #[macro_export]
@@ -255,7 +200,6 @@ macro_rules! master_drv_init {
         impl<SpiInt: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken>
             crate::drv::SpiDrvInit<
                 drone_stm32_map::periph::spi::$spi,
-                SpiInt,
                 drone_stm32_map::periph::dma::ch::$miso_ch,
                 $miso_stch,
                 drone_stm32_map::periph::dma::ch::$mosi_ch,
@@ -276,13 +220,12 @@ macro_rules! master_drv_init {
                 >,
             ) -> crate::master::SpiMasterDrv<
                 drone_stm32_map::periph::spi::$spi,
-                SpiInt,
                 drone_stm32_map::periph::dma::ch::$miso_ch,
                 DmaRxInt,
                 drone_stm32_map::periph::dma::ch::$mosi_ch,
                 DmaTxInt,
             > {
-                self.init_master_impl(miso_cfg, mosi_cfg)
+                crate::master::SpiMasterDrv::init(&self.spi, miso_cfg, mosi_cfg)
             }
         }
     };
@@ -333,22 +276,5 @@ fn handle_spi_err<Spi: SpiMap>(val: &Spi::SpiSrVal, sr: Spi::CSpiSr) {
     }
     if sr.udr().read(&val) {
         panic!("Underrun error");
-    }
-}
-
-pub(crate) fn handle_dma_err<T: DmaChMap>(
-    val: &T::DmaIsrVal,
-    dma_isr_dmeif: T::CDmaIsrDmeif,
-    dma_isr_feif: T::CDmaIsrFeif,
-    dma_isr_teif: T::CDmaIsrTeif,
-) {
-    if dma_isr_teif.read(&val) {
-        panic!("Transfer error");
-    }
-    if dma_isr_dmeif.read(&val) {
-        panic!("Direct mode error");
-    }
-    if dma_isr_feif.read(&val) {
-        panic!("FIFO error");
     }
 }

@@ -1,21 +1,20 @@
 use crate::diverged::{DmaChDiverged, SpiDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::ch::{traits::*, DmaChMap},
+    dma::ch::DmaChMap,
     spi::{traits::*, SpiMap, SpiCr1},
 };
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
 pub struct SpiMasterDrv<
     'drv,
     Spi: SpiMap + SpiCr1,
-    SpiInt: IntToken,
     DmaRx: DmaChMap,
     DmaRxInt: IntToken,
     DmaTx: DmaChMap,
     DmaTxInt: IntToken,
 > {
     pub(crate) spi: &'drv SpiDiverged<Spi>,
-    pub(crate) spi_int: &'drv SpiInt,
     pub(crate) dma_rx: DmaChDiverged<DmaRx>,
     pub(crate) dma_rx_int: DmaRxInt,
     pub(crate) dma_tx: DmaChDiverged<DmaTx>,
@@ -25,75 +24,65 @@ pub struct SpiMasterDrv<
 impl<
         'drv,
         Spi: SpiMap + SpiCr1,
-        SpiInt: IntToken,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
         DmaTx: DmaChMap,
         DmaTxInt: IntToken,
-    > SpiMasterDrv<'drv, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+    > SpiMasterDrv<'drv, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
-    pub(crate) fn init_dma_rx(&mut self, chsel: u32, priority: u32) {
-        let address = self.spi.spi_dr.as_mut_ptr(); // 8-bit data register
-        self.dma_rx.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma_rx.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, chsel); // channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            // r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.dir().write(v, 0b00); // peripheral-to-memory
-            r.tcie().set(v); // transfer complete interrupt enable
-            r.teie().set(v); // transfer error interrupt enable
+    pub(crate) fn init<
+        DmaRxStCh: DmaStChToken,
+        DmaTxStCh: DmaStChToken,
+    >(
+        spi: &'drv SpiDiverged<Spi>,
+        miso_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
+        mosi_cfg: DmaChCfg<DmaTx, DmaTxStCh, DmaTxInt>,
+    ) -> Self {
+        let DmaChCfg {
+            dma_ch: dma_rx,
+            dma_int: dma_rx_int,
+            dma_pl: dma_rx_pl,
+            ..
+        } = miso_cfg;
+        let DmaChCfg {
+            dma_ch: dma_tx,
+            dma_int: dma_tx_int,
+            dma_pl: dma_tx_pl,
+            ..
+        } = mosi_cfg;
+        let master = Self {
+            spi,
+            dma_rx: dma_rx.into(),
+            dma_rx_int,
+            dma_tx: dma_tx.into(),
+            dma_tx_int,
+        };
+
+        spi.spi_cr1.modify_reg(|r, v| {
+            // Master configuration.
+            r.mstr().set(v);
+
+            // Use software slave management, i.e. the app controls slave selection.
+            // The hardware NSS pin is free for other use.
+            r.ssm().set(v);
+
+            // Internal slave select (required for master operation when software slave management (SSM) is being used).
+            r.ssi().set(v);
+
+            // Enable spi after being fully configured.
+            r.spe().set(v);
         });
 
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma_rx.dma_isr_dmeif;
-        let dma_isr_feif = self.dma_rx.dma_isr_feif;
-        let dma_isr_teif = self.dma_rx.dma_isr_teif;
-        self.dma_rx_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            crate::drv::handle_dma_err::<DmaRx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
+        master.dma_rx.init_dma_rx(spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
+        master.dma_rx.panic_on_err(master.dma_rx_int);
+
+        master.dma_tx.init_dma_tx(spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
+        master.dma_tx.panic_on_err(master.dma_tx_int);
+
+        master
     }
 
-    pub(crate) fn init_dma_tx(&mut self, chsel: u32, priority: u32) {
-        let address = self.spi.spi_dr.as_mut_ptr(); // 8-bit data register
-        self.dma_tx.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma_tx.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, chsel); // channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            // r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.circ().clear(v); // normal mode.
-            r.dir().write(v, 0b01); // memory-to-peripheral
-            r.tcie().clear(v); // transfer complete interrupt disable
-            r.teie().set(v); // transfer error interrupt enable
-        });
-
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma_tx.dma_isr_dmeif;
-        let dma_isr_feif = self.dma_tx.dma_isr_feif;
-        let dma_isr_teif = self.dma_tx.dma_isr_teif;
-        self.dma_tx_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            crate::drv::handle_dma_err::<DmaTx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
-    }
-
-    /// Send a buffer to the currently selected slave.
+    /// Send to the currently selected slave.
     pub async fn write(&mut self, buf: &[u8]) {
         if buf.is_empty() {
             return;
@@ -103,14 +92,14 @@ impl<
 
         unsafe {
             // Setup DMA transfer parameters.
-            let void_buf = [0u8];
-            setup_dma_void(&mut self.dma_rx, &void_buf, buf.len());
-            setup_dma(&mut self.dma_tx, buf);
+            self.dma_rx.setup_dummy_stream(buf.len());
+            self.dma_tx.setup_stream(buf);
 
             self.xfer_impl().await;
         }
     }
 
+    /// Read from the currently selected slave.
     pub async fn read(&mut self, buf: &mut [u8]) {
         if buf.is_empty() {
             return;
@@ -119,9 +108,9 @@ impl<
         self.wait_for_idle();
 
         unsafe {
-            let void_buf = [0u8];
-            setup_dma(&mut self.dma_rx, buf);
-            setup_dma_void(&mut self.dma_tx, &void_buf, buf.len());
+            self.dma_rx.setup_stream(buf);
+            self.dma_tx.setup_dummy_stream(buf.len());
+
             self.xfer_impl().await;
         }
     }
@@ -137,8 +126,8 @@ impl<
         self.wait_for_idle();
 
         unsafe {
-            setup_dma(&mut self.dma_rx, rx_buf);
-            setup_dma(&mut self.dma_tx, tx_buf);
+            self.dma_rx.setup_stream(rx_buf);
+            self.dma_tx.setup_stream(tx_buf);
 
             self.xfer_impl().await;
         }
@@ -200,12 +189,11 @@ impl<
 
 impl<
     Spi: SpiMap + SpiCr1,
-    SpiInt: IntToken,
     DmaRx: DmaChMap,
     DmaRxInt: IntToken,
     DmaTx: DmaChMap,
     DmaTxInt: IntToken,
-> Drop for SpiMasterDrv<'_, Spi, SpiInt, DmaRx, DmaRxInt, DmaTx, DmaTxInt> {
+> Drop for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt> {
     fn drop(&mut self) {
         self.wait_for_idle();
 
@@ -214,48 +202,4 @@ impl<
             r.spe().clear(v);
         });
     }
-}
-
-unsafe fn setup_dma<Dma: DmaChMap>(dma: &mut DmaChDiverged<Dma>, buf: &[u8]) {
-    dma.dma_ccr.modify_reg(|r, v| {
-        r.minc().set(v); // memory address pointer is incremented after each data transfer
-    });
-
-    // Set buffer memory addres.
-    dma.dma_cm0ar.store_reg(|r, v| {
-        r.m0a().write(v, buf.as_ptr() as u32);
-    });
-
-    // Set number of bytes to transfer.
-    dma.dma_cndtr.store_reg(|r, v| {
-        r.ndt().write(v, buf.len() as u32);
-    });
-
-    // Clear transfer complete interrupt flag.
-    dma.dma_ifcr_ctcif.set_bit();
-
-    // Enable stream.
-    dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
-}
-
-unsafe fn setup_dma_void<Dma: DmaChMap>(dma: &mut DmaChDiverged<Dma>, void_buf: &[u8; 1], len: usize) {
-    dma.dma_ccr.modify_reg(|r, v| {
-        r.minc().clear(v); // memory address pointer is fixed
-    });
-
-    // Set buffer memory addres.
-    dma.dma_cm0ar.store_reg(|r, v| {
-        r.m0a().write(v, void_buf.as_ptr() as u32);
-    });
-
-    // Set number of bytes to transfer.
-    dma.dma_cndtr.store_reg(|r, v| {
-        r.ndt().write(v, len as u32);
-    });
-
-    // Clear transfer complete interrupt flag.
-    dma.dma_ifcr_ctcif.set_bit();
-
-    // Enable stream.
-    dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
 }

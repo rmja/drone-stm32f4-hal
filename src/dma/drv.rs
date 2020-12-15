@@ -245,17 +245,6 @@ pub struct DmaCfg<Dma: DmaMap> {
     dma: PhantomData<Dma>,
 }
 
-/// Dma channel configuration.
-pub struct DmaChCfg<DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
-    stch: PhantomData<DmaStCh>,
-    /// Dma channel peripheral.
-    pub dma_ch: DmaChPeriph<DmaCh>,
-    /// Dma global interrupt.
-    pub dma_int: DmaInt,
-    /// Dma priority level.
-    pub dma_pl: u32,
-}
-
 impl<Dma: DmaMap> DmaCfg<Dma> {
     /// Initialize a dma controller and enable its clock.
     pub fn with_enabled_clock(dma: DmaPeriph<Dma>) -> DmaCfg<Dma> {
@@ -287,4 +276,15 @@ impl<Dma: DmaMap> DmaCfg<Dma> {
             dma_pl: pl,
         }
     }
+}
+
+/// Dma channel configuration.
+pub struct DmaChCfg<DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
+    stch: PhantomData<DmaStCh>,
+    /// Dma channel peripheral.
+    pub dma_ch: DmaChPeriph<DmaCh>,
+    /// Dma global interrupt.
+    pub dma_int: DmaInt,
+    /// Dma priority level.
+    pub dma_pl: u32,
 }
