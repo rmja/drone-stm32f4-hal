@@ -13,7 +13,7 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
-    gpio::{GpioHead, GpioPin, GpioPinSpeed, prelude::*},
+    gpio::{GpioHead, GpioPinSpeed, prelude::*},
     rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
     uart::{config::*, prelude::*, UartDrv},
 };

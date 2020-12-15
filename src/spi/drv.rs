@@ -131,6 +131,42 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         drv
     }
 
+    fn init_spi(
+        &mut self,
+        clk: ConfiguredClk<Clk>,
+        baud_rate: BaudRate,
+        clk_pol: ClkPol,
+        first_bit: FirstBit,
+    ) {
+        use self::config::*;
+
+        // Enable spi clock.
+        self.spi.rcc_busenr_spien.set_bit();
+
+        // Configure spi.
+        self.spi.spi_cr1.store_reg(|r, v| {
+            // Do not enable spi before it is fully configured.
+
+            if first_bit == FirstBit::Lsb {
+                r.lsbfirst().set(v);
+            }
+
+            // Baud rate control.
+            r.br().write(v, spi_br(clk, baud_rate));
+
+            // Clock polarity.
+            if clk_pol == ClkPol::High {
+                r.cpol().set(v);
+            }
+
+            // Clock phase.
+            // TODO: Expose configuration option?
+            r.cpha().clear(v);
+        });
+    }
+
+    
+
     fn init_master_impl<
         DmaRxCh: DmaChMap,
         DmaRxStCh: DmaStChToken,
@@ -164,49 +200,12 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             dma_tx_int,
         };
 
-        master.init_dma_rx(DmaRxStCh::num(), dma_rx_pl);
-        master.init_dma_tx(DmaTxStCh::num(), dma_tx_pl);
-
-        master
-    }
-
-    fn init_spi(
-        &mut self,
-        clk: ConfiguredClk<Clk>,
-        baud_rate: BaudRate,
-        clk_pol: ClkPol,
-        first_bit: FirstBit,
-    ) {
-        use self::config::*;
-
-        // Enable spi clock.
-        self.spi.rcc_busenr_spien.set_bit();
-
-        // Configure spi.
-        self.spi.spi_cr1.store_reg(|r, v| {
-            // Do not enable spi before it is fully configured.
-
-            // Use software slave management, i.e. the app controls slave selection.
-            r.ssm().set(v);
-
-            if first_bit == FirstBit::Lsb {
-                r.lsbfirst().set(v);
-            }
-
-            // Baud rate control.
-            r.br().write(v, spi_br(clk, baud_rate));
-
-            // Master configuration.
-            r.mstr().set(v);
-
-            // Clock polarity.
-            if clk_pol == ClkPol::High {
-                r.cpol().set(v);
-            }
-
-            // Clock phase.
-            // TODO: Expose configuration option?
-            r.cpha().clear(v);
+        // Attach spi error handler
+        let sr = self.spi.spi_sr;
+        self.spi_int.add_fn(move || {
+            let val = sr.load_val();
+            handle_spi_err::<Spi>(&val, sr);
+            fib::Yielded::<(), !>(())
         });
 
         self.spi.spi_cr2.store_reg(|r, v| {
@@ -215,17 +214,24 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         });
 
         self.spi.spi_cr1.modify_reg(|r, v| {
+            // Master configuration.
+            r.mstr().set(v);
+
+            // Use software slave management, i.e. the app controls slave selection.
+            // The hardware NSS pin is free for other use.
+            r.ssm().set(v);
+
+            // Internal slave select (required for master operation when software slave management (SSM) is being used).
+            r.ssi().set(v);
+
             // Enable spi after being fully configured.
             r.spe().set(v);
         });
 
-        // Attach spi error handler
-        let sr = self.spi.spi_sr;
-        self.spi_int.add_fn(move || {
-            let val = sr.load_val();
-            handle_spi_err::<Spi>(&val, sr);
-            fib::Yielded::<(), !>(())
-        });
+        master.init_dma_rx(DmaRxStCh::num(), dma_rx_pl);
+        master.init_dma_tx(DmaTxStCh::num(), dma_tx_pl);
+
+        master
     }
 }
 
