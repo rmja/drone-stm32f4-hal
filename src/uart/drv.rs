@@ -216,7 +216,7 @@ pub trait UartRxDrvInit<
         &self,
         rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
         rx_pins: &UartPins<Uart, Defined, Tx>,
-    ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt>;
+    ) -> UartRxDrv<Uart, UartInt, DmaCh>;
 }
 
 pub trait UartTxDrvInit<
@@ -247,15 +247,14 @@ macro_rules! rx_drv_init {
                 Clk,
             > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
-            fn init_rx<DmaInt: drone_cortexm::thr::IntToken, Tx>(
+            fn init_rx<DmaRxInt: drone_cortexm::thr::IntToken, Tx>(
                 &self,
-                rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
+                rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaRxInt>,
                 _rx_pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Defined, Tx>,
             ) -> crate::rx::UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
-                DmaInt,
             > {
                 crate::rx::UartRxDrv::init(&self.uart, &self.uart_int, rx_cfg)
             }

@@ -7,15 +7,14 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
-pub struct UartRxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
+pub struct UartRxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> {
     pub(crate) uart: &'drv UartDiverged<Uart>,
     pub(crate) uart_int: &'drv UartInt,
     pub(crate) dma: DmaChDiverged<DmaRx>,
-    pub(crate) dma_int: DmaRxInt,
 }
 
-pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
-    drv: &'sess UartRxDrv<'sess, Uart, UartInt, DmaRx, DmaRxInt>,
+pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> {
+    drv: &'sess UartRxDrv<'sess, Uart, UartInt, DmaRx>,
     ring_buf: Box<[u8]>,
     first: usize,
     last_read_wrapped: bool,
@@ -26,10 +25,10 @@ pub enum RxError {
     Overflow,
 }
 
-impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
-    UartRxDrv<'drv, Uart, UartInt, DmaRx, DmaRxInt>
+impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
+    UartRxDrv<'drv, Uart, UartInt, DmaRx>
 {
-    pub(crate) fn init<DmaRxStCh: DmaStChToken>(
+    pub(crate) fn init<DmaRxStCh: DmaStChToken, DmaRxInt: IntToken>(
         uart: &'drv UartDiverged<Uart>,
         uart_int: &'drv UartInt,
         rx_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
@@ -44,7 +43,6 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
             uart,
             uart_int,
             dma: dma_ch.into(),
-            dma_int,
         };
         rx.dma.init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_pl);
         rx.dma.panic_on_err(dma_int);
@@ -54,7 +52,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
     /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
     /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the reception.
     /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
-    pub fn start(&mut self, ring_buf: Box<[u8]>) -> RxGuard<Uart, UartInt, DmaRx, DmaRxInt> {
+    pub fn start(&mut self, ring_buf: Box<[u8]>) -> RxGuard<Uart, UartInt, DmaRx> {
         let mut rx = RxGuard {
             drv: self,
             ring_buf,
@@ -66,8 +64,8 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken
     }
 }
 
-impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
-    RxGuard<'sess, Uart, UartInt, DmaRx, DmaRxInt>
+impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
+    RxGuard<'sess, Uart, UartInt, DmaRx>
 {
     /// Read from the rx ring buffer into `buf`.
     /// Wait for any receiption if no bytes are readily awailable in the ring buffer.
@@ -263,8 +261,8 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
     }
 }
 
-impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> Drop
-    for RxGuard<'_, Uart, UartInt, DmaRx, DmaRxInt>
+impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> Drop
+    for RxGuard<'_, Uart, UartInt, DmaRx>
 {
     /// Stop the receiver.
     fn drop(&mut self) {
