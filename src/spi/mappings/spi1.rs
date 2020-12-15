@@ -1,6 +1,12 @@
 use crate::pins::{Defined, MisoPinExt, MosiPinExt, SckPinExt, SpiPins};
+use drone_stm32f4_dma_drv::DmaStCh3;
 use drone_stm32f4_gpio_drv::pin_impl;
 use drone_stm32f4_gpio_drv::prelude::*;
+
+master_drv_init!(Spi1, Dma2Ch0, DmaStCh3, Dma2Ch3, DmaStCh3);
+master_drv_init!(Spi1, Dma2Ch0, DmaStCh3, Dma2Ch5, DmaStCh3);
+master_drv_init!(Spi1, Dma2Ch2, DmaStCh3, Dma2Ch3, DmaStCh3);
+master_drv_init!(Spi1, Dma2Ch2, DmaStCh3, Dma2Ch5, DmaStCh3);
 
 pin_impl!(SckPinExt for SpiPins<drone_stm32_map::periph::spi::Spi1, ...>.sck, GpioA5, AlternateMode<PinAf5>; Undefined, Miso, Mosi => Defined, Miso, Mosi);
 pin_impl!(SckPinExt for SpiPins<drone_stm32_map::periph::spi::Spi1, ...>.sck, GpioB3, AlternateMode<PinAf5>; Undefined, Miso, Mosi => Defined, Miso, Mosi);

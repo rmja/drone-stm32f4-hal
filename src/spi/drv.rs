@@ -165,9 +165,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
         });
     }
 
-    
-
-    fn init_master_impl<
+    pub(crate) fn init_master_impl<
         DmaRxCh: DmaChMap,
         DmaRxStCh: DmaStChToken,
         DmaRxInt: IntToken,
@@ -251,31 +249,32 @@ pub trait SpiDrvInit<
     ) -> SpiMasterDrv<Spi, SpiInt, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt>;
 }
 
+#[macro_export]
 macro_rules! master_drv_init {
     ($spi:ident, $miso_ch:ident, $miso_stch:ident, $mosi_ch:ident, $mosi_stch:ident) => {
-        impl<SpiInt: IntToken, Clk: PClkToken>
-            SpiDrvInit<
+        impl<SpiInt: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken>
+            crate::drv::SpiDrvInit<
                 drone_stm32_map::periph::spi::$spi,
                 SpiInt,
                 drone_stm32_map::periph::dma::ch::$miso_ch,
                 $miso_stch,
                 drone_stm32_map::periph::dma::ch::$mosi_ch,
                 $mosi_stch,
-            > for SpiDrv<drone_stm32_map::periph::spi::$spi, SpiInt, Clk>
+            > for crate::drv::SpiDrv<drone_stm32_map::periph::spi::$spi, SpiInt, Clk>
         {
-            fn init_master<DmaRxInt: IntToken, DmaTxInt: IntToken>(
+            fn init_master<DmaRxInt: drone_cortexm::thr::IntToken, DmaTxInt: drone_cortexm::thr::IntToken>(
                 &self,
-                miso_cfg: DmaChCfg<
+                miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     drone_stm32_map::periph::dma::ch::$miso_ch,
                     $miso_stch,
                     DmaRxInt,
                 >,
-                mosi_cfg: DmaChCfg<
+                mosi_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     drone_stm32_map::periph::dma::ch::$mosi_ch,
                     $mosi_stch,
                     DmaTxInt,
                 >,
-            ) -> SpiMasterDrv<
+            ) -> crate::master::SpiMasterDrv<
                 drone_stm32_map::periph::spi::$spi,
                 SpiInt,
                 drone_stm32_map::periph::dma::ch::$miso_ch,
@@ -288,75 +287,6 @@ macro_rules! master_drv_init {
         }
     };
 }
-
-// This configuration reflect the dma mappings in table 42 and 43 in PM0090.
-master_drv_init!(Spi1, Dma2Ch0, DmaStCh3, Dma2Ch3, DmaStCh3);
-master_drv_init!(Spi1, Dma2Ch0, DmaStCh3, Dma2Ch5, DmaStCh3);
-master_drv_init!(Spi1, Dma2Ch2, DmaStCh3, Dma2Ch3, DmaStCh3);
-master_drv_init!(Spi1, Dma2Ch2, DmaStCh3, Dma2Ch5, DmaStCh3);
-master_drv_init!(Spi2, Dma1Ch3, DmaStCh0, Dma1Ch4, DmaStCh0);
-master_drv_init!(Spi3, Dma1Ch0, DmaStCh0, Dma1Ch5, DmaStCh0);
-master_drv_init!(Spi3, Dma1Ch0, DmaStCh0, Dma1Ch7, DmaStCh0);
-master_drv_init!(Spi3, Dma1Ch2, DmaStCh0, Dma1Ch5, DmaStCh0);
-master_drv_init!(Spi3, Dma1Ch2, DmaStCh0, Dma1Ch7, DmaStCh0);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi4, Dma2Ch0, DmaStCh4, Dma2Ch1, DmaStCh4);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi4, Dma2Ch0, DmaStCh4, Dma2Ch4, DmaStCh5);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi4, Dma2Ch3, DmaStCh5, Dma2Ch1, DmaStCh4);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi4, Dma2Ch3, DmaStCh5, Dma2Ch4, DmaStCh5);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi5, Dma2Ch3, DmaStCh2, Dma2Ch4, DmaStCh2);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi5, Dma2Ch3, DmaStCh2, Dma2Ch6, DmaStCh7);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi5, Dma2Ch5, DmaStCh7, Dma2Ch4, DmaStCh2);
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-master_drv_init!(Spi5, Dma2Ch5, DmaStCh7, Dma2Ch6, DmaStCh7);
-#[cfg(any(stm32_mcu = "stm32f427", stm32_mcu = "stm32f469",))]
-master_drv_init!(Spi6, Dma2Ch6, DmaStCh1, Dma2Ch5, DmaStCh1);
 
 fn spi_br<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
     use config::*;

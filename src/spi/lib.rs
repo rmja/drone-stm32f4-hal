@@ -4,6 +4,7 @@
 
 pub mod chipctrl;
 mod diverged;
+#[macro_use]
 mod drv;
 mod mappings;
 mod master;
