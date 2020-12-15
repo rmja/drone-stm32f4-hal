@@ -1,31 +1,4 @@
-#[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
 mod usart1;
-
-#[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
 mod usart2;
 
 #[cfg(any(
@@ -115,34 +88,7 @@ mod uart9;
 ))]
 mod uart10;
 
-#[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
 pub use self::usart1::*;
-
-#[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
 pub use self::usart2::*;
 
 #[cfg(any(
