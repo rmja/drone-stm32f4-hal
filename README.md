@@ -142,7 +142,87 @@ the actual stream channel is not explicitly specified,
 as this information flows back into the type of `rx_dma` when the variable is actually used.
 
 ## SPI
-There are currently a few bugs. The driver is not complete.
+The spi driver provides future based spi transfers using dma.
+There is a working [Drone OS] example application in the [examples folder](./examples/spi/).
+The driver is initially setup like the following:
+
+```rust
+thr.spi_1.enable_int();
+thr.dma_2_ch_2.enable_int();
+thr.dma_2_ch_3.enable_int();
+
+let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
+let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
+let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
+let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
+  .into_af()
+  .into_pp()
+  .with_speed(GpioPinSpeed::VeryHighSpeed);
+
+let dma2 = DmaCfg::with_enabled_clock(periph_dma2!(reg));
+let miso_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch2!(reg), thr.dma_2_ch_2));
+let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma_2_ch_3));
+
+let pins = SpiPins::new().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
+let setup = SpiSetup::new(
+    periph_spi1!(reg),
+    thr.spi_1,
+    pins,
+    pclk2,
+    BaudRate::Max(7_700_000),
+);
+let spi_drv = SpiDrv::init(setup);
+let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
+```
+
+The spi interrupt is first enabled in the nvic before the spi pins are configured.
+The base driver does not handle chip selection, and it is up to the user to correctly select the desired chip before transferring on the spi bus (see below).
+The dma and its channels matching the used spi peripheral are then configured.
+A `SpiSetup` structure containing all the parameters for the driver are created with the spi pins to verify that the pins actually map to the spi peripheral. The peripheral clock is also specified together witht the maximum allowed baud rate.
+
+### Chip Selection
+Chip selection is not an integrated part of the spi driver, but a small chip controller shim is included in the driver.
+It handles simple select/deselect like the following:
+
+```rust
+use drone_stm32f4_hal::spi::chipctrl::*;
+
+let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
+  .into_output()
+  .with_speed(GpioPinSpeed::HighSpeed);
+
+let chip = SpiChip::init(pin_cs);
+let selection = spi_master.select(&chip);
+// Do some communication...
+drop(selection); // drop() deselects chip.
+```
+
+It extends the spi master driver with the `select()` method which returns a guard that deselects the chip when dropped.
+
+### Communication
+
+The communication can be done using the three methods `write()`, `read()`, and `xfer()`:
+
+```rust
+let selection = spi_master.select(&chip);
+let tx_buf = [1, 2, 3, 4].as_ref();
+let mut rx_buf = [0;4];
+spi_master.write(tx_buf).root_wait();
+spi_master.read(&mut rx_buf).root_wait();
+spi_master.xfer(tx_buf, &mut rx_buf).root_wait();
+drop(selection); // drop() deselects chip.
+```
+
+The `write()` function simply writes the buffer and discards all bytes received during the write,
+the `read()` method emits `0` on the spi bus to "clock out" the selected chip. The received bytes are written to the provided buffer.
+`xfer()` performs a full duplex transfer (the two buffer slices must have the same size). 
+
 
 ## UART
 The uart driver uses any of the stm32 uart periperals together with their corresponding dma rx/tx streams to achieve asynchronous read and write operations with minimal cpu overhead.
@@ -152,6 +232,8 @@ The driver is initially setup like the following:
 
 ```rust
 thr.usart_2.enable_int();
+thr.dma_1_ch_5.enable_int();
+thr.dma_1_ch_6.enable_int();
 
 let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 let pin_tx = gpio_a.pin(periph_gpio_a2!(reg))
