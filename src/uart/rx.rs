@@ -5,6 +5,7 @@ use drone_stm32_map::periph::{
     dma::ch::{traits::*, DmaChMap},
     uart::{traits::*, UartMap},
 };
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
 pub struct UartRxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken> {
     pub(crate) uart: &'drv UartDiverged<Uart>,
@@ -28,40 +29,28 @@ pub enum RxError {
 impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToken>
     UartRxDrv<'drv, Uart, UartInt, DmaRx, DmaRxInt>
 {
-    pub(crate) fn init_dma_rx(&mut self, chsel: u32, priority: u32) {
-        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
-        self.dma.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, chsel); // stream channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.circ().set(v); // circular mode.
-            r.dir().write(v, 0b00); // peripheral-to-memory
-            r.tcie().clear(v); // transfer complete interrupt disable
-            r.teie().set(v); // transfer error interrupt enable
-        });
-        self.dma.dma_cfcr.store_reg(|r, v| {
-            r.dmdis().clear(v); // use direct mode instead of fifo
-        });
-
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma.dma_isr_dmeif;
-        let dma_isr_feif = self.dma.dma_isr_feif;
-        let dma_isr_teif = self.dma.dma_isr_teif;
-        self.dma_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            crate::drv::handle_dma_err::<DmaRx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
+    pub(crate) fn init<DmaRxStCh: DmaStChToken>(
+        uart: &'drv UartDiverged<Uart>,
+        uart_int: &'drv UartInt,
+        rx_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
+    ) -> Self {
+        let DmaChCfg {
+            dma_ch,
+            dma_int,
+            dma_pl,
+            ..
+        } = rx_cfg;
+        let rx = Self {
+            uart,
+            uart_int,
+            dma: dma_ch.into(),
+            dma_int,
+        };
+        rx.dma.init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_pl);
+        rx.dma.panic_on_err(dma_int);
+        rx
     }
-
+    
     /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
     /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the reception.
     /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
@@ -202,13 +191,10 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
     fn start(&mut self) {
         let drv = self.drv;
 
-        // 1. Configure the dma stream.
+        // 1-2. Configure the dma stream and enable it.
         unsafe {
-            self.setup_dma();
+            drv.dma.setup_stream(self.ring_buf.as_ref());
         }
-
-        // 2. Enable the dma stream.
-        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
 
         // 3a. Configure uart to receive on DMA channel.
         drv.uart.uart_cr3.modify_reg(|r, v| {
@@ -244,23 +230,6 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap, DmaRxInt: IntToke
         drv.uart.uart_cr3.modify_reg(|r, v| {
             r.dmar().clear(v);
         });
-    }
-
-    unsafe fn setup_dma(&mut self) {
-        let drv = self.drv;
-
-        // Set buffer memory addres.
-        drv.dma.dma_cm0ar.store_reg(|r, v| {
-            r.m0a().write(v, self.ring_buf.as_ptr() as u32);
-        });
-
-        // Set number of bytes to transfer.
-        drv.dma.dma_cndtr.store_reg(|r, v| {
-            r.ndt().write(v, self.ring_buf.len() as u32);
-        });
-
-        // Clear transfer completed interrupt flag.
-        drv.dma.dma_ifcr_ctcif.set_bit();
     }
 
     async fn any_rx_activity(&mut self, old_ndtr: usize) {

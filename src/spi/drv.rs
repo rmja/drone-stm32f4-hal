@@ -95,7 +95,6 @@ macro_rules! spi_setup {
     };
 }
 
-
 pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
     pub(crate) spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
@@ -147,7 +146,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             // Do not enable spi before it is fully configured.
         });
 
-        // Attach spi error handler
+        // Attach spi error handler.
         let sr = self.spi.spi_sr;
         self.spi_int.add_fn(move || {
             let val = sr.load_val();
@@ -155,7 +154,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             fib::Yielded::<(), !>(())
         });
 
-        // Enable error interrupt
+        // Enable error interrupt.
         self.spi.spi_cr2.store_reg(|r, v| {
             r.errie().set(v);
         });

@@ -161,11 +161,11 @@ impl<DmaCh: DmaChMap> From<DmaChPeriph<DmaCh>> for DmaChDiverged<DmaCh> {
     }
 }
 
-pub(crate) fn handle_dma_err<T: DmaChMap>(
-    val: &T::DmaIsrVal,
-    dma_isr_dmeif: T::CDmaIsrDmeif,
-    dma_isr_feif: T::CDmaIsrFeif,
-    dma_isr_teif: T::CDmaIsrTeif,
+fn handle_dma_err<DmaCh: DmaChMap>(
+    val: &DmaCh::DmaIsrVal,
+    dma_isr_dmeif: DmaCh::CDmaIsrDmeif,
+    dma_isr_feif: DmaCh::CDmaIsrFeif,
+    dma_isr_teif: DmaCh::CDmaIsrTeif,
 ) {
     if dma_isr_teif.read(&val) {
         panic!("Transfer error");

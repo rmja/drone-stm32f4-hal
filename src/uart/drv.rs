@@ -99,8 +99,8 @@ macro_rules! uart_setup_init {
 
 /// Uart driver.
 pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
-    uart: UartDiverged<Uart>,
-    uart_int: UartInt,
+    pub(crate) uart: UartDiverged<Uart>,
+    pub(crate) uart_int: UartInt,
     clk: PhantomData<Clk>,
 }
 
@@ -127,46 +127,6 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         };
         drv.init_uart(clk, baud_rate, data_bits, parity, stop_bits, oversampling);
         drv
-    }
-
-    pub(crate) fn init_rx_impl<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
-        &self,
-        rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-    ) -> UartRxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let DmaChCfg {
-            dma_ch,
-            dma_int,
-            dma_pl,
-            ..
-        } = rx_cfg;
-        let mut rx = UartRxDrv {
-            uart: &self.uart,
-            uart_int: &self.uart_int,
-            dma: dma_ch.into(),
-            dma_int,
-        };
-        rx.init_dma_rx(DmaStCh::num(), dma_pl);
-        rx
-    }
-
-    pub(crate) fn init_tx_impl<DmaCh: DmaChMap, DmaStCh: DmaStChToken, DmaInt: IntToken>(
-        &self,
-        tx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
-    ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt> {
-        let DmaChCfg {
-            dma_ch,
-            dma_int,
-            dma_pl,
-            ..
-        } = tx_cfg;
-        let mut tx = UartTxDrv {
-            uart: &self.uart,
-            uart_int: &self.uart_int,
-            dma: dma_ch.into(),
-            dma_int,
-        };
-        tx.init_dma_tx(DmaStCh::num(), dma_pl);
-        tx
     }
 
     fn init_uart(
@@ -225,15 +185,15 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         });
 
         self.uart.uart_cr1.modify_reg(|r, v| {
-            // Enable parity error interrupt
+            // Enable parity error interrupt.
             r.peie().set(v);
-            // Enable ORE or RXNE interrupt
+            // Enable ORE or RXNE interrupt.
             r.rxneie().set(v);
             // Enable uart after being fully configured.
             r.ue().set(v);
         });
 
-        // Attach uart error handler
+        // Attach uart error handler.
         let sr = self.uart.uart_sr;
         self.uart_int.add_fn(move || {
             let val = sr.load_val();
@@ -297,7 +257,7 @@ macro_rules! rx_drv_init {
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                self.init_rx_impl(rx_cfg)
+                crate::rx::UartRxDrv::init(&self.uart, &self.uart_int, rx_cfg)
             }
         }
     };
@@ -325,7 +285,7 @@ macro_rules! tx_drv_init {
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                self.init_tx_impl(tx_cfg)
+                crate::tx::UartTxDrv::init(&self.uart, &self.uart_int, tx_cfg)
             }
         }
     };
@@ -385,22 +345,5 @@ fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
     }
     if sr.pe().read(&val) {
         panic!("Parity error");
-    }
-}
-
-pub(crate) fn handle_dma_err<T: DmaChMap>(
-    val: &T::DmaIsrVal,
-    dma_isr_dmeif: T::CDmaIsrDmeif,
-    dma_isr_feif: T::CDmaIsrFeif,
-    dma_isr_teif: T::CDmaIsrTeif,
-) {
-    if dma_isr_teif.read(&val) {
-        panic!("Transfer error");
-    }
-    if dma_isr_dmeif.read(&val) {
-        panic!("Direct mode error");
-    }
-    if dma_isr_feif.read(&val) {
-        panic!("FIFO error");
     }
 }

@@ -1,9 +1,10 @@
 use crate::diverged::{DmaChDiverged, UartDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    dma::ch::{traits::*, DmaChMap},
+    dma::ch::DmaChMap,
     uart::{traits::*, UartMap},
 };
+use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
 pub struct UartTxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
     pub(crate) uart: &'drv UartDiverged<Uart>,
@@ -20,38 +21,26 @@ pub struct TxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, Dma
 impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
     UartTxDrv<'drv, Uart, UartInt, DmaTx, DmaTxInt>
 {
-    pub(crate) fn init_dma_tx(&mut self, chsel: u32, priority: u32) {
-        let address = self.uart.uart_dr.as_mut_ptr(); // 8-bit data register
-        self.dma.dma_cpar.store_reg(|r, v| {
-            r.pa().write(v, address as u32); // peripheral address
-        });
-        self.dma.dma_ccr.store_reg(|r, v| {
-            r.chsel().write(v, chsel); // stream channel selection
-            r.pl().write(v, priority); // priority level
-            r.msize().write(v, 0b00); // byte (8-bit)
-            r.psize().write(v, 0b00); // byte (8-bit)
-            r.minc().set(v); // memory address pointer is incremented after each data transfer
-            r.pinc().clear(v); // peripheral address pointer is fixed
-            r.circ().clear(v); // normal mode.
-            r.dir().write(v, 0b01); // memory-to-peripheral
-            r.tcie().set(v); // transfer complete interrupt enable
-            r.teie().set(v); // transfer error interrupt enable
-        });
-        self.dma.dma_cfcr.store_reg(|r, v| {
-            r.dmdis().clear(v); // use direct mode instead of fifo
-        });
-
-        // Attach dma error handler
-        let dma_isr_dmeif = self.dma.dma_isr_dmeif;
-        let dma_isr_feif = self.dma.dma_isr_feif;
-        let dma_isr_teif = self.dma.dma_isr_teif;
-        self.dma_int.add_fn(move || {
-            // Load _entire_ interrupt status register.
-            // The value is not masked to TEIF.
-            let val = dma_isr_teif.load_val();
-            crate::drv::handle_dma_err::<DmaTx>(&val, dma_isr_dmeif, dma_isr_feif, dma_isr_teif);
-            fib::Yielded::<(), !>(())
-        });
+    pub(crate) fn init<DmaTxStCh: DmaStChToken>(
+        uart: &'drv UartDiverged<Uart>,
+        uart_int: &'drv UartInt,
+        tx_cfg: DmaChCfg<DmaTx, DmaTxStCh, DmaTxInt>,
+    ) -> Self {
+        let DmaChCfg {
+            dma_ch,
+            dma_int,
+            dma_pl,
+            ..
+        } = tx_cfg;
+        let tx = Self {
+            uart,
+            uart_int,
+            dma: dma_ch.into(),
+            dma_int,
+        };
+        tx.dma.init_dma_tx(uart.uart_dr.as_mut_ptr() as u32,  DmaTxStCh::num(), dma_pl);
+        tx.dma.panic_on_err(dma_int);
+        tx
     }
 
     /// Enable tx operation for the uart peripheral and return a guard that disables the transmitter when dropped.
@@ -99,7 +88,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
         drv.uart.uart_dr.load_val();
 
         // Setup DMA transfer parameters.
-        self.setup_dma(buf);
+        drv.dma.setup_stream(buf);
 
         // Start listen for DMA transfer to complete.
         // The transfer completes just after the second last byte is being sent on the wire.
@@ -181,26 +170,6 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToke
 
         // Wait for another call to write() before we need to wait in flush().
         self.busy = false;
-    }
-
-    unsafe fn setup_dma(&mut self, buf_tx: &[u8]) {
-        let drv = self.drv;
-
-        // Set buffer memory addres.
-        drv.dma.dma_cm0ar.store_reg(|r, v| {
-            r.m0a().write(v, buf_tx.as_ptr() as u32);
-        });
-
-        // Set number of bytes to transfer.
-        drv.dma.dma_cndtr.store_reg(|r, v| {
-            r.ndt().write(v, buf_tx.len() as u32);
-        });
-
-        // Clear transfer complete interrupt flag.
-        drv.dma.dma_ifcr_ctcif.set_bit();
-
-        // Enable stream.
-        drv.dma.dma_ccr.modify_reg(|r, v| r.en().set(v));
     }
 }
 
