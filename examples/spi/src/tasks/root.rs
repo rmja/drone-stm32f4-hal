@@ -6,7 +6,7 @@ use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::{periph_dma2, periph_dma2_ch2, periph_dma2_ch3},
     gpio::{
-        periph_gpio_a5, periph_gpio_a6, periph_gpio_a7, periph_gpio_a_head, periph_gpio_b1,
+        periph_gpio_a5, periph_gpio_a6, periph_gpio_a7, periph_gpio_a_head, periph_gpio_b7,
         periph_gpio_b_head,
     },
     spi::periph_spi1,
@@ -50,7 +50,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_af()
         .into_pp()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
-    let pin_cs = gpio_b.pin(periph_gpio_b1!(reg))
+    let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
         .into_output()
         .with_speed(GpioPinSpeed::HighSpeed);
 
@@ -93,17 +93,21 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         thr.spi_1,
         pins,
         pclk2,
-        BaudRate::Max(10_000_000),
+        BaudRate::Max(7_700_000),
     );
     let spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
     let chip = SpiChip::init(pin_cs);
 
-    let selection = spi_master.select(&chip);
-    let tx_buf = [1, 2, 3, 4].as_ref();
-    spi_master.write(tx_buf).root_wait();
-    drop(selection);
+    loop {
+        let selection = spi_master.select(&chip);
+        let tx_buf = [1, 2, 3, 4].as_ref();
+        let mut rx_buf = [0;4];
+        // spi_master.write(tx_buf).root_wait();
+        spi_master.xfer(tx_buf, &mut rx_buf).root_wait();
+        drop(selection);
+    }
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();

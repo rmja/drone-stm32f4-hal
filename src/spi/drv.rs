@@ -145,8 +145,6 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
 
         // Configure spi.
         self.spi.spi_cr1.store_reg(|r, v| {
-            // Do not enable spi before it is fully configured.
-
             if first_bit == FirstBit::Lsb {
                 r.lsbfirst().set(v);
             }
@@ -162,6 +160,21 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             // Clock phase.
             // TODO: Expose configuration option?
             r.cpha().clear(v);
+
+            // Do not enable spi before it is fully configured.
+        });
+
+        // Attach spi error handler
+        let sr = self.spi.spi_sr;
+        self.spi_int.add_fn(move || {
+            let val = sr.load_val();
+            handle_spi_err::<Spi>(&val, sr);
+            fib::Yielded::<(), !>(())
+        });
+
+        self.spi.spi_cr2.store_reg(|r, v| {
+            // Enable error interrupt
+            r.errie().set(v);
         });
     }
 
@@ -198,19 +211,6 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             dma_tx_int,
         };
 
-        // Attach spi error handler
-        let sr = self.spi.spi_sr;
-        self.spi_int.add_fn(move || {
-            let val = sr.load_val();
-            handle_spi_err::<Spi>(&val, sr);
-            fib::Yielded::<(), !>(())
-        });
-
-        self.spi.spi_cr2.store_reg(|r, v| {
-            // Enable error interrupt
-            r.errie().set(v);
-        });
-
         self.spi.spi_cr1.modify_reg(|r, v| {
             // Master configuration.
             r.mstr().set(v);
@@ -234,7 +234,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
 }
 
 pub trait SpiDrvInit<
-    Spi: SpiMap,
+    Spi: SpiMap + SpiCr1,
     SpiInt: IntToken,
     DmaRxCh: DmaChMap,
     DmaRxStCh: DmaStChToken,

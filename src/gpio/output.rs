@@ -46,13 +46,13 @@ impl<Pin: GpioPinMap> GpioPin<Pin, OutputMode, PushPullType, DontCare> {
 impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
     pub fn set(&self) {
-        // Set output pin by writing BS (bit set) to the bit set/reset register.
+        // Set output pin to high by writing BS (bit set) to the bit set/reset register.
         self.pin.gpio_bsrr_bs.set_bit();
     }
 
     /// Set output pin low.
     pub fn clear(&self) {
-        // Clear output pin by writing BR (bit reset) to the bit set/reset register.
+        // Clear output pin to low by writing BR (bit reset) to the bit set/reset register.
         self.pin.gpio_bsrr_br.set_bit();
     }
 }

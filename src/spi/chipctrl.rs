@@ -1,6 +1,6 @@
 use crate::master::SpiMasterDrv;
 use drone_cortexm::thr::prelude::*;
-use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::SpiMap};
+use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::{SpiMap, SpiCr1}};
 use drone_stm32f4_gpio_drv::{GpioPin, OutputMode, PinPullToken, PinTypeToken};
 
 pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> {
@@ -8,14 +8,14 @@ pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken
 }
 
 impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
-    /// Select the chip by setting the CS pin high.
+    /// Select the chip by setting the CS pin low.
     fn select(&self) {
-        self.cs.set();
+        self.cs.clear();
     }
 
-    /// Deselect the chip by setting the CS pin low.
+    /// Deselect the chip by setting the CS pin high.
     fn deselect(&self) {
-        self.cs.clear();
+        self.cs.set();
     }
 }
 
@@ -52,7 +52,7 @@ pub trait ChipCtrl {
 
 impl<
         'drv,
-        Spi: SpiMap,
+        Spi: SpiMap + SpiCr1,
         SpiInt: IntToken,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
