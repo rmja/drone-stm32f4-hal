@@ -13,6 +13,15 @@ pub struct RccSetup<RccInt: IntToken> {
     pub rcc_int: RccInt,
 }
 
+impl<RccInt: IntToken> RccSetup<RccInt> {
+    pub fn new(rcc: RccPeriph, rcc_int: RccInt) -> Self {
+        Self {
+            rcc,
+            rcc_int,
+        }
+    }
+}
+
 /// Rcc controller.
 pub struct Rcc<RccInt: IntToken> {
     rcc: RccDiverged,

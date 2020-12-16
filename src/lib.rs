@@ -8,6 +8,9 @@
 #[cfg(feature = "dma")]
 pub extern crate drone_stm32f4_dma_drv as dma;
 
+#[cfg(feature = "fmc")]
+pub extern crate drone_stm32f4_fmc_drv as fmc;
+
 #[cfg(feature = "gpio")]
 pub extern crate drone_stm32f4_gpio_drv as gpio;
 
