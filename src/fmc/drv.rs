@@ -88,6 +88,17 @@ pub mod config {
                 _ => panic!("Unsupported number of banks."),
             }
         }
+
+        pub(crate) fn sdtrt_count(&self, sdclk: u32) -> u32 {
+            // From PM0090
+            // Refresh rate = (SDRAM refresh rate * SDRAM clock frequency) - 20
+            // SDRAM refresh rate = SDRAM refresh period / Number of rows
+            // Example:
+            // (64[ms]/4096[rows]) * 90[MHz] - 20
+            // = 64
+            
+            // uint64_t refreshPeriod_x_sdRamClock = self.refresh_period. * sdclk;
+        }
     }
 
     pub trait SdRamCfgModeRegister {
@@ -149,6 +160,16 @@ pub struct FmcDrv {
     fmc: FmcPeriph,
 }
 
+enum SdRamCommand {
+    NormalMode,
+    ClockConfigurationEnable,
+    PrechargeAll,
+    AutoRefresh(u32),
+    LoadModeRegister(u32),
+    SelfRefresh,
+    PowerDown
+}
+
 impl FmcDrv {
     pub fn init_sdram<Sdcke0, Sdcke1, Sdne0, Sdne1, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, D17, D18, D19, D20, D21, D22, D23, D24, D25, D26, D27, D28, D29, D30, D31, NBL2, NBL3>(
         setup: SdRamSetup,
@@ -171,8 +192,34 @@ impl FmcDrv {
         fmc.configure_control(bank1, bank2, setup.sdclk_hclk_presc);
         fmc.configure_timings(bank1, bank2, sdclk);
 
-        
-        
+        let to_bank1 = bank1.is_some();
+        let to_bank2 = bank2.is_some();
+        fmc.send_command(SdRamCommand::ClockConfigurationEnable, to_bank1, to_bank2);
+
+        // TODO: Delay 100 [us]
+
+        fmc.send_command(SdRamCommand::PrechargeAll, to_bank1, to_bank2);
+
+        if let Some(bank1) = bank1 {
+            fmc.send_command(SdRamCommand::AutoRefresh(bank1.auto_refresh.to_max_cycles(sdclk)), true, false);
+            if let Some(mrd) = bank1.mode_register {
+                fmc.send_command(SdRamCommand::LoadModeRegister(mrd), true, false);
+            }
+        }
+        if let Some(bank2) = bank2 {
+            fmc.send_command(SdRamCommand::AutoRefresh(bank2.auto_refresh.to_max_cycles(sdclk)), false, true);
+            if let Some(mrd) = bank2.mode_register {
+                fmc.send_command(SdRamCommand::LoadModeRegister(mrd), false, true);
+            }
+        }
+
+        let count_max = max( 
+            bank1.map(|b| {b.sdtrt_count()}).unwrap_or_default(),
+            bank2.map(|b| {b.sdtrt_count()}).unwrap_or_default());
+        fmc.fmc.fmc_sdrtr.store(|r| {
+            r.write_count(count_max)
+            .set_cre() // Clear refresh error flag
+        });
     }
 
     fn configure_control(&self, bank1: Option<&SdRamCfg>, bank2: Option<&SdRamCfg>, sdclk_hclk_presc: u32) {
@@ -249,5 +296,41 @@ impl FmcDrv {
             .write_twr(twr_slowest)
             .write_trc(trc_slowest)
         })
+    }
+
+    fn send_command(&self, command: SdRamCommand, to_bank1: bool, to_bank2: bool, ) {
+        self.fmc.fmc_sdcmr.store(|r| {
+            let mut r = match command {
+                SdRamCommand::NormalMode =>
+                    r.write_mode(0b000),
+                SdRamCommand::ClockConfigurationEnable =>
+                    r.write_mode(0b001),
+                SdRamCommand::PrechargeAll =>
+                    r.write_mode(0b010),
+                SdRamCommand::AutoRefresh(nrfs) =>
+                    r.write_mode(0b011).write_nrfs(nrfs),
+                SdRamCommand::LoadModeRegister(mrd) =>
+                    r.write_mode(0b100).write_mrd(mrd),
+                SdRamCommand::SelfRefresh =>
+                    r.write_mode(0b101),
+                SdRamCommand::PowerDown =>
+                    r.write_mode(0b110),
+            };
+            if to_bank1 {
+                r = r.set_ctb1();
+            }
+            if to_bank2 {
+                r = r.set_ctb2();
+            }
+            r
+        });
+
+        loop {
+            if !self.fmc.fmc_sdsr.busy.read_bit() {
+                break;
+            }
+        }
+
+
     }
 }

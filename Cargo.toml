@@ -29,6 +29,7 @@ std = [
     "drone-cortexm/std",
 ]
 dma = ["drone-stm32f4-dma-drv"]
+fmc = ["drone-stm32f4-fmc-drv"]
 gpio = ["drone-stm32f4-gpio-drv"]
 rcc = ["drone-stm32f4-rcc-drv"]
 uart = ["drone-stm32f4-uart-drv"]
@@ -37,6 +38,11 @@ spi = ["drone-stm32f4-spi-drv"]
 [dependencies]
 drone-core = { version = "0.13.0", path = "../drone-core" }
 drone-cortexm = { version = "0.13.0", path = "../drone-cortexm" }
+
+[dependencies.drone-stm32f4-fmc-drv]
+version = "=0.1.0"
+path = "src/fmc"
+optional = true
 
 [dependencies.drone-stm32f4-dma-drv]
 version = "=0.1.0"

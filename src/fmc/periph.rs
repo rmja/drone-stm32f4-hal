@@ -20,5 +20,8 @@ periph::singular! {
         SDCR2;
         SDTR1;
         SDTR2;
+        SDCMR;
+        SDRTR;
+        SDSR;
     }
 }
