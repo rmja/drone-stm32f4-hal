@@ -9,11 +9,10 @@ pub const PLL: Pll = PLLSRC_HSECLK.to_pllsrc(8).to_pll(360, 2, 8);
 pub const SYSCLK_PLL: SysClkMuxSignal = SysClkMuxSignal::Pll(PLL.p);
 pub const SYSCLK: SysClk = SYSCLK_PLL.to_sysclk();
 pub const HCLK: HClk = SYSCLK.to_hclk(1);
-pub const PCLK1: PClk1 = HCLK.to_pclk1(4);
-pub const PCLK2: PClk2 = HCLK.to_pclk2(2);
+// pub const PCLK1: PClk1 = HCLK.to_pclk1(4);
+// pub const PCLK2: PClk2 = HCLK.to_pclk2(2);
 
 // Timings for the is42s16400j sdram
-pub const SDRAM_BANK: Bank = Bank::Bank2;
 pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     col_bits: 8,
     row_bits: 12,
@@ -24,9 +23,9 @@ pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     t_rcd: Timing::Ns(15),
     t_rp: Timing::Ns(15),
     t_ras_min: Timing::Ns(42),
-    t_wr: Timing::Cycles(2),
+    t_wr: Timing::MemCycles(2),
     t_rc: Timing::Ns(63),
     t_xsr: Timing::Ns(70),
-    t_mrd: Timing::Cycles(2),
-    auto_refresh: Timing::Cycles(2),
+    t_mrd: Timing::MemCycles(2),
+    auto_refresh: Timing::MemCycles(2),
 };

@@ -4,7 +4,7 @@ use crate::{consts, thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::gpio::*;
-use drone_stm32f4_hal::{fmc::{FmcDrv, config::*}, gpio::{prelude::*, GpioHead}, rcc::{Flash, Pwr, Rcc, RccSetup, clktree::HClk, periph_flash, periph_pwr, periph_rcc, traits::*}};
+use drone_stm32f4_hal::{fmc::{FmcDrv, config::*, periph_fmc}, gpio::{prelude::*, GpioHead}, rcc::{Flash, Pwr, Rcc, RccSetup, clktree::HClk, periph_flash, periph_pwr, periph_rcc, traits::*}};
 
 /// The root task handler.
 #[inline(never)]
@@ -78,7 +78,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_af())
         .nbl1(gpio_e.pin(periph_gpio_e1!(reg)).into_af());
 
-    FmcDrv::init_sdram(SdRamSetup::new(consts::SDRAM_BANK, consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
+    FmcDrv::init_sdram(SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
@@ -90,6 +90,7 @@ async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) -> Configu
         .select(consts::PLLSRC_HSECLK, hseclk)
         .stabilize(consts::PLL)
         .await;
+    let hclk = rcc.configure(consts::HCLK);
     // let pclk1 = rcc.configure(consts::PCLK1);
     // let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_overdrive();
@@ -97,6 +98,5 @@ async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) -> Configu
     swo::flush();
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
-    let hclk = rcc.configure(consts::HCLK);
     hclk
 }
