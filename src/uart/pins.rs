@@ -11,19 +11,19 @@ pub struct UartPins<Uart: UartMap, Rx, Tx> {
     tx: PhantomData<Tx>,
 }
 
-impl<Uart: UartMap> UartPins<Uart, Undefined, Undefined> {
-    pub fn new() -> UartPins<Uart, Undefined, Undefined> {
-        UartPins::default()
-    }
-}
-
-impl<Uart: UartMap, Rx, Tx> Default for UartPins<Uart, Rx, Tx> {
-    fn default() -> Self {
+impl<Uart: UartMap, Rx, Tx> UartPins<Uart, Rx, Tx> {
+    pub fn new() -> Self {
         Self {
             uart: PhantomData,
             rx: PhantomData,
             tx: PhantomData,
         }
+    }
+}
+
+impl<Uart: UartMap> Default for UartPins<Uart, Undefined, Undefined> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

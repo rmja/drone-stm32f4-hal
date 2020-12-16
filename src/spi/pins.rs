@@ -13,20 +13,20 @@ pub struct SpiPins<Spi: SpiMap, Sck, Miso, Mosi> {
     mosi: PhantomData<Mosi>,
 }
 
-impl<Spi: SpiMap> SpiPins<Spi, Undefined, Undefined, Undefined> {
-    pub fn new() -> SpiPins<Spi, Undefined, Undefined, Undefined> {
-        SpiPins::default()
-    }
-}
-
-impl<Spi: SpiMap, Sck, Miso, Mosi> Default for SpiPins<Spi, Sck, Miso, Mosi> {
-    fn default() -> Self {
+impl<Spi: SpiMap, Sck, Miso, Mosi> SpiPins<Spi, Sck, Miso, Mosi> {
+    pub fn new() -> SpiPins<Spi, Sck, Miso, Mosi> {
         Self {
             spi: PhantomData,
             sck: PhantomData,
             miso: PhantomData,
             mosi: PhantomData,
         }
+    }
+}
+
+impl<Spi: SpiMap> Default for SpiPins<Spi, Undefined, Undefined, Undefined> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

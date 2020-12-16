@@ -60,11 +60,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     }
 
     // Initialize clocks.
-    let rcc_setup = RccSetup {
-        rcc: periph_rcc!(reg),
-        rcc_int: thr.rcc,
-    };
-    let rcc = Rcc::init(rcc_setup);
+    let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
     let pwr = Pwr::init(periph_pwr!(reg));
     let flash = Flash::init(periph_flash!(reg));
 
@@ -87,7 +83,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma_2_ch_3));
 
     // Initialize spi.
-    let pins = SpiPins::new().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
+    let pins = SpiPins::default().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
     let setup = SpiSetup::new(
         periph_spi1!(reg),
         thr.spi_1,

@@ -38,7 +38,7 @@ macro_rules! pin_impl {
                 Type,
                 Pull,
             >) -> $type_name<$periph, $($pins_out),*> {
-                $type_name::default()
+                $type_name::new()
             }
         }
     };

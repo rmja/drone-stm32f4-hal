@@ -59,11 +59,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .with_speed(GpioPinSpeed::VeryHighSpeed);
 
     // Initialize clocks.
-    let rcc_setup = RccSetup {
-        rcc: periph_rcc!(reg),
-        rcc_int: thr.rcc,
-    };
-    let rcc = Rcc::init(rcc_setup);
+    let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
     let pwr = Pwr::init(periph_pwr!(reg));
     let flash = Flash::init(periph_flash!(reg));
 
@@ -86,7 +82,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma_1_ch_6));
 
     // Initialize uart.
-    let uart_pins = UartPins::new()
+    let uart_pins = UartPins::default()
         .tx(pin_tx)
         .rx(pin_rx);
     let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);

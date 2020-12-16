@@ -169,7 +169,7 @@ let dma2 = DmaCfg::with_enabled_clock(periph_dma2!(reg));
 let miso_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch2!(reg), thr.dma_2_ch_2));
 let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma_2_ch_3));
 
-let pins = SpiPins::new().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
+let pins = SpiPins::default().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
 let setup = SpiSetup::new(
     periph_spi1!(reg),
     thr.spi_1,
@@ -249,7 +249,7 @@ let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
 let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma_1_ch_5));
 let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma_1_ch_6));
 
-let uart_pins = UartPins::new().tx(pin_tx).rx(pin_rx);
+let uart_pins = UartPins::default().tx(pin_tx).rx(pin_rx);
 
 let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
 let uart_drv = UartDrv::init(setup);
