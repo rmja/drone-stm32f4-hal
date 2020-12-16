@@ -346,6 +346,7 @@ impl SysClk {
     }
 
     pub const fn to_hclk(self, hpre: u32) -> HClk {
+        assert!(hpre == 1 || hpre == 2 || hpre == 4 || hpre == 8 || hpre == 16 || hpre == 64 || hpre == 128 || hpre == 256 || hpre == 512);
         HClk { src: self, hpre }
     }
 }
@@ -357,7 +358,7 @@ pub struct HClk {
     src: SysClk,
     /// The clock prescaler.
     /// hclk = sysclk / hpre
-    hpre: u32,
+    pub hpre: u32,
 }
 
 impl HClk {

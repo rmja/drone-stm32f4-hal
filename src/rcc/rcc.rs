@@ -163,14 +163,35 @@ impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll> for SelectedClkBuilder<'_
     }
 }
 
+impl<RccInt: IntToken> ClkCtrl<HClk> for Rcc<RccInt> {
+    fn configure(&self, clk: HClk) -> ConfiguredClk<HClk> {
+        self.rcc.rcc_cfgr.modify(|r| {
+            let hpre = match clk.hpre {
+                1   => 0b0000,
+                2   => 0b1000,
+                4   => 0b1001,
+                8   => 0b1010,
+                16  => 0b1011,
+                64  => 0b1100,
+                128 => 0b1101,
+                256 => 0b1110,
+                512 => 0b1111,
+                _ => unreachable!(),
+            };
+            r.write_hpre(hpre)
+        });
+        ConfiguredClk { clk }
+    }
+}
+
 impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
     fn configure(&self, clk: PClk1) -> ConfiguredClk<PClk1> {
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre1 = match clk.ppre1 {
-                1 => 0b000,
-                2 => 0b100,
-                4 => 0b101,
-                8 => 0b110,
+                1  => 0b000,
+                2  => 0b100,
+                4  => 0b101,
+                8  => 0b110,
                 16 => 0b111,
                 _ => unreachable!(),
             };
@@ -184,10 +205,10 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
     fn configure(&self, clk: PClk2) -> ConfiguredClk<PClk2> {
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre2 = match clk.ppre2 {
-                1 => 0b000,
-                2 => 0b100,
-                4 => 0b101,
-                8 => 0b110,
+                1  => 0b000,
+                2  => 0b100,
+                4  => 0b101,
+                8  => 0b110,
                 16 => 0b111,
                 _ => unreachable!(),
             };
