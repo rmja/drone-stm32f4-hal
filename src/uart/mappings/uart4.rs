@@ -10,8 +10,8 @@ rx_drv_init!(Uart4, Dma1Ch2, DmaStCh4);
 
 tx_drv_init!(Uart4, Dma1Ch4, DmaStCh4);
 
-pin_impl!(RxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.rx, GpioA1, AlternateMode<PinAf8>; Undefined, Tx => Defined, Tx);
-pin_impl!(RxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.rx, GpioC11, AlternateMode<PinAf8>; Undefined, Tx => Defined, Tx);
+pin_impl!(RxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.rx, GpioA1, AlternateMode<PinAf8>; Undefined, Tx -> Defined, Tx);
+pin_impl!(RxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.rx, GpioC11, AlternateMode<PinAf8>; Undefined, Tx -> Defined, Tx);
 
-pin_impl!(TxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.tx, GpioA0, AlternateMode<PinAf8>; Tx, Undefined => Tx, Defined);
-pin_impl!(TxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.tx, GpioC10, AlternateMode<PinAf8>; Tx, Undefined => Tx, Defined);
+pin_impl!(TxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.tx, GpioA0, AlternateMode<PinAf8>; Tx, Undefined -> Tx, Defined);
+pin_impl!(TxPinExt for UartPins<drone_stm32_map::periph::uart::Uart4, ...>.tx, GpioC10, AlternateMode<PinAf8>; Tx, Undefined -> Tx, Defined);

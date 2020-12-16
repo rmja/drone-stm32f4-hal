@@ -17,7 +17,7 @@ macro_rules! pin_ext {
 
 #[macro_export]
 macro_rules! pin_impl {
-    ($trait_name:ident for $type_name:ident<$periph:path, ...>.$fn_name:ident, $pin:ident, $mode:ty; $($pins_in:ident),* => $($pins_out:ty),*) => {
+    ($trait_name:ident for $type_name:ident<$periph:path, ...>.$fn_name:ident, $pin:ident, $mode:ty; $($pins_in:ident),* -> $($pins_out:ty),*) => {
         impl<
                 Type: PinTypeToken,
                 Pull: PinPullToken,
