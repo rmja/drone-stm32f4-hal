@@ -79,6 +79,7 @@ let flash = Flash::init(periph_flash!(reg));
 
 let hseclk = rcc.stabilize(consts::HSECLK).await;
 let pll = rcc.select(consts::PLLSRC_HSECLK, hseclk).stabilize(consts::PLL).await;
+let hclk = rcc.configure(consts::HCLK);
 let pclk1 = rcc.configure(consts::PCLK1);
 let pclk2 = rcc.configure(consts::PCLK2);
 pwr.enable_overdrive();

@@ -68,6 +68,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .select(consts::PLLSRC_HSECLK, hseclk)
         .stabilize(consts::PLL)
         .root_wait();
+    let hclk = rcc.configure(consts::HCLK);
     let pclk1 = rcc.configure(consts::PCLK1);
     let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_overdrive();

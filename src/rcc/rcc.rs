@@ -1,6 +1,8 @@
 use self::traits::*;
 use crate::{clktree::*, diverged::RccDiverged, periph::RccPeriph};
+use core::cell::RefCell;
 use core::marker::PhantomData;
+use drone_core::bitfield::Bitfield;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::reg;
 use fib::FiberFuture;
@@ -22,10 +24,19 @@ impl<RccInt: IntToken> RccSetup<RccInt> {
     }
 }
 
+#[derive(Clone, Copy, Bitfield)]
+#[bitfield(
+    hclk(rw, 0),
+    pclk1(rw, 1),
+    pclk2(rw, 2),
+)]
+struct ConfiguredClocks(u8);
+
 /// Rcc controller.
 pub struct Rcc<RccInt: IntToken> {
     rcc: RccDiverged,
     rcc_int: RccInt,
+    configured: RefCell<ConfiguredClocks>,
 }
 
 impl<RccInt: IntToken> Rcc<RccInt> {
@@ -35,6 +46,7 @@ impl<RccInt: IntToken> Rcc<RccInt> {
         Rcc {
             rcc: rcc.into(),
             rcc_int,
+            configured: RefCell::new(ConfiguredClocks(0)),
         }
     }
 }
@@ -71,6 +83,7 @@ pub mod traits {
         pub(crate) rcc: &'a Rcc<RccInt>,
         pub(crate) clk: PhantomData<Clk>,
     }
+    
     pub trait ClkCtrl<Clk> {
         /// Configures the clock `clk`.
         fn configure(&self, clk: Clk) -> ConfiguredClk<Clk>;
@@ -164,6 +177,7 @@ impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll> for ConfiguredClkBuilder<
 
 impl<RccInt: IntToken> ClkCtrl<HClk> for Rcc<RccInt> {
     fn configure(&self, clk: HClk) -> ConfiguredClk<HClk> {
+        self.configured.borrow_mut().set_hclk();
         self.rcc.rcc_cfgr.modify(|r| {
             let hpre = match clk.hpre {
                 1   => 0b0000,
@@ -185,6 +199,7 @@ impl<RccInt: IntToken> ClkCtrl<HClk> for Rcc<RccInt> {
 
 impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
     fn configure(&self, clk: PClk1) -> ConfiguredClk<PClk1> {
+        self.configured.borrow_mut().set_pclk1();
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre1 = match clk.ppre1 {
                 1  => 0b000,
@@ -202,6 +217,7 @@ impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
 
 impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
     fn configure(&self, clk: PClk2) -> ConfiguredClk<PClk2> {
+        self.configured.borrow_mut().set_pclk2();
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre2 = match clk.ppre2 {
                 1  => 0b000,
@@ -284,6 +300,11 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<Rc
         _clk: ConfiguredClk<PllClk<PllP>>,
     ) -> ConfiguredClkBuilder<RccInt, PllClk<PllP>> {
         assert!(matches!(signal, SysClkMuxSignal::Pll { .. }));
+        // We need to make sure that HCLK, PCLK1, and PCLK2 are configured
+        // to avoid overclocking of their max bus frequencies when setting the PLL as source.
+        // Other sysclk signals are not fast enough to overclock the three buses.
+        assert_eq!(0b111, self.configured.borrow().0);
+
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b10));
         ConfiguredClkBuilder {
             rcc: self,
