@@ -303,6 +303,9 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<Rc
         // We need to make sure that HCLK, PCLK1, and PCLK2 are configured
         // to avoid overclocking of their max bus frequencies when setting the PLL as source.
         // Other sysclk signals are not fast enough to overclock the three buses.
+        if self.configured.borrow().0 != 0b111 {
+            panic!("Configure HCLK, PCLK1, and PCLK2 before selecting PLL as source.");
+        }
         assert_eq!(0b111, self.configured.borrow().0);
 
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b10));
