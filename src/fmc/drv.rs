@@ -28,6 +28,8 @@ pub mod config {
         pub bank_count: u32,
         /// The number of rows.
         pub row_count: u32,
+        /// The cas latency.
+        pub cas_latency: u32,
         /// The refresh period.
         pub refresh_period: Timing,
         /// Row address to column address delay.
@@ -44,8 +46,54 @@ pub mod config {
         pub t_xsr: Timing,
         /// Load Mode Register to active delay.
         pub t_mrd: Timing,
-        /// autoRefreshCycles
+        /// Auto refresh cycles
         pub auto_refresh: Timing,
+        /// An optional mode register written to the sdram during initialization.
+        pub mode_register: Option<u32>,
+    }
+
+    impl SdRamCfg {
+        pub(crate) fn nc(&self) -> u32 {
+            match self.col_bits {
+                 8 => 0b00,
+                 9 => 0b01,
+                10 => 0b10,
+                11 => 0b11,
+                _ => panic!("Unsupported number of column bits."),
+            }
+        }
+
+        pub(crate) fn nr(&self) -> u32 {
+            match self.row_bits {
+                11 => 0b00,
+                12 => 0b01,
+                13 => 0b10,
+                _ => panic!("Unsupported number of row bits."),
+            }
+        }
+
+        pub(crate) fn mwid(&self) -> u32 {
+            match self.mem_width {
+                 8 => 0b00,
+                16 => 0b01,
+                32 => 0b10,
+                _ => panic!("Unsupported memory width."),
+            }
+        }
+
+        pub(crate) fn nb(&self) -> bool {
+            match self.bank_count {
+                2 => false,
+                4 => true,
+                _ => panic!("Unsupported number of banks."),
+            }
+        }
+    }
+
+    pub trait SdRamCfgModeRegister {
+        /// Get the mode register programmed to the sdram.
+        /// It typically contains burst length, burst type, latency, etc.
+        fn get_mode_register(&self) -> u32;
     }
 
     pub struct SdRamSetup {
@@ -118,15 +166,52 @@ impl FmcDrv {
         setup.fmc.rcc_ahb3enr_fmcen.set_bit();
 
         // Setup banks
-        // if let Some(bank1) = bank1 {
+        let fmc = FmcDrv{fmc: setup.fmc};
 
-        // }
-        let fmc = FmcDrv{
-            fmc: setup.fmc
+        fmc.configure_control(bank1, bank2, setup.sdclk_hclk_presc);
+        fmc.configure_timings(bank1, bank2, sdclk);
+
+        
+        
+    }
+
+    fn configure_control(&self, bank1: Option<&SdRamCfg>, bank2: Option<&SdRamCfg>, sdclk_hclk_presc: u32) {
+        // Setup per bank configuration.
+        if let Some(bank1) = bank1 {
+            self.fmc.fmc_sdcr1.store(|r| { 
+                r.write_nc(bank1.nc())
+                    .write_nr(bank1.nr())
+                    .write_mwid(bank1.mwid())
+                    // TODO: USE NUMBER OF BANKS
+                    // .write_nb(bank1.nb())
+                    .write_cas(bank1.cas_latency)
+                    .clear_wp() // Disable write protection
+            })
+        }
+        if let Some(bank2) = bank2 {
+            self.fmc.fmc_sdcr1.store(|r| { 
+                r.write_nc(bank2.nc())
+                    .write_nr(bank2.nr())
+                    .write_mwid(bank2.mwid())
+                    // TODO: USE NUMBER OF BANKS
+                    // .write_nb(bank2.nb())
+                    .write_cas(bank2.cas_latency)
+                    .clear_wp() // Disable write protection
+            })
+        }
+
+        // Setup shared fields.
+        let sdclk = match sdclk_hclk_presc {
+            2 => 0b10,
+            3 => 0b11,
+            _ => unreachable!(),
         };
 
-        fmc.configure_timings(bank1, bank2, sdclk);
-        
+        self.fmc.fmc_sdcr1.modify(|r| { r
+            .write_sdclk(sdclk)
+            .clear_rburst() // Do not use burst mode.
+            .write_rpipe(0) // Read pipe is not used when not in burst mode.
+        });
     }
 
     fn configure_timings(&self, bank1: Option<&SdRamCfg>, bank2: Option<&SdRamCfg>, sdclk: u32) {

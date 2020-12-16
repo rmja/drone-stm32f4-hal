@@ -12,13 +12,14 @@ pub const HCLK: HClk = SYSCLK.to_hclk(1);
 // pub const PCLK1: PClk1 = HCLK.to_pclk1(4);
 // pub const PCLK2: PClk2 = HCLK.to_pclk2(2);
 
-// Timings for the is42s16400j sdram
+// Configuration and timings for the is42s16400j sdram
 pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     col_bits: 8,
     row_bits: 12,
     mem_width: 16,
     bank_count: 4,
     row_count: 4096,
+    cas_latency: 2,
     refresh_period: Timing::Ms(64),
     t_rcd: Timing::Ns(15),
     t_rp: Timing::Ns(15),
@@ -28,4 +29,12 @@ pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     t_xsr: Timing::Ns(70),
     t_mrd: Timing::MemCycles(2),
     auto_refresh: Timing::MemCycles(2),
+
+    mode_register: Some(
+        0b0_00_000_0_001 | // Burst length: 2
+        0b0_00_000_0_000 | // Burst type: sequential
+        0b0_00_010_0_000 | // CAS latency: 2 cycles
+        0b0_00_000_0_000 | // Operating mode: standard
+        0b1_00_000_0_000   // Write burst mode: single location access
+    )
 };
