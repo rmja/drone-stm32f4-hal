@@ -13,7 +13,8 @@ pub const PCLK1: PClk1 = HCLK.to_pclk1(4);
 pub const PCLK2: PClk2 = HCLK.to_pclk2(2);
 
 // Timings for the is42s16400j sdram
-pub const SDRAM: SdRamCfg = SdRamCfg {
+pub const SDRAM_BANK: Bank = Bank::Bank2;
+pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     col_bits: 8,
     row_bits: 12,
     mem_width: 16,

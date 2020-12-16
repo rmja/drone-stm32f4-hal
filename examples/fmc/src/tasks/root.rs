@@ -4,11 +4,7 @@ use crate::{consts, thr, thr::ThrsInit, Regs};
 use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::gpio::*;
-use drone_stm32f4_hal::{
-    gpio::{prelude::*, GpioHead},
-    fmc::{FmcDrv, config::*},
-    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-};
+use drone_stm32f4_hal::{fmc::{FmcDrv, config::*}, gpio::{prelude::*, GpioHead}, rcc::{Flash, Pwr, Rcc, RccSetup, clktree::HClk, periph_flash, periph_pwr, periph_rcc, traits::*}};
 
 /// The root task handler.
 #[inline(never)]
@@ -26,7 +22,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
     let pwr = Pwr::init(periph_pwr!(reg));
     let flash = Flash::init(periph_flash!(reg));
-    setup_clktree(&rcc, &pwr, &flash).root_wait();
+    let hclk = setup_clktree(&rcc, &pwr, &flash).root_wait();
 
     let gpio_d = GpioHead::with_enabled_clock(periph_gpio_d_head!(reg));
     let gpio_e = GpioHead::with_enabled_clock(periph_gpio_e_head!(reg));
@@ -82,13 +78,13 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_af())
         .nbl1(gpio_e.pin(periph_gpio_e1!(reg)).into_af());
 
-    let sdram = FmcDrv::init_sdram(Bank::Bank2, consts::SDRAM, sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
+    FmcDrv::init_sdram(SdRamSetup::new(consts::SDRAM_BANK, consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
 }
 
-async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) {
+async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) -> ConfiguredClk<HClk> {
     let hseclk = rcc.stabilize(consts::HSECLK).await;
     let pll = rcc
         .select(consts::PLLSRC_HSECLK, hseclk)
@@ -101,4 +97,6 @@ async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) {
     swo::flush();
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
+    let hclk = rcc.configure(consts::HCLK);
+    hclk
 }
