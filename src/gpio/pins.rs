@@ -24,7 +24,7 @@ macro_rules! pin_impl {
                 $($pins_in),+
             > $trait_name<
                 $periph,
-                drone_stm32_map::periph::gpio::pin::$pin,
+                $pin,
                 $mode,
                 Type,
                 Pull,
@@ -33,7 +33,7 @@ macro_rules! pin_impl {
             > for $type_name<$periph, $($pins_in),+>
         {
             fn $fn_name(self, _pin: drone_stm32f4_gpio_drv::GpioPin<
-                drone_stm32_map::periph::gpio::pin::$pin,
+                $pin,
                 $mode,
                 Type,
                 Pull,

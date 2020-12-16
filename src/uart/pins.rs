@@ -1,5 +1,5 @@
 use core::marker::PhantomData;
-use drone_stm32_map::periph::{gpio::pin::GpioPinMap, uart::UartMap};
+use drone_stm32_map::periph::uart::UartMap;
 use drone_stm32f4_gpio_drv::{pin_ext, prelude::*, GpioPin};
 
 pub struct Defined;
