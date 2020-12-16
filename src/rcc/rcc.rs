@@ -67,6 +67,10 @@ pub mod traits {
         }
     }
 
+    pub struct ConfiguredClkBuilder<'a, RccInt: IntToken, Clk> {
+        pub(crate) rcc: &'a Rcc<RccInt>,
+        pub(crate) clk: PhantomData<Clk>,
+    }
     pub trait ClkCtrl<Clk> {
         /// Configures the clock `clk`.
         fn configure(&self, clk: Clk) -> ConfiguredClk<Clk>;
@@ -77,18 +81,13 @@ pub mod traits {
         fn stabilize(&self, clk: Clk) -> FiberFuture<ConfiguredClk<Clk>>;
     }
 
-    pub struct SelectedClkBuilder<'a, RccInt: IntToken, Clk> {
-        pub(crate) rcc: &'a Rcc<RccInt>,
-        pub(crate) _clk: PhantomData<Clk>,
-    }
-
     pub trait MuxCtrl<RccInt: IntToken, MuxSignal, Clk> {
         /// Select the source clock signal of a mux.
         fn select(
             &self,
             signal: MuxSignal,
             clk: ConfiguredClk<Clk>,
-        ) -> SelectedClkBuilder<RccInt, Clk>;
+        ) -> ConfiguredClkBuilder<RccInt, Clk>;
     }
 }
 
@@ -119,7 +118,7 @@ impl<RccInt: IntToken> StabilizingClkCtrl<HseClk> for Rcc<RccInt> {
     }
 }
 
-impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll> for SelectedClkBuilder<'_, RccInt, SrcClk> {
+impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll> for ConfiguredClkBuilder<'_, RccInt, SrcClk> {
     fn stabilize(&self, clk: Pll) -> FiberFuture<ConfiguredClk<Pll>> {
         let rcc = self.rcc;
 
@@ -223,12 +222,12 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> 
         &self,
         signal: PllSrcMuxSignal,
         _clk: ConfiguredClk<HsiClk>,
-    ) -> SelectedClkBuilder<RccInt, HsiClk> {
+    ) -> ConfiguredClkBuilder<RccInt, HsiClk> {
         assert!(matches!(signal, PllSrcMuxSignal::Hsi { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc());
-        SelectedClkBuilder {
+        ConfiguredClkBuilder {
             rcc: self,
-            _clk: PhantomData,
+            clk: PhantomData,
         }
     }
 }
@@ -238,12 +237,12 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> 
         &self,
         signal: PllSrcMuxSignal,
         _clk: ConfiguredClk<HseClk>,
-    ) -> SelectedClkBuilder<RccInt, HseClk> {
+    ) -> ConfiguredClkBuilder<RccInt, HseClk> {
         assert!(matches!(signal, PllSrcMuxSignal::Hse { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc());
-        SelectedClkBuilder {
+        ConfiguredClkBuilder {
             rcc: self,
-            _clk: PhantomData,
+            clk: PhantomData,
         }
     }
 }
@@ -253,12 +252,12 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> 
         &self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<HsiClk>,
-    ) -> SelectedClkBuilder<RccInt, HsiClk> {
+    ) -> ConfiguredClkBuilder<RccInt, HsiClk> {
         assert!(matches!(signal, SysClkMuxSignal::Hsi { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b00));
-        SelectedClkBuilder {
+        ConfiguredClkBuilder {
             rcc: self,
-            _clk: PhantomData,
+            clk: PhantomData,
         }
     }
 }
@@ -268,12 +267,12 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> 
         &self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<HseClk>,
-    ) -> SelectedClkBuilder<RccInt, HseClk> {
+    ) -> ConfiguredClkBuilder<RccInt, HseClk> {
         assert!(matches!(signal, SysClkMuxSignal::Hse { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b01));
-        SelectedClkBuilder {
+        ConfiguredClkBuilder {
             rcc: self,
-            _clk: PhantomData,
+            clk: PhantomData,
         }
     }
 }
@@ -283,12 +282,12 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<Rc
         &self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<PllClk<PllP>>,
-    ) -> SelectedClkBuilder<RccInt, PllClk<PllP>> {
+    ) -> ConfiguredClkBuilder<RccInt, PllClk<PllP>> {
         assert!(matches!(signal, SysClkMuxSignal::Pll { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b10));
-        SelectedClkBuilder {
+        ConfiguredClkBuilder {
             rcc: self,
-            _clk: PhantomData,
+            clk: PhantomData,
         }
     }
 }
