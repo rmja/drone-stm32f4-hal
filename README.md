@@ -22,6 +22,7 @@ There are the following more high-level drivers:
 
 * `spi` Dma driven, future based spi driver.
 * `uart` Dma driven, future based uart driver.
+* `fmc` External SDRAM driver.
 
 ## RCC
 A necessary but often complicated task when starting a new embedded application is to correctly configure the various clocks within the mcu. The `rcc` feature contains two parts:
@@ -325,6 +326,42 @@ The driver is started with the ring buffer `rx_ring_buf`. This buffer is interna
 This is not using busy waiting on data to become available, but is achieved internally by registering a [Drone OS] [fiber](https://book.drone-os.com/fibers.html) that completes when any data becomes available in the dma controller and therefore the ring buffer.
 
 The `read()` method may return an error if `read()` is not called fast enough, in which case it can happen that the ring buffer has overflowed since the last call to `read()`.
+
+## FMC
+The `fmc` feature provides an sdram driver. The driver ensures that all required pins are configured correctly, after which one can obtain a `&mut [T]` slice of the address mapped memory.
+There is an [example app](./examples/fmc/src/tasks/root.rs) where the majority of the configuration is setting up pins into the alternate function mode.
+After that, the initialization and use of the driver is straight forward:
+
+```rust
+let sdram_pins = FmcSdRamPins::default()
+  .sdclk(gpio_g.pin(periph_gpio_g8!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  ...;
+let address_pins = FmcSdRamAddressPins::default()
+  .a0(gpio_f.pin(periph_gpio_f0!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  ...;
+let data_pins = FmcSdRamDataPins::default()
+  .d0(gpio_d.pin(periph_gpio_d14!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  ...;
+let bank_pins = FmcSdRamBankPins::default()
+  .ba0(gpio_g.pin(periph_gpio_g4!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  ...;
+let mask_pins = FmcSdRamByteMaskPins::default()
+  .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  ...;
+
+let fmc = FmcDrv::init_sdram(SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
+let ram = fmc.bank2_slice::<usize>();
+
+for i in 0..ram.len() {
+    ram[i] = i;
+}
+
+for i in 0..ram.len() {
+    assert_eq!(i, ram[i], "SDRAM sanity check error!");
+}
+```
+The driver ensures that the correct number of pins is mapped corresponding to the sdram `consts::SDRAM_CFG` configuration parameters,
+and that they are set into alternate function mode.
 
 ## Supported Devices
 
