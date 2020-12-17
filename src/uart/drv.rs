@@ -41,7 +41,7 @@ pub mod config {
             clk: ConfiguredClk<Clk>,
         ) -> UartSetup<Uart, UartInt, Clk>;
     }
-    
+
     #[derive(Copy, Clone)]
     pub enum BaudRate {
         Nominal(u32),
@@ -78,10 +78,13 @@ macro_rules! uart_setup_init {
             for crate::drv::config::UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
         {
             fn init(
-                uart: drone_stm32_map::periph::uart::UartPeriph<drone_stm32_map::periph::uart::$uart>,
+                uart: drone_stm32_map::periph::uart::UartPeriph<
+                    drone_stm32_map::periph::uart::$uart,
+                >,
                 uart_int: UartInt,
                 clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
-            ) -> crate::drv::config::UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk> {
+            ) -> crate::drv::config::UartSetup<drone_stm32_map::periph::uart::$uart, UartInt, $pclk>
+            {
                 Self {
                     uart,
                     uart_int,
@@ -238,7 +241,10 @@ pub trait UartTxDrvInit<
 #[macro_export]
 macro_rules! rx_drv_init {
     ($uart:ident, $ch:ident, $stch:ident) => {
-        impl<UartInt: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken>
+        impl<
+                UartInt: drone_cortexm::thr::IntToken,
+                Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
+            >
             crate::drv::UartRxDrvInit<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
@@ -249,7 +255,11 @@ macro_rules! rx_drv_init {
         {
             fn init_rx<DmaRxInt: drone_cortexm::thr::IntToken, Tx>(
                 &self,
-                rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaRxInt>,
+                rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
+                    drone_stm32_map::periph::dma::ch::$ch,
+                    $stch,
+                    DmaRxInt,
+                >,
                 _rx_pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Defined, Tx>,
             ) -> crate::rx::UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
@@ -265,8 +275,11 @@ macro_rules! rx_drv_init {
 #[macro_export]
 macro_rules! tx_drv_init {
     ($uart:ident, $ch:ident, $stch:ident) => {
-        impl<UartInt: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken>
-        crate::drv::UartTxDrvInit<
+        impl<
+                UartInt: drone_cortexm::thr::IntToken,
+                Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
+            >
+            crate::drv::UartTxDrvInit<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
@@ -276,7 +289,11 @@ macro_rules! tx_drv_init {
         {
             fn init_tx<DmaInt: drone_cortexm::thr::IntToken, Rx>(
                 &self,
-                tx_cfg: drone_stm32f4_dma_drv::DmaChCfg<drone_stm32_map::periph::dma::ch::$ch, $stch, DmaInt>,
+                tx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
+                    drone_stm32_map::periph::dma::ch::$ch,
+                    $stch,
+                    DmaInt,
+                >,
                 _tx_pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Rx, Defined>,
             ) -> crate::tx::UartTxDrv<
                 drone_stm32_map::periph::uart::$uart,

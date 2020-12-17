@@ -2,7 +2,7 @@ use crate::diverged::{DmaChDiverged, SpiDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    spi::{traits::*, SpiMap, SpiCr1},
+    spi::{traits::*, SpiCr1, SpiMap},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
@@ -30,10 +30,7 @@ impl<
         DmaTxInt: IntToken,
     > SpiMasterDrv<'drv, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
-    pub(crate) fn init<
-        DmaRxStCh: DmaStChToken,
-        DmaTxStCh: DmaStChToken,
-    >(
+    pub(crate) fn init<DmaRxStCh: DmaStChToken, DmaTxStCh: DmaStChToken>(
         spi: &'drv SpiDiverged<Spi>,
         miso_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
         mosi_cfg: DmaChCfg<DmaTx, DmaTxStCh, DmaTxInt>,
@@ -73,10 +70,14 @@ impl<
             r.spe().set(v);
         });
 
-        master.dma_rx.init_dma_rx(spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
+        master
+            .dma_rx
+            .init_dma_rx(spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
         master.dma_rx.panic_on_err(master.dma_rx_int);
 
-        master.dma_tx.init_dma_tx(spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
+        master
+            .dma_tx
+            .init_dma_tx(spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
         master.dma_tx.panic_on_err(master.dma_tx_int);
 
         master
@@ -188,12 +189,13 @@ impl<
 }
 
 impl<
-    Spi: SpiMap + SpiCr1,
-    DmaRx: DmaChMap,
-    DmaRxInt: IntToken,
-    DmaTx: DmaChMap,
-    DmaTxInt: IntToken,
-> Drop for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt> {
+        Spi: SpiMap + SpiCr1,
+        DmaRx: DmaChMap,
+        DmaRxInt: IntToken,
+        DmaTx: DmaChMap,
+        DmaTxInt: IntToken,
+    > Drop for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+{
     fn drop(&mut self) {
         self.wait_for_idle();
 

@@ -1,5 +1,7 @@
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::dma::ch::{DmaChMap, DmaChPeriph, SDmaCm0Ar, SDmaCcr, SDmaCpar, CDmaCndtr};
+use drone_stm32_map::periph::dma::ch::{
+    CDmaCndtr, DmaChMap, DmaChPeriph, SDmaCcr, SDmaCm0Ar, SDmaCpar,
+};
 
 #[allow(dead_code)]
 pub(crate) struct DmaChDiverged<DmaCh: DmaChMap> {
@@ -21,7 +23,7 @@ pub(crate) struct DmaChDiverged<DmaCh: DmaChMap> {
     pub(crate) dma_isr_teif: DmaCh::CDmaIsrTeif,
 }
 
-static DUMMY_U8:[u8; 1] = [0];
+static DUMMY_U8: [u8; 1] = [0];
 
 impl<DmaCh: DmaChMap> DmaChDiverged<DmaCh> {
     pub(crate) fn init_dma_rx(&self, per_dr: u32, chsel: u32, priority: u32) {
@@ -33,7 +35,7 @@ impl<DmaCh: DmaChMap> DmaChDiverged<DmaCh> {
             r.pl().write(v, priority); // priority level
             r.msize().write(v, 0b00); // byte (8-bit)
             r.psize().write(v, 0b00); // byte (8-bit)
-            // r.minc().set(v); // memory address pointer is incremented after each data transfer
+                                      // r.minc().set(v); // memory address pointer is incremented after each data transfer
             r.pinc().clear(v); // peripheral address pointer is fixed
             r.dir().write(v, 0b00); // peripheral-to-memory
             r.tcie().set(v); // transfer complete interrupt enable
@@ -50,7 +52,7 @@ impl<DmaCh: DmaChMap> DmaChDiverged<DmaCh> {
             r.pl().write(v, priority); // priority level
             r.msize().write(v, 0b00); // byte (8-bit)
             r.psize().write(v, 0b00); // byte (8-bit)
-            // r.minc().set(v); // memory address pointer is incremented after each data transfer
+                                      // r.minc().set(v); // memory address pointer is incremented after each data transfer
             r.pinc().clear(v); // peripheral address pointer is fixed
             r.circ().clear(v); // normal mode.
             r.dir().write(v, 0b01); // memory-to-peripheral

@@ -38,7 +38,7 @@ pub mod config {
             baud_rate: BaudRate,
         ) -> SpiSetup<Spi, SpiInt, Clk>;
     }
-    
+
     pub enum BaudRate {
         Max(u32),
         Custom(Prescaler),
@@ -72,16 +72,23 @@ pub mod config {
 #[macro_export]
 macro_rules! spi_setup {
     ($spi:ident, $pclk:ident) => {
-        impl<SpiInt: drone_cortexm::thr::IntToken> crate::drv::config::NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+        impl<SpiInt: drone_cortexm::thr::IntToken>
+            crate::drv::config::NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
             for crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
         {
             fn new(
                 spi: drone_stm32_map::periph::spi::SpiPeriph<drone_stm32_map::periph::spi::$spi>,
                 spi_int: SpiInt,
-                _pins: crate::pins::SpiPins<drone_stm32_map::periph::spi::$spi, crate::pins::Defined, crate::pins::Defined, crate::pins::Defined>,
+                _pins: crate::pins::SpiPins<
+                    drone_stm32_map::periph::spi::$spi,
+                    crate::pins::Defined,
+                    crate::pins::Defined,
+                    crate::pins::Defined,
+                >,
                 clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
                 baud_rate: crate::drv::config::BaudRate,
-            ) -> crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk> {
+            ) -> crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+            {
                 Self {
                     spi,
                     spi_int,
@@ -179,7 +186,10 @@ pub trait SpiDrvInit<
 #[macro_export]
 macro_rules! master_drv_init {
     ($spi:ident, $miso_ch:ident, $miso_stch:ident, $mosi_ch:ident, $mosi_stch:ident) => {
-        impl<SpiInt: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken>
+        impl<
+                SpiInt: drone_cortexm::thr::IntToken,
+                Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
+            >
             crate::drv::SpiDrvInit<
                 drone_stm32_map::periph::spi::$spi,
                 drone_stm32_map::periph::dma::ch::$miso_ch,
@@ -188,7 +198,10 @@ macro_rules! master_drv_init {
                 $mosi_stch,
             > for crate::drv::SpiDrv<drone_stm32_map::periph::spi::$spi, SpiInt, Clk>
         {
-            fn init_master<DmaRxInt: drone_cortexm::thr::IntToken, DmaTxInt: drone_cortexm::thr::IntToken>(
+            fn init_master<
+                DmaRxInt: drone_cortexm::thr::IntToken,
+                DmaTxInt: drone_cortexm::thr::IntToken,
+            >(
                 &self,
                 miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     drone_stm32_map::periph::dma::ch::$miso_ch,

@@ -1,6 +1,10 @@
 use crate::master::SpiMasterDrv;
 use drone_cortexm::thr::prelude::*;
-use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::{SpiMap, SpiCr1}};
+use drone_stm32_map::periph::{
+    dma::ch::DmaChMap,
+    gpio::pin::GpioPinMap,
+    spi::{SpiCr1, SpiMap},
+};
 use drone_stm32f4_gpio_drv::{GpioPin, OutputMode, PinPullToken, PinTypeToken};
 
 pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> {
@@ -19,7 +23,6 @@ impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin,
     }
 }
 
-
 impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> SpiChip<Pin, PinType, PinPull> {
     /// Initialize a new `SpiChip` as deselected.
     pub fn init(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
@@ -33,7 +36,9 @@ pub struct SelectGuard<'a, Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinP
     chip: &'a SpiChip<Pin, PinType, PinPull>,
 }
 
-impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> Drop for SelectGuard<'_, Pin, PinType, PinPull> {
+impl<Pin: GpioPinMap, PinType: PinTypeToken, PinPull: PinPullToken> Drop
+    for SelectGuard<'_, Pin, PinType, PinPull>
+{
     fn drop(&mut self) {
         self.chip.deselect();
     }

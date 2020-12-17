@@ -36,7 +36,9 @@ pub struct FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe> 
     sdnwe: PhantomData<Sdnwe>,
 }
 
-impl<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe> {
+impl<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>
+    FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>
+{
     pub fn new() -> Self {
         Self {
             sdclk: PhantomData,
@@ -82,7 +84,9 @@ pub struct FmcSdRamAddressPins<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11,
     a12: PhantomData<A12>,
 }
 
-impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> FmcSdRamAddressPins<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> {
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12>
+    FmcSdRamAddressPins<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12>
+{
     pub fn new() -> Self {
         Self {
             a0: PhantomData,
@@ -121,7 +125,40 @@ pin_ext!( A9PinExt.a9  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, U, U
 pin_ext!(A10PinExt.a10 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, U, U>);
 pin_ext!(A11PinExt.a11 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, U>);
 
-pub struct FmcSdRamDataPins<D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, D17, D18, D19, D20, D21, D22, D23, D24, D25, D26, D27, D28, D29, D30, D31> {
+pub struct FmcSdRamDataPins<
+    D0,
+    D1,
+    D2,
+    D3,
+    D4,
+    D5,
+    D6,
+    D7,
+    D8,
+    D9,
+    D10,
+    D11,
+    D12,
+    D13,
+    D14,
+    D15,
+    D16,
+    D17,
+    D18,
+    D19,
+    D20,
+    D21,
+    D22,
+    D23,
+    D24,
+    D25,
+    D26,
+    D27,
+    D28,
+    D29,
+    D30,
+    D31,
+> {
     d0: PhantomData<D0>,
     d1: PhantomData<D1>,
     d2: PhantomData<D2>,
@@ -156,7 +193,75 @@ pub struct FmcSdRamDataPins<D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D1
     d31: PhantomData<D31>,
 }
 
-impl<D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, D17, D18, D19, D20, D21, D22, D23, D24, D25, D26, D27, D28, D29, D30, D31> FmcSdRamDataPins<D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, D17, D18, D19, D20, D21, D22, D23, D24, D25, D26, D27, D28, D29, D30, D31> {
+impl<
+        D0,
+        D1,
+        D2,
+        D3,
+        D4,
+        D5,
+        D6,
+        D7,
+        D8,
+        D9,
+        D10,
+        D11,
+        D12,
+        D13,
+        D14,
+        D15,
+        D16,
+        D17,
+        D18,
+        D19,
+        D20,
+        D21,
+        D22,
+        D23,
+        D24,
+        D25,
+        D26,
+        D27,
+        D28,
+        D29,
+        D30,
+        D31,
+    >
+    FmcSdRamDataPins<
+        D0,
+        D1,
+        D2,
+        D3,
+        D4,
+        D5,
+        D6,
+        D7,
+        D8,
+        D9,
+        D10,
+        D11,
+        D12,
+        D13,
+        D14,
+        D15,
+        D16,
+        D17,
+        D18,
+        D19,
+        D20,
+        D21,
+        D22,
+        D23,
+        D24,
+        D25,
+        D26,
+        D27,
+        D28,
+        D29,
+        D30,
+        D31,
+    >
+{
     pub fn new() -> Self {
         Self {
             d0: PhantomData,
@@ -195,7 +300,42 @@ impl<D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, 
     }
 }
 
-impl Default for FmcSdRamDataPins<U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U> {
+impl Default
+    for FmcSdRamDataPins<
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+        U,
+    >
+{
     fn default() -> Self {
         Self::new()
     }

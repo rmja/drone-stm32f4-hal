@@ -44,11 +44,12 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
             uart_int,
             dma: dma_ch.into(),
         };
-        rx.dma.init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_pl);
+        rx.dma
+            .init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_pl);
         rx.dma.panic_on_err(dma_int);
         rx
     }
-    
+
     /// Enable rx operation for the uart peripheral and return a guard that disables the receiver when dropped.
     /// Bytes are received into `ring_buf` and `read()` calls must be made in a sufficent pace to keep up with the reception.
     /// `read()' calls must always keep the ring buffer less than half full for the driver to correctly detect if overflows have occured.
@@ -261,9 +262,7 @@ impl<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
     }
 }
 
-impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> Drop
-    for RxGuard<'_, Uart, UartInt, DmaRx>
-{
+impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> Drop for RxGuard<'_, Uart, UartInt, DmaRx> {
     /// Stop the receiver.
     fn drop(&mut self) {
         self.stop();

@@ -78,14 +78,10 @@ mod uart7;
 ))]
 mod uart8;
 
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-))]
+#[cfg(any(stm32_mcu = "stm32f413",))]
 mod uart9;
 
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-))]
+#[cfg(any(stm32_mcu = "stm32f413",))]
 mod uart10;
 
 pub use self::usart1::*;
@@ -168,12 +164,8 @@ pub use self::uart7::*;
 ))]
 pub use self::uart8::*;
 
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-))]
+#[cfg(any(stm32_mcu = "stm32f413",))]
 pub use self::uart9::*;
 
-#[cfg(any(
-    stm32_mcu = "stm32f413",
-))]
+#[cfg(any(stm32_mcu = "stm32f413",))]
 pub use self::uart10::*;

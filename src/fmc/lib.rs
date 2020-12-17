@@ -2,11 +2,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod drv;
-mod periph;
 mod mappings;
+mod periph;
 mod sdrampins;
 
-pub use self::drv::{FmcDrv, config};
+pub use self::drv::{config, FmcDrv};
 pub use self::periph::*;
 
 #[prelude_import]

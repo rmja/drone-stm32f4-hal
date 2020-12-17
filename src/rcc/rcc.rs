@@ -17,19 +17,12 @@ pub struct RccSetup<RccInt: IntToken> {
 
 impl<RccInt: IntToken> RccSetup<RccInt> {
     pub fn new(rcc: RccPeriph, rcc_int: RccInt) -> Self {
-        Self {
-            rcc,
-            rcc_int,
-        }
+        Self { rcc, rcc_int }
     }
 }
 
 #[derive(Clone, Copy, Bitfield)]
-#[bitfield(
-    hclk(rw, 0_u8),
-    pclk1(rw, 1_u8),
-    pclk2(rw, 2_u8),
-)]
+#[bitfield(hclk(rw, 0_u8), pclk1(rw, 1_u8), pclk2(rw, 2_u8))]
 struct ConfiguredClocks(u8);
 
 /// Rcc controller.
@@ -83,7 +76,7 @@ pub mod traits {
         pub(crate) rcc: &'a Rcc<RccInt>,
         pub(crate) clk: PhantomData<Clk>,
     }
-    
+
     pub trait ClkCtrl<Clk> {
         /// Configures the clock `clk`.
         fn configure(&self, clk: Clk) -> ConfiguredClk<Clk>;
@@ -131,7 +124,9 @@ impl<RccInt: IntToken> StabilizingClkCtrl<HseClk> for Rcc<RccInt> {
     }
 }
 
-impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll> for ConfiguredClkBuilder<'_, RccInt, SrcClk> {
+impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll>
+    for ConfiguredClkBuilder<'_, RccInt, SrcClk>
+{
     fn stabilize(&self, clk: Pll) -> FiberFuture<ConfiguredClk<Pll>> {
         let rcc = self.rcc;
 
@@ -180,12 +175,12 @@ impl<RccInt: IntToken> ClkCtrl<HClk> for Rcc<RccInt> {
         self.configured.borrow_mut().set_hclk();
         self.rcc.rcc_cfgr.modify(|r| {
             let hpre = match clk.hpre {
-                1   => 0b0000,
-                2   => 0b1000,
-                4   => 0b1001,
-                8   => 0b1010,
-                16  => 0b1011,
-                64  => 0b1100,
+                1 => 0b0000,
+                2 => 0b1000,
+                4 => 0b1001,
+                8 => 0b1010,
+                16 => 0b1011,
+                64 => 0b1100,
                 128 => 0b1101,
                 256 => 0b1110,
                 512 => 0b1111,
@@ -202,10 +197,10 @@ impl<RccInt: IntToken> ClkCtrl<PClk1> for Rcc<RccInt> {
         self.configured.borrow_mut().set_pclk1();
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre1 = match clk.ppre1 {
-                1  => 0b000,
-                2  => 0b100,
-                4  => 0b101,
-                8  => 0b110,
+                1 => 0b000,
+                2 => 0b100,
+                4 => 0b101,
+                8 => 0b110,
                 16 => 0b111,
                 _ => unreachable!(),
             };
@@ -220,10 +215,10 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
         self.configured.borrow_mut().set_pclk2();
         self.rcc.rcc_cfgr.modify(|r| {
             let ppre2 = match clk.ppre2 {
-                1  => 0b000,
-                2  => 0b100,
-                4  => 0b101,
-                8  => 0b110,
+                1 => 0b000,
+                2 => 0b100,
+                4 => 0b101,
+                8 => 0b110,
                 16 => 0b111,
                 _ => unreachable!(),
             };

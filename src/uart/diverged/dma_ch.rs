@@ -1,5 +1,7 @@
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::dma::ch::{DmaChMap, DmaChPeriph, SDmaCm0Ar, SDmaCcr, SDmaCpar, CDmaCndtr};
+use drone_stm32_map::periph::dma::ch::{
+    CDmaCndtr, DmaChMap, DmaChPeriph, SDmaCcr, SDmaCm0Ar, SDmaCpar,
+};
 
 #[allow(dead_code)]
 pub(crate) struct DmaChDiverged<DmaCh: DmaChMap> {
