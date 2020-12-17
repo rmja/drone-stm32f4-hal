@@ -360,7 +360,7 @@ for i in 0..ram.len() {
     assert_eq!(i, ram[i], "SDRAM sanity check error!");
 }
 ```
-The driver ensures that the correct number of pins is mapped corresponding to the sdram `consts::SDRAM_CFG` configuration parameters,
+The driver ensures that the correct number of pins is mapped corresponding to the sdram `consts::SDRAM_CFG` [configuration parameters](./examples/fmc/src/consts.rs),
 and that they are set into alternate function mode.
 
 ## Supported Devices
