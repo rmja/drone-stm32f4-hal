@@ -80,6 +80,19 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     FmcDrv::init_sdram(SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
 
+    unsafe {
+        for i in 0..10 {
+            let address = (0xD0_00_00_00usize + i) as *mut u8;
+            core::ptr::write_volatile(address, (i & 0xFF) as u8);
+        }
+        
+        for i in 0..10 {
+            let address = (0xD0_00_00_00usize + i) as *mut u8;
+            let byte = core::ptr::read_volatile(address);
+            assert_eq!((i & 0xFF) as u8, byte);
+        }
+    }
+
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
 }
@@ -91,8 +104,8 @@ async fn setup_clktree(rcc: &Rcc<thr::Rcc>, pwr: &Pwr, flash: &Flash) -> Configu
         .stabilize(consts::PLL)
         .await;
     let hclk = rcc.configure(consts::HCLK);
-    // let pclk1 = rcc.configure(consts::PCLK1);
-    // let pclk2 = rcc.configure(consts::PCLK2);
+    let pclk1 = rcc.configure(consts::PCLK1);
+    let pclk2 = rcc.configure(consts::PCLK2);
     pwr.enable_overdrive();
     flash.set_latency(consts::HCLK.get_wait_states(VoltageRange::HighVoltage));
     swo::flush();

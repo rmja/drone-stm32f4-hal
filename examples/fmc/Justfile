@@ -25,6 +25,10 @@ lint:
 build:
 	cargo build --features "{{features}}" --release
 
+# Build the binary with debug symbols
+build-debug:
+	cargo build --features "{{features}}"
+
 # Build the documentation
 doc:
 	cargo doc --features "{{features}}"

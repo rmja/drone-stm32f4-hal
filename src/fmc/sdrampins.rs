@@ -9,6 +9,22 @@ pub struct D;
 /// Undefined marker type.
 pub struct U;
 
+pub trait Opt {
+    fn num() -> u32;
+}
+
+impl Opt for D {
+    fn num() -> u32 {
+        1
+    }
+}
+
+impl Opt for U {
+    fn num() -> u32 {
+        0
+    }
+}
+
 pub struct FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe> {
     sdclk: PhantomData<Sdclk>,
     sdcke0: PhantomData<Sdcke0>,

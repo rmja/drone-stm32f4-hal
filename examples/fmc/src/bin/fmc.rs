@@ -4,7 +4,7 @@
 
 use drone_core::{mem, token::Token};
 use drone_cortexm::processor;
-use fsc::{
+use fmc::{
     tasks,
     thr::{ThrsInit, Vtable},
     Regs,

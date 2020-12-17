@@ -3,7 +3,7 @@ cargo-features = ["resolver"]
 [workspace]
 
 [package]
-name = "fsc"
+name = "fmc"
 version = "0.1.0"
 authors = ["Rasmus Melchior Jacobsen <rmja@laesoe.org>"]
 edition = "2018"
@@ -12,7 +12,7 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "fsc"
+name = "fmc"
 test = false
 doc = false
 
