@@ -95,10 +95,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
-    let chip = SpiChip::init(pin_cs);
+    let mut chip = SpiChip::init(pin_cs);
 
     loop {
-        let selection = spi_master.select(&chip);
+        let selection = spi_master.select(&mut chip);
         let tx_buf = [1, 2, 3, 4].as_ref();
         let mut rx_buf = [0;4];
         spi_master.write(tx_buf).root_wait();

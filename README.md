@@ -199,8 +199,8 @@ let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
   .into_output()
   .with_speed(GpioPinSpeed::HighSpeed);
 
-let chip = SpiChip::init(pin_cs);
-let selection = spi_master.select(&chip);
+let mut chip = SpiChip::init(pin_cs);
+let selection = spi_master.select(&mut chip);
 // Do some communication...
 drop(selection); // drop() deselects chip.
 ```
@@ -212,7 +212,7 @@ It extends the spi master driver with the `select()` method which returns a guar
 The communication can be done using the three methods `write()`, `read()`, and `xfer()`:
 
 ```rust
-let selection = spi_master.select(&chip);
+let selection = spi_master.select(&mut chip);
 let tx_buf = [1, 2, 3, 4].as_ref();
 let mut rx_buf = [0;4];
 spi_master.write(tx_buf).root_wait();

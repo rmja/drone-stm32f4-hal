@@ -12,6 +12,7 @@ mod pins;
 mod slave;
 
 pub use self::drv::{config, SpiDrv};
+pub use self::master::{SpiMasterDrv};
 
 pub mod prelude {
     pub use crate::drv::SpiDrvInit;
