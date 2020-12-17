@@ -1,16 +1,15 @@
 use crate::periph::FmcPeriph;
 use core::cmp::max;
 use drone_cortexm::reg::prelude::*;
-use drone_stm32f4_rcc_drv::{clktree::HClk, traits::ConfiguredClk};
 
 use self::config::*;
 
 pub mod config {
+    use drone_core::bitfield::Bitfield;
     use drone_stm32f4_rcc_drv::{clktree::HClk, traits::ConfiguredClk};
     use crate::periph::FmcPeriph;
 
     pub use crate::sdrampins::*;
-
     pub struct SdRamCfg {
         /// The capacity in megabyte.
         pub capacity: usize,
@@ -42,17 +41,27 @@ pub mod config {
         pub t_xsr: Timing,
         /// Load Mode Register to active delay.
         pub t_mrd: Timing,
-        /// Auto refresh cycles
-        pub auto_refresh: Timing,
-        /// An optional mode register written to the sdram during initialization.
-        pub mode_register: Option<u32>,
+        /// The power up delay in microseconds, see the initialization section in the datasheet. It is typically 100us.
+        pub power_up_delay_us: u32,
+        /// The number of auto refresh commands that must be sent during initialization, see the initialization section in the datasheet. It is typically 8.
+        pub auto_refresh_commands: u32,
     }
+
+    #[derive(Clone, Copy, Bitfield)]
+    #[bitfield(
+        burst_length(rw, 0, 3),
+        burst_type(rw, 3, 1),
+        latency_mode(rw, 4, 3),
+        operating_mode(rw, 7, 2),
+        write_burst_mode(rw, 9, 1),
+    )]
+    pub(crate) struct SdRamModeRegister(pub u32);
 
     impl SdRamCfg {
         pub(crate) fn sdcr_nc(&self) -> u32 {
             match self.col_bits {
-                 8 => 0b00,
-                 9 => 0b01,
+                8 => 0b00,
+                9 => 0b01,
                 10 => 0b10,
                 11 => 0b11,
                 _ => panic!("Unsupported number of column bits."),
@@ -70,7 +79,7 @@ pub mod config {
 
         pub(crate) fn sdcr_mwid(&self) -> u32 {
             match self.mem_width {
-                 8 => 0b00,
+                8 => 0b00,
                 16 => 0b01,
                 32 => 0b10,
                 _ => panic!("Unsupported memory width."),
@@ -102,12 +111,6 @@ pub mod config {
             let rate_cycles = (self.refresh_period_ms * sdclk_khz) / self.row_count - 20;
             rate_cycles
         }
-    }
-
-    pub trait SdRamCfgModeRegister {
-        /// Get the mode register programmed to the sdram.
-        /// It typically contains burst length, burst type, latency, etc.
-        fn get_mode_register(&self) -> u32;
     }
 
     pub struct SdRamSetup {
@@ -150,7 +153,7 @@ pub mod config {
                     //        = ( ns * sdclk ) / 1000000000 */
                     let ns = ns as u64;
                     let sdclk = sdclk as u64;
-                    let cycles = ((ns*sdclk)+1000_000_000u64-1u64)/1000_000_000u64;
+                    let cycles = ((ns*sdclk)+1000_000_000_u64-1u64)/1000_000_000_u64;
                     cycles as u32
                 },
                 Timing::MemCycles(cycles) => cycles,
@@ -234,25 +237,45 @@ impl FmcDrv {
 
         let to_bank1 = bank1.is_some();
         let to_bank2 = bank2.is_some();
+
+        // The SDRAM power up sequence is as follows (JEDEC Standard 21C 3.11.5.4):
+        // 1. Apply power and start clock. Attempt to maintain a NOP condition at the inputs
+        // 2. Maintain stable power, stable clock, and a NOP condition for a minimum of 200us
+        // 3. Issue precharge commands for all banks of the device
+        // 4. Issue 8 or more auto-refresh commands
+        // 5. Issue a mode register set command to initialize the mode register
+
+        // The SDRAM initialization sequence is outlined in PM0090 §37.7.3.
+
+        // Start delivering the clock to the memory.
         fmc.send_command(SdRamCommand::ClockConfigurationEnable, to_bank1, to_bank2);
 
-        // TODO: Delay 100 [us]
-
+        // Wait the prescribed power-up delay.
+        let power_up_delay_us_max = max( 
+            bank1.map(|b| {b.power_up_delay_us}).unwrap_or_default(),
+            bank2.map(|b| {b.power_up_delay_us}).unwrap_or_default());
+        // TODO: Delay power_up_delay_us_max
+        
+        // Issue Precharge-All command to banks.
         fmc.send_command(SdRamCommand::PrechargeAll, to_bank1, to_bank2);
 
+        // Issue the required number of Auto-Refresh commands.
+        let auto_refresh_commands_max = max( 
+            bank1.map(|b| {b.auto_refresh_commands}).unwrap_or_default(),
+            bank2.map(|b| {b.auto_refresh_commands}).unwrap_or_default());
+        fmc.send_command(SdRamCommand::AutoRefresh(auto_refresh_commands_max), to_bank1, to_bank2);
+
+        // Issue the Load-Module-Register command.
         if let Some(bank1) = bank1 {
-            fmc.send_command(SdRamCommand::AutoRefresh(bank1.auto_refresh.to_max_cycles(sdclk)), true, false);
-            if let Some(mrd) = bank1.mode_register {
-                fmc.send_command(SdRamCommand::LoadModeRegister(mrd), true, false);
-            }
+            let mode_register = FmcDrv::get_mode_register(bank1.cas_latency);
+            fmc.send_command(SdRamCommand::LoadModeRegister(mode_register.0), true, false);
         }
         if let Some(bank2) = bank2 {
-            fmc.send_command(SdRamCommand::AutoRefresh(bank2.auto_refresh.to_max_cycles(sdclk)), false, true);
-            if let Some(mrd) = bank2.mode_register {
-                fmc.send_command(SdRamCommand::LoadModeRegister(mrd), false, true);
-            }
+            let mode_register = FmcDrv::get_mode_register(bank2.cas_latency);
+            fmc.send_command(SdRamCommand::LoadModeRegister(mode_register.0), false, true);
         }
 
+        // Program the refresh rate.
         let count_max = max( 
             bank1.map(|b| {b.sdtrt_count(sdclk)}).unwrap_or_default(),
             bank2.map(|b| {b.sdtrt_count(sdclk)}).unwrap_or_default());
@@ -262,33 +285,44 @@ impl FmcDrv {
         });
     }
 
+    fn get_mode_register(cas_latency: u32) -> SdRamModeRegister {
+        let mut mode_register = SdRamModeRegister(0);
+            mode_register
+                .write_burst_length(0) // Must be 0, see PM0090 §37.7.3.
+                .clear_burst_type() // 0: Sequential
+                .write_latency_mode(cas_latency)
+                .write_operating_mode(0) // 0: Standard operation
+                .set_write_burst_mode(); // 1: Single location access
+        mode_register
+    }
+
     fn configure_control(&self, bank1: Option<&SdRamCfg>, bank2: Option<&SdRamCfg>, sdclk_hclk_presc: u32) {
         // Setup per bank configuration.
         if let Some(bank1) = bank1 {
-            self.fmc.fmc_sdcr1.store(|r| { 
-                let mut r = r.write_nc(bank1.sdcr_nc())
-                    .write_nr(bank1.sdcr_nr())
-                    .write_mwid(bank1.sdcr_mwid())
-                    .write_cas(bank1.cas_latency)
-                    .clear_wp(); // Disable write protection
-                if bank1.sdcr_nb() {
-                    r = r.set_nb();
-                }
-                r
-            })
+            self.fmc.fmc_sdcr1.store(|r| { r
+                .write_nc(bank1.sdcr_nc()) // Number of column address bits
+                .write_nr(bank1.sdcr_nr()) // Number of row address bits
+                .write_mwid(bank1.sdcr_mwid()) // Memory data bus width
+                .write_nb(bank1.sdcr_nb()) // Number of internal banks
+                .write_cas(bank1.cas_latency) // CAS latency
+                .clear_wp() // Disable write protection
+                // SDCLK is shared, see below.
+                // RBURST is shared, see below.
+                // RPIPE is shared, see below.
+            });
         }
         if let Some(bank2) = bank2 {
-            self.fmc.fmc_sdcr2.store(|r| { 
-                let mut r = r.write_nc(bank2.sdcr_nc())
-                    .write_nr(bank2.sdcr_nr())
-                    .write_mwid(bank2.sdcr_mwid())
-                    .write_cas(bank2.cas_latency)
-                    .clear_wp(); // Disable write protection
-                if bank2.sdcr_nb() {
-                    r = r.set_nb();
-                }
-                r
-            })
+            self.fmc.fmc_sdcr2.store(|r| { r
+                .write_nc(bank2.sdcr_nc()) // Number of column address bits
+                .write_nr(bank2.sdcr_nr()) // Number of row address bits
+                .write_mwid(bank2.sdcr_mwid()) // Memory data bus width
+                .write_nb(bank2.sdcr_nb()) // Number of internal banks
+                .write_cas(bank2.cas_latency) // CAS latency
+                .clear_wp() // Disable write protection
+                // SDCLK is read only.
+                // RBURST is don't care.
+                // RPIPE is read only.
+            });
         }
 
         // Setup shared fields.
@@ -298,37 +332,44 @@ impl FmcDrv {
                 3 => 0b11,
                 _ => unreachable!(),
             })
-            .clear_rburst() // Do not use burst mode.
-            .write_rpipe(0) // Read pipe is not used when not in burst mode.
+            .clear_rburst() // Do not use burst mode
+            .write_rpipe(0b01) // One HCLK clock cycle delay for reading data after CAS latency
         });
     }
 
     fn configure_timings(&self, bank1: Option<&SdRamCfg>, bank2: Option<&SdRamCfg>, sdclk: u32) {
-        // Setup per bank timings.
-        if let Some(bank1) = bank1 {
-            self.fmc.fmc_sdtr1.store(|r| { r
-                .write_tmrd(bank1.t_mrd.to_max_cycles(sdclk))
-                .write_txsr(bank1.t_xsr.to_max_cycles(sdclk))
-                .write_tras(bank1.t_ras_min.to_max_cycles(sdclk))
-                .write_trcd(bank1.t_rcd.to_max_cycles(sdclk))
-            })
-        }
-        if let Some(bank2) = bank2 {
-            self.fmc.fmc_sdtr2.store(|r| { r
-                .write_tmrd(bank2.t_mrd.to_max_cycles(sdclk))
-                .write_txsr(bank2.t_xsr.to_max_cycles(sdclk))
-                .write_tras(bank2.t_ras_min.to_max_cycles(sdclk))
-                .write_trcd(bank2.t_rcd.to_max_cycles(sdclk))
-            })
-        }
-
-        // Setup the timing fields that are shared between the two banks.
-        let trp_slowest = max( 
-            bank1.map(|b| {b.t_rp.to_max_cycles(sdclk)}).unwrap_or_default(),
-            bank2.map(|b| {b.t_rp.to_max_cycles(sdclk)}).unwrap_or_default());
         let twr_slowest = max(
             bank1.map(|b| {b.t_wr.to_max_cycles(sdclk)}).unwrap_or_default(),
             bank2.map(|b| {b.t_wr.to_max_cycles(sdclk)}).unwrap_or_default());
+
+        // Setup per bank timings.
+        if let Some(bank1) = bank1 {
+            self.fmc.fmc_sdtr1.store(|r| { r
+                .write_tmrd(bank1.t_mrd.to_max_cycles(sdclk)) // Load Mode Register to Active
+                .write_txsr(bank1.t_xsr.to_max_cycles(sdclk)) // Exit Self-refresh delay
+                .write_tras(bank1.t_ras_min.to_max_cycles(sdclk)) // Self refresh time
+                // TRC is shared, see below.
+                .write_twr(twr_slowest) // Recovery delay - must be written to both banks to the slowest value
+                // TRP is shared, see below.
+                .write_trcd(bank1.t_rcd.to_max_cycles(sdclk)) // Row to column delay
+            });
+        }
+        if let Some(bank2) = bank2 {
+            self.fmc.fmc_sdtr2.store(|r| { r
+                .write_tmrd(bank2.t_mrd.to_max_cycles(sdclk)) // Load Mode Register to Active
+                .write_txsr(bank2.t_xsr.to_max_cycles(sdclk)) // Exit Self-refresh delay
+                .write_tras(bank2.t_ras_min.to_max_cycles(sdclk)) // Self refresh time
+                // TRC is don't care.
+                .write_twr(twr_slowest) // Recovery delay - must be written to both banks to the slowest value
+                // TRP is don't care.
+                .write_trcd(bank2.t_rcd.to_max_cycles(sdclk))
+            });
+        }
+
+        // Setup shared timing fields.
+        let trp_slowest = max( 
+            bank1.map(|b| {b.t_rp.to_max_cycles(sdclk)}).unwrap_or_default(),
+            bank2.map(|b| {b.t_rp.to_max_cycles(sdclk)}).unwrap_or_default());
         let trc_slowest = max(
             bank1.map(|b| {b.t_rc.to_max_cycles(sdclk)}).unwrap_or_default(),
             bank2.map(|b| {b.t_rc.to_max_cycles(sdclk)}).unwrap_or_default());
@@ -337,10 +378,11 @@ impl FmcDrv {
             .write_trp(trp_slowest)
             .write_twr(twr_slowest)
             .write_trc(trc_slowest)
-        })
+        });
     }
 
     fn send_command(&self, command: SdRamCommand, to_bank1: bool, to_bank2: bool) {
+        // Write the command to the command register.
         self.fmc.fmc_sdcmr.store(|r| {
             let mut r = match command {
                 SdRamCommand::NormalMode =>
@@ -351,8 +393,10 @@ impl FmcDrv {
                     r.write_mode(0b010),
                 SdRamCommand::AutoRefresh(nrfs) =>
                     r.write_mode(0b011).write_nrfs(nrfs),
-                SdRamCommand::LoadModeRegister(mrd) =>
-                    r.write_mode(0b100).write_mrd(mrd),
+                SdRamCommand::LoadModeRegister(mrd) => {
+                    assert_eq!(mrd, mrd & 0x1FFF);
+                    r.write_mode(0b100).write_mrd(mrd)
+                },
                 SdRamCommand::SelfRefresh =>
                     r.write_mode(0b101),
                 SdRamCommand::PowerDown =>
@@ -367,11 +411,37 @@ impl FmcDrv {
             r
         });
 
-        // Wait for the controller to complete the command
+        // Wait for the controller to complete the command.
         loop {
             if !self.fmc.fmc_sdsr.busy.read_bit() {
                 break;
             }
+        }
+    }
+}
+
+trait FmcSdcrExt {
+    fn write_nb(&mut self, val: bool) -> &mut Self;
+}
+
+impl FmcSdcrExt for drone_stm32_map::reg::fmc::sdcr1::Hold<'_, drone_cortexm::reg::prelude::Srt> {
+    fn write_nb(&mut self, val: bool) -> &mut Self {
+        if val {
+            self.set_nb()
+        }
+        else {
+            self.clear_nb()
+        }
+    }
+}
+
+impl FmcSdcrExt for drone_stm32_map::reg::fmc::sdcr2::Hold<'_, drone_cortexm::reg::prelude::Srt> {
+    fn write_nb(&mut self, val: bool) -> &mut Self {
+        if val {
+            self.set_nb()
+        }
+        else {
+            self.clear_nb()
         }
     }
 }

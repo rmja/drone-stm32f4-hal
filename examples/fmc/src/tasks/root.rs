@@ -82,12 +82,12 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     unsafe {
         for i in 0..10 {
-            let address = (0xD0_00_00_00usize + i) as *mut u8;
+            let address = (0xD0_00_00_00_usize + i) as *mut u8;
             core::ptr::write_volatile(address, (i & 0xFF) as u8);
         }
         
         for i in 0..10 {
-            let address = (0xD0_00_00_00usize + i) as *mut u8;
+            let address = (0xD0_00_00_00_usize + i) as *mut u8;
             let byte = core::ptr::read_volatile(address);
             assert_eq!((i & 0xFF) as u8, byte);
         }

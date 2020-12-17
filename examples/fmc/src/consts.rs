@@ -1,7 +1,4 @@
-use drone_stm32f4_hal::{
-    fmc::config::*,
-    rcc::clktree::*,
-};
+use drone_stm32f4_hal::{fmc::config::*, rcc::clktree::*};
 
 pub const HSECLK: HseClk = HseClk::new(8_000_000);
 pub const PLLSRC_HSECLK: PllSrcMuxSignal = PllSrcMuxSignal::Hse(HSECLK);
@@ -29,13 +26,6 @@ pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
     t_rc: Timing::Ns(63),
     t_xsr: Timing::Ns(70),
     t_mrd: Timing::MemCycles(2),
-    auto_refresh: Timing::MemCycles(2),
-
-    mode_register: Some(
-        0b0_00_000_0_001 | // Burst length: 2
-        0b0_00_000_0_000 | // Burst type: sequential
-        0b0_00_010_0_000 | // CAS latency: 2 cycles
-        0b0_00_000_0_000 | // Operating mode: standard
-        0b1_00_000_0_000   // Write burst mode: single location access
-    )
+    power_up_delay_us: 100,
+    auto_refresh_commands: 2,
 };
