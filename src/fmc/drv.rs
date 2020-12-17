@@ -15,15 +15,15 @@ pub mod config {
         pub capacity: usize,
         /// The number of column bits.
         pub col_bits: u32,
-        /// The number of row bits.
+        /// The number of row bits, 11: A0-A10, 12: A0-A11, 13: A0-A12.
         pub row_bits: u32,
-        /// The memory width.
+        /// The memory width, 8: D0-D7, 16: D0-D15, 32: D0-D31.
         pub mem_width: u32,
         /// The number of banks inside the sdram, must be 2 or 4.
         pub bank_count: u32,
         /// The number of rows.
         pub row_count: u32,
-        /// The cas latency.
+        /// The number of cas latency sdram clock cycles.
         pub cas_latency: u32,
         /// The refresh period in milliseconds.
         pub refresh_period_ms: u32,
@@ -164,6 +164,8 @@ pub mod config {
 
 pub struct FmcDrv {
     fmc: FmcPeriph,
+    bank1_capacity: Option<usize>,
+    bank2_capacity: Option<usize>,
 }
 
 enum SdRamCommand {
@@ -190,7 +192,7 @@ impl FmcDrv {
         data_pins: FmcSdRamDataPins<D, D, D, D, D, D, D, D, D8, D9, D10, D11, D12, D13, D14, D15, D16, D17, D18, D19, D20, D21, D22, D23, D24, D25, D26, D27, D28, D29, D30, D31>,
         bank_pins: FmcSdRamBankPins<D, BA1>,
         mask_pins: FmcSdRamByteMaskPins<D, D, NBL2, NBL3>,
-    ) {
+    ) -> Self {
         let bank1 = setup.bank1.as_ref();
         let bank2 = setup.bank2.as_ref();
         let sdclk = setup.clk.f() / setup.sdclk_hclk_presc;
@@ -230,7 +232,11 @@ impl FmcDrv {
         setup.fmc.rcc_ahb3enr_fmcen.set_bit();
 
         // Setup banks
-        let fmc = FmcDrv{fmc: setup.fmc};
+        let fmc = FmcDrv {
+            fmc: setup.fmc,
+            bank1_capacity: bank1.map(|b| {b.capacity}),
+            bank2_capacity: bank2.map(|b| {b.capacity}),
+        };
 
         fmc.configure_control(bank1, bank2, setup.sdclk_hclk_presc);
         fmc.configure_timings(bank1, bank2, sdclk);
@@ -283,6 +289,8 @@ impl FmcDrv {
             r.write_count(count_max)
             .set_cre() // Clear refresh error flag
         });
+
+        fmc
     }
 
     fn get_mode_register(cas_latency: u32) -> SdRamModeRegister {
@@ -416,6 +424,24 @@ impl FmcDrv {
             if !self.fmc.fmc_sdsr.busy.read_bit() {
                 break;
             }
+        }
+    }
+
+    pub fn bank1_slice<'a, T: Sized>(&self) -> &'a mut [T] {
+        FmcDrv::slice(0xC000_0000, self.bank1_capacity.unwrap())
+    }
+
+    pub fn bank2_slice<'a, T: Sized>(&self) -> &'a mut [T] {
+        FmcDrv::slice(0xD000_0000, self.bank2_capacity.unwrap())
+    }
+
+    fn slice<'a, T: Sized>(base_address: u32, capacity: usize) -> &'a mut [T] {
+        // Memory bank base addresses are in PM0090 figure 457: FMC memory banks.
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                base_address as *mut T,
+                capacity / core::mem::size_of::<T>(),
+            )
         }
     }
 }
