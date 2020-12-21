@@ -139,7 +139,11 @@ pub trait PinSpeed {
 }
 
 impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
-    // TODO: into_input()
+    /// Set pin into general purpose input mode.
+    pub fn into_input(self) -> GpioPin<Pin, InputMode, DontCare, DontCare> {
+        self.pin.gpio_moder_moder.write_bits(0b00);
+        self.pin.into()
+    }
 
     /// Set pin into general purpose output mode.
     pub fn into_output(self) -> GpioPin<Pin, OutputMode, DontCare, DontCare> {
