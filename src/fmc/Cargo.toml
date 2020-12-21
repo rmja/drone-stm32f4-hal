@@ -10,7 +10,7 @@ repository = "https://github.com/rmja/drone-stm32f4-hal"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 description = """
-FMC Drone OS driver for STM32F4 micro-controllers.
+Flexible Memory Controller (FMC) Drone OS driver for STM32F4 micro-controllers.
 """
 
 [badges]
@@ -20,8 +20,8 @@ maintenance = { status = "actively-developed" }
 path = "lib.rs"
 
 [dependencies]
-drone-core = { version = "0.13.0", path = "../../../drone-core" }
-drone-cortexm = { version = "0.13.0", path = "../../../drone-cortexm" }
-drone-stm32-map = { version = "0.13.0", path = "../../../drone-stm32-map"  }
+drone-core = { version = "0.14.0", path = "../../../drone-core" }
+drone-cortexm = { version = "0.14.0", path = "../../../drone-cortexm" }
+drone-stm32-map = { version = "0.14.0", path = "../../../drone-stm32-map"  }
 drone-stm32f4-gpio-drv = { version = "0.1.0", path = "../gpio"  }
 drone-stm32f4-rcc-drv = { version = "0.1.0", path = "../rcc"  }

@@ -35,8 +35,14 @@ stm32_reg_tokens! {
 }
 
 heap! {
-    /// A heap allocator generated from the `Drone.toml`.
-    heap => pub Heap;
+    // Heap configuration key in `Drone.toml`.
+    config => main;
+    /// The main heap allocator generated from the `Drone.toml`.
+    metadata => pub Heap;
+    // Use this heap as the global allocator.
+    global => true;
+    // Uncomment the following line to enable heap tracing feature:
+    // trace_port => 31;
 }
 
 /// The global allocator.

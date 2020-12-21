@@ -24,12 +24,11 @@ std = [
     "drone-stm32-map/std",
     "futures/std",
 ]
-heaptrace = ["drone-core/heaptrace"]
 
 [dependencies]
-drone-core = { version = "0.13.0", path="../../../drone-core" }
-drone-cortexm = { version = "0.13.0", features = ["bit-band", "floating-point-unit", "memory-protection-unit"], path="../../../drone-cortexm" }
-drone-stm32-map = { version = "0.13.0", features = ["dma", "gpio", "spi"], path="../../../drone-stm32-map" }
+drone-core = { version = "0.14.0", path="../../../drone-core" }
+drone-cortexm = { version = "0.14.0", features = ["bit-band", "floating-point-unit", "memory-protection-unit"], path="../../../drone-cortexm" }
+drone-stm32-map = { version = "0.14.0", features = ["dma", "gpio", "spi"], path="../../../drone-stm32-map" }
 drone-stm32f4-hal = { version = "0.1.0", features = ["dma", "gpio", "rcc", "spi"], path="../../" }
 futures = { version = "0.3.0", default-features = false }
 
