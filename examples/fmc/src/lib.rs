@@ -48,3 +48,15 @@ heap! {
 /// The global allocator.
 #[cfg_attr(not(feature = "std"), global_allocator)]
 pub static HEAP: Heap = Heap::new();
+
+heap! {
+    // Heap configuration key in `Drone.toml`.
+    config => slow;
+    /// Slow heap allocator generated from the `Drone.toml`.
+    metadata => pub HeapSlow;
+    global => false;
+}
+
+/// Slow allocator.
+#[link_section = ".sdram_heap"]
+pub static HEAP_SLOW: HeapSlow = HeapSlow::new();

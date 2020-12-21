@@ -11,7 +11,7 @@ pub const PCLK2: PClk2 = HCLK.to_pclk2(2);
 
 // Configuration and timings for the is42s16400j sdram
 pub const SDRAM_CFG: SdRamCfg = SdRamCfg {
-    capacity: 0x800000,
+    capacity: 0x800000, // 8Mb
     col_bits: 8,
     row_bits: 12,
     mem_width: 16,

@@ -11,7 +11,7 @@ pub mod config {
 
     pub use crate::sdrampins::*;
     pub struct SdRamCfg {
-        /// The capacity in megabyte.
+        /// The capacity in bytes.
         pub capacity: usize,
         /// The number of column bits.
         pub col_bits: u32,
@@ -560,10 +560,11 @@ impl FmcDrv {
 
     fn slice<'a, T: Sized>(base_address: u32, capacity: usize) -> &'a mut [T] {
         // Memory bank base addresses are in PM0090 figure 457: FMC memory banks.
+        let sizeof_t = core::mem::size_of::<T>();
         unsafe {
             core::slice::from_raw_parts_mut(
                 base_address as *mut T,
-                capacity / core::mem::size_of::<T>(),
+                capacity / sizeof_t,
             )
         }
     }

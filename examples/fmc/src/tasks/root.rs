@@ -252,6 +252,15 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         assert_eq!(i, ram[i], "SDRAM sanity check error!");
     }
 
+    // Zero entire sdram memory.
+    for i in 0..ram.len() {
+        ram[i] = 0;
+    }
+
+    use crate::{HEAP, HEAP_SLOW};
+    let y = Box::new_in(1, &HEAP);
+
+
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
 }

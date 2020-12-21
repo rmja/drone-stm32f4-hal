@@ -6,6 +6,10 @@ origin = 0x08000000
 size = "256K"
 origin = 0x20000000
 
+[memory.sdram]
+size = "8M"
+origin = 0xC0000000
+
 [heap.main]
 size = "128K"
 pools = [
@@ -19,8 +23,17 @@ pools = [
     { block = "6556", capacity = 1 },
 ]
 
+[heap.slow]
+origin = 0
+size = "6K"
+pools = [
+    { block = "4", capacity = 896 },
+    { block = "32", capacity = 80 },
+]
+
 [linker]
 platform = "arm"
+include = ["sdram.ld"]
 
 [probe]
 gdb-client-command = "gdb-multiarch"
