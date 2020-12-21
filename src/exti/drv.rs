@@ -141,6 +141,38 @@ pub trait ExtiLine<
     ) -> ExtiLineDrv<Exti, ExtiInt>;
 }
 
+#[macro_export]
+macro_rules! exti_line {
+    ($exti:ident, $pin:ident) => {
+        impl<
+            ExtiInt: drone_cortexm::thr::IntToken,
+            Edge: EdgeToken,
+        > ExtiLine<
+            $exti,
+            ExtiInt,
+            $pin
+        > for ExtiDrv<$exti, ExtiInt, Edge>
+        {
+            fn line<
+                Type: drone_stm32f4_gpio_drv::PinTypeToken,
+                Pull: drone_stm32f4_gpio_drv::PinPullToken,
+            >(
+                &self,
+                pin: drone_stm32f4_gpio_drv::GpioPin<
+                    $pin,
+                    drone_stm32f4_gpio_drv::prelude::InputMode,
+                    Type,
+                    Pull,
+                >,
+            ) -> crate::drv::ExtiLineDrv<$exti, ExtiInt> {
+                crate::drv::ExtiLineDrv::init(self)
+            }
+        }
+
+    };
+}
+
+
 impl<
         'drv,
         Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,

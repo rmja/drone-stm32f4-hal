@@ -2,6 +2,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod diverged;
+#[macro_use]
 mod drv;
 mod mappings;
 
