@@ -31,6 +31,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     let line = exti.line(pin);
 
+    line.when_triggered().root_wait();
+
+    while let Some(tick) = line.create_saturating_stream().next().root_wait() {
+
+    }
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();

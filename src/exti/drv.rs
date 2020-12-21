@@ -45,6 +45,7 @@ impl<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
 > ExtiSetup<Exti, ExtiInt> {
+    /// Create a new exti setup.
     pub fn new(exti: ExtiPeriph<Exti>, exti_int: ExtiInt) -> Self {
         Self {
             exti,
@@ -62,15 +63,6 @@ pub struct ExtiDrv<
     exti: ExtiDiverged<Exti>,
     exti_int: ExtiInt,
     edge: PhantomData<Edge>,
-}
-
-pub struct ExtiLineDrv<
-    'drv,
-    Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
-    ExtiInt: IntToken,
-> {
-    exti: &'drv ExtiDiverged<Exti>,
-    exti_int: ExtiInt,
 }
 
 impl<
@@ -94,6 +86,7 @@ impl<
         self.exti.exti_imr_im.set_bit(); // interrupt request from line 4 is not masked
     }
 }
+
 
 impl<
         Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
@@ -129,7 +122,7 @@ impl<
     }
 }
 
-pub trait ExtiLine<
+pub trait ExtiDrvLine<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
     Pin: GpioPinMap,
@@ -138,7 +131,7 @@ pub trait ExtiLine<
     fn line<Type: PinTypeToken, Pull: PinPullToken>(
         &self,
         pin: GpioPin<Pin, InputMode, Type, Pull>,
-    ) -> ExtiLineDrv<Exti, ExtiInt>;
+    ) -> ExtiDrvLine<Exti, ExtiInt>;
 }
 
 #[macro_export]
@@ -147,7 +140,7 @@ macro_rules! exti_line {
         impl<
             ExtiInt: drone_cortexm::thr::IntToken,
             Edge: EdgeToken,
-        > ExtiLine<
+        > ExtiDrvLine<
             $exti,
             ExtiInt,
             $pin
@@ -164,56 +157,10 @@ macro_rules! exti_line {
                     Type,
                     Pull,
                 >,
-            ) -> crate::drv::ExtiLineDrv<$exti, ExtiInt> {
-                crate::drv::ExtiLineDrv::init(self)
+            ) -> crate::drv::ExtiLine<$exti, ExtiInt> {
+                crate::drv::ExtiLine::init(self)
             }
         }
 
     };
-}
-
-
-impl<
-        'drv,
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
-        ExtiInt: IntToken,
-    > ExtiLineDrv<'drv, Exti, ExtiInt>
-{
-    pub(crate) fn init<Edge: EdgeToken>(exti: &'drv ExtiDrv<Exti, ExtiInt, Edge>) -> Self {
-        // self.exti.syscfg_exticr_exti.write_bits(config); // configuration
-        Self {
-            exti: &exti.exti,
-            exti_int: exti.exti_int,
-        }
-    }
-
-    // pub fn add_fib(&self) -> u32 {
-    //     self.exti_int.add_future
-    // }
-
-    /// Creates a new saturating stream of external events.
-    // pub fn create_saturating_stream(&self) -> impl Stream<Item = NonZeroUsize> + Send + Sync {
-    //     self.exti_int.add_saturating_pulse_stream(self.new_fib())
-    // }
-
-    // /// Creates a new fallible stream of external events.
-    // pub fn create_try_stream(
-    //     &self,
-    // ) -> impl Stream<Item = Result<NonZeroUsize, ExtiOverflow>> + Send + Sync {
-    //     self.exti_int
-    //         .add_pulse_try_stream(|| Err(ExtiOverflow), self.new_fib())
-    // }
-
-    fn new_fib<R>(&self) -> impl Fiber<Input = (), Yield = Option<usize>, Return = R> {
-        let exti_pr_pif = self.exti.exti_pr_pif;
-        fib::new_fn(move || {
-            if exti_pr_pif.read_bit() {
-                // selected trigger request occurred
-                exti_pr_pif.set_bit();
-                fib::Yielded(Some(1))
-            } else {
-                fib::Yielded(None)
-            }
-        })
-    }
 }

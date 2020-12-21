@@ -4,12 +4,14 @@
 mod diverged;
 #[macro_use]
 mod drv;
+mod line;
 mod mappings;
 
 pub use self::drv::{ExtiDrv, ExtiOverflow, ExtiSetup};
+pub use self::line::ExtiLine;
 
 pub mod prelude {
-    pub use crate::drv::ExtiLine;
+    pub use crate::drv::ExtiDrvLine;
 }
 
 #[prelude_import]
