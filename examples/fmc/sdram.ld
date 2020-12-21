@@ -7,6 +7,7 @@ SECTIONS
     .sdram_heap (NOLOAD) :
     {
         . = ALIGN(4);
-        *(.sdram_heap);
+        . += 6K; # The size of the "slow" heap.
+                 # The size must match the size specified in the [heap.slow] section in Drone.toml.
     } > SDRAM
 }

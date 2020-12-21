@@ -24,8 +24,8 @@ pools = [
 ]
 
 [heap.slow]
-origin = 0
-size = "6K"
+origin = 0xC0000000
+size = "6K" # This size is also hardcoded in the sdram.ld linker file
 pools = [
     { block = "4", capacity = 896 },
     { block = "32", capacity = 80 },

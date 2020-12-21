@@ -242,24 +242,23 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         bank_pins,
         mask_pins,
     );
-    let ram = fmc.bank2_slice::<usize>();
+    // IMPORTANT: Do not run the sanity check sequence when using the heap!
+    if true {
+        let ram = fmc.bank2_slice::<usize>();
 
-    for i in 0..ram.len() {
-        ram[i] = i;
+        for i in 0..ram.len() {
+            ram[i] = i;
+        }
+
+        for i in 0..ram.len() {
+            assert_eq!(i, ram[i], "SDRAM sanity check error!");
+        }
     }
-
-    for i in 0..ram.len() {
-        assert_eq!(i, ram[i], "SDRAM sanity check error!");
+    else {
+        use crate::{HEAP, HEAP_SLOW};
+        // This does not yet work due to an rust compiler error, see https://github.com/rust-lang/rust/issues/78459
+        // let y = Box::new_in((), &HEAP_SLOW);
     }
-
-    // Zero entire sdram memory.
-    for i in 0..ram.len() {
-        ram[i] = 0;
-    }
-
-    use crate::{HEAP, HEAP_SLOW};
-    let y = Box::new_in(1, &HEAP);
-
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
