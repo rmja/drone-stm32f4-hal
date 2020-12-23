@@ -133,11 +133,6 @@ pub enum GpioPinSpeed {
     VeryHighSpeed,
 }
 
-pub trait PinSpeed {
-    /// Set pin speed.
-    fn with_speed(self, speed: GpioPinSpeed) -> Self;
-}
-
 impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     /// Set pin into general purpose input mode.
     pub fn into_input(self) -> GpioPin<Pin, InputMode, DontCare, DontCare> {
@@ -155,6 +150,96 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
         self.pin.gpio_afr_afr.write_bits(Af::num());
         self.pin.gpio_moder_moder.write_bits(0b10);
         self.pin.into()
+    }
+}
+
+pub trait TypeableMode {}
+impl TypeableMode for InputMode {}
+impl TypeableMode for OutputMode {}
+impl<Af: PinAfToken> TypeableMode for AlternateMode<Af> {}
+
+impl<Pin: GpioPinMap, Mode: PinModeToken + TypeableMode> GpioPin<Pin, Mode, DontCare, DontCare> {
+    /// Let pin type be push/pull.
+    pub fn into_pp(self) -> GpioPin<Pin, Mode, PushPullType, DontCare> {
+        self.pin.gpio_otyper_ot.clear_bit();
+        self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
+        self.pin.into()
+    }
+
+    /// Let pin type be open-drain.
+    pub fn into_od(self) -> GpioPin<Pin, Mode, OpenDrainType, DontCare> {
+        self.pin.gpio_otyper_ot.set_bit();
+        self.pin.into()
+    }
+}
+
+pub trait PullableMode {}
+impl PullableMode for InputMode {}
+impl PullableMode for OutputMode {}
+impl<Af: PinAfToken> PullableMode for AlternateMode<Af> {}
+
+impl<Pin: GpioPinMap, Mode: PinModeToken + PullableMode> GpioPin<Pin, Mode, PushPullType, DontCare> {
+    /// No pull-up nor pull-down.
+    pub fn into_nopull(self) -> GpioPin<Pin, Mode, PushPullType, NoPull> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b00);
+        self.pin.into()
+    }
+
+    /// Let pin be pulled-up.
+    pub fn into_pullup(self) -> GpioPin<Pin, Mode, PushPullType, PullUp> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b01);
+        self.pin.into()
+    }
+
+    /// Let pin be pulled-down.
+    pub fn into_pulldown(self) -> GpioPin<Pin, Mode, PushPullType, PullDown> {
+        self.pin.gpio_pupdr_pupdr.write_bits(0b10);
+        self.pin.into()
+    }
+}
+
+pub trait SpeedableMode {}
+impl SpeedableMode for OutputMode {}
+impl<Af: PinAfToken> SpeedableMode for AlternateMode<Af> {}
+
+impl<Pin: GpioPinMap, Mode: PinModeToken + SpeedableMode, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Mode, Type, Pull>
+{
+    /// Set pin speed.
+    fn with_speed(self, speed: GpioPinSpeed) -> Self {
+        self.pin.gpio_ospeedr_ospeedr.write_bits(match speed {
+            GpioPinSpeed::LowSpeed => 0,
+            GpioPinSpeed::MediumSpeed => 1,
+            GpioPinSpeed::HighSpeed => 2,
+            GpioPinSpeed::VeryHighSpeed => 3,
+        });
+        self
+    }
+}
+
+pub trait GetableMode {}
+impl GetableMode for InputMode {}
+impl GetableMode for OutputMode {}
+impl<Af: PinAfToken> GetableMode for AlternateMode<Af> {}
+
+impl<Pin: GpioPinMap, Mode: PinModeToken + GetableMode, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Mode, Type, Pull>
+{
+    /// Get the current pin state.
+    pub fn get(&self) -> bool {
+        self.pin.gpio_idr_idr.read_bit()
+    }
+}
+
+impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, OutputMode, Type, Pull> {
+    /// Set output pin high.
+    pub fn set(&self) {
+        // Set output pin to high by writing BS (bit set) to the bit set/reset register.
+        self.pin.gpio_bsrr_bs.set_bit();
+    }
+
+    /// Set output pin low.
+    pub fn clear(&self) {
+        // Clear output pin to low by writing BR (bit reset) to the bit set/reset register.
+        self.pin.gpio_bsrr_br.set_bit();
     }
 }
 
