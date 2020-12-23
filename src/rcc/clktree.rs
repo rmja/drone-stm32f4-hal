@@ -383,6 +383,10 @@ impl HClk {
     pub const fn to_pclk2(self, ppre2: u32) -> PClk2 {
         PClk2::new(self, ppre2)
     }
+
+    pub const fn to_systickclk(self) -> SysTickClk {
+        SysTickClk{ src: self }
+    }
 }
 
 impl Freq for HClk {
@@ -449,6 +453,24 @@ impl PClk2 {
 }
 
 impl Freq for PClk2 {
+    fn freq(&self) -> u32 {
+        self.f()
+    }
+}
+
+/// The Cortex System Timer Clock.
+#[derive(Copy, Clone)]
+pub struct SysTickClk {
+    src: HClk,
+}
+
+impl SysTickClk {
+    pub const fn f(&self) -> u32 {
+        self.src.f() / 8
+    }
+}
+
+impl Freq for SysTickClk {
     fn freq(&self) -> u32 {
         self.f()
     }
