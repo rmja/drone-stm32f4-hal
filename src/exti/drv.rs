@@ -1,4 +1,4 @@
-use crate::diverged::ExtiDiverged;
+use crate::{ExtiLine, Syscfg, diverged::ExtiDiverged};
 use core::marker::PhantomData;
 use displaydoc::Display;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
@@ -60,8 +60,8 @@ pub struct ExtiDrv<
     ExtiInt: IntToken,
     Edge: EdgeToken,
 > {
-    exti: ExtiDiverged<Exti>,
-    exti_int: ExtiInt,
+    pub(crate) exti: ExtiDiverged<Exti>,
+    pub(crate) exti_int: ExtiInt,
     edge: PhantomData<Edge>,
 }
 
@@ -71,7 +71,8 @@ impl<
     > ExtiDrv<Exti, ExtiInt, NoEdge>
 {
     /// Sets up a new [`ExtiDrv`] from `setup` values.
-    pub fn init(setup: ExtiSetup<Exti, ExtiInt>) -> ExtiDrv<Exti, ExtiInt, NoEdge> {
+    /// Syscfg is required as its clock must be enabled prior to initialization.
+    pub fn init(setup: ExtiSetup<Exti, ExtiInt>, _syscfg: &Syscfg) -> ExtiDrv<Exti, ExtiInt, NoEdge> {
         let ExtiSetup { exti, exti_int } = setup;
         let drv = ExtiDrv {
             exti: exti.into(),
@@ -83,7 +84,7 @@ impl<
     }
 
     fn init_exti(&self) {
-        self.exti.exti_imr_im.set_bit(); // interrupt request from line 4 is not masked
+        self.exti.exti_imr_im.set_bit(); // Unmask interrupt request
     }
 }
 
@@ -130,17 +131,17 @@ pub trait ExtiDrvLine<
 {
     fn line<Type: PinTypeToken, Pull: PinPullToken>(
         &self,
-        pin: GpioPin<Pin, InputMode, Type, Pull>,
-    ) -> ExtiDrvLine<Exti, ExtiInt>;
+        pin: &GpioPin<Pin, InputMode, Type, Pull>,
+    ) -> ExtiLine<Exti, ExtiInt>;
 }
 
 #[macro_export]
 macro_rules! exti_line {
-    ($exti:ident, $pin:ident) => {
+    ($exti:ident, $port:ident, $pin:ident) => {
         impl<
             ExtiInt: drone_cortexm::thr::IntToken,
             Edge: EdgeToken,
-        > ExtiDrvLine<
+        > crate::drv::ExtiDrvLine<
             $exti,
             ExtiInt,
             $pin
@@ -151,16 +152,15 @@ macro_rules! exti_line {
                 Pull: drone_stm32f4_gpio_drv::PinPullToken,
             >(
                 &self,
-                pin: drone_stm32f4_gpio_drv::GpioPin<
+                _pin: &drone_stm32f4_gpio_drv::GpioPin<
                     $pin,
                     drone_stm32f4_gpio_drv::prelude::InputMode,
                     Type,
                     Pull,
                 >,
-            ) -> crate::drv::ExtiLine<$exti, ExtiInt> {
-                crate::drv::ExtiLine::init(self)
+            ) -> crate::line::ExtiLine<$exti, ExtiInt> {
+                crate::line::ExtiLine::init(self, $port::num())
             }
         }
-
     };
 }

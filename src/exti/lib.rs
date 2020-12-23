@@ -6,9 +6,13 @@ mod diverged;
 mod drv;
 mod line;
 mod mappings;
+mod periph;
+mod syscfg;
 
 pub use self::drv::{ExtiDrv, ExtiOverflow, ExtiSetup};
 pub use self::line::ExtiLine;
+pub use self::periph::*;
+pub use self::syscfg::Syscfg;
 
 pub mod prelude {
     pub use crate::drv::ExtiDrvLine;
