@@ -383,6 +383,7 @@ and that they are set into alternate function mode.
 
 * [STM32F429 PM0090 reference manual](https://www.st.com/resource/en/reference_manual/dm00031020.pdf)
 * [stm32f4-hal](https://github.com/stm32-rs/stm32f4xx-hal)
+* [smartoris-exti](https://github.com/smartoris/smartoris-exti)
 
 [Drone OS]: https://www.drone-os.com/
 
