@@ -20,6 +20,7 @@ A feature maps to a peripheral driver. There are the following low-level drivers
 
 There are the following more high-level drivers:
 
+* `exti` An external pin-interrupt driver.
 * `spi` Dma driven, future based spi driver.
 * `uart` Dma driven, future based uart driver.
 * `fmc` External SDRAM driver.
@@ -142,6 +143,33 @@ We call the channels within a stream a "stream channel" to avoid confusion.
 As for the alternate function mode in the gpio driver,
 the actual stream channel is not explicitly specified,
 as this information flows back into the type of `rx_dma` when the variable is actually used.
+
+## EXTI
+The exti driver is similar to the [smartoris-exti] driver,
+but with type safety from the gpio pin configuration ensuring that interrupts for a given pin is configured on the correct exti peripheral.
+There is a working [Drone OS] example application in the [examples folder](./examples/exti/):
+
+
+```rust
+thr.exti_2.enable_int();
+
+let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
+let setup = ExtiSetup::new(periph_exti2!(reg), thr.exti_2);
+let exti = ExtiDrv::init(setup, &syscfg).into_rising_edge();
+
+let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
+let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pp().into_pulldown();
+
+let line = exti.line(&pin);
+
+while let Some(tick) = line.create_saturating_stream().next().await {
+  // Rising edge was triggered
+}
+```
+
+The exti interrupt is first enabled in the nvic. The exti driver is then initialized, after which the pin is configured as input.
+The exti driver provides the `line()` function returning an `ExtiLine` struct, from which one can create a stream of events.
+
 
 ## SPI
 The spi driver provides future based spi transfers using dma.
@@ -383,9 +411,10 @@ and that they are set into alternate function mode.
 
 * [STM32F429 PM0090 reference manual](https://www.st.com/resource/en/reference_manual/dm00031020.pdf)
 * [stm32f4-hal](https://github.com/stm32-rs/stm32f4xx-hal)
-* [smartoris-exti](https://github.com/smartoris/smartoris-exti)
+* [smartoris-exti]
 
 [Drone OS]: https://www.drone-os.com/
+[smartoris-exti]: https://github.com/smartoris/smartoris-exti
 
 ## License
 
