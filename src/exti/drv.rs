@@ -1,6 +1,5 @@
 use crate::{ExtiLine, Syscfg, diverged::ExtiDiverged};
 use core::marker::PhantomData;
-use displaydoc::Display;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     exti::{
@@ -25,10 +24,6 @@ impl EdgeToken for FallingEdge {}
 impl EdgeToken for BothEdges {}
 
 impl EdgeToken for NoEdge {}
-
-/// EXTI stream overflow
-#[derive(Display, Debug)]
-pub struct ExtiOverflow;
 
 /// EXTI setup.
 pub struct ExtiSetup<

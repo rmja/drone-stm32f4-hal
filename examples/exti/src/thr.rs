@@ -28,7 +28,8 @@ thr! {
         };
         interrupts => {
             // Vector table for stm32f429 is in PM0090 table 62 page 375.
-            10: pub exti4;
+            8: pub exti2;
+            // 10: pub exti4;
         }
     };
 }

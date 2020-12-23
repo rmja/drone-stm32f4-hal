@@ -1,9 +1,16 @@
 use crate::{ExtiDrv, diverged::ExtiDiverged, drv::EdgeToken};
+use core::num::NonZeroUsize;
+use displaydoc::Display;
 use drone_core::fib::FiberFuture;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::exti::{
     ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
 };
+use futures::Stream;
+
+/// EXTI stream overflow
+#[derive(Display, Debug)]
+pub struct ExtiOverflow;
 
 pub struct ExtiLine<
     'drv,
@@ -28,51 +35,24 @@ impl<
         }
     }
 
-    /// Adds the fiber `fib` to the fiber chain running of the exti thread and returns a future, which
-    /// resolves on completion of the fiber, i.e. when triggered.
-    // fn add_future<F, Y, T>(self, fib: F) -> FiberFuture<T>
-    // where
-    //     F: Fiber<Input = (), Yield = Y, Return = T>,
-    //     // Y: YieldNone,
-    //     F: Send + 'static,
-    //     T: Send + 'static,
-    // {
-    //     self.exti_int.add_future(fib)
-    // }
-
-    /// Adds the fiber `fib` to the fiber chain running of the exti thread and returns a future, which
-    /// resolves on completion of the fiber, i.e. when triggered.
-    pub fn when_triggered(&self) -> FiberFuture<()> {
-        let exti_pr_pif = self.exti.exti_pr_pif;
-        self.exti_int.add_future(fib::new_fn(move || {
-            if exti_pr_pif.read_bit() {
-                // Selected trigger request occurred, clear interrupt flag
-                exti_pr_pif.set_bit();
-                fib::Complete(())
-            } else {
-                fib::Yielded(())
-            }
-        }))
+    /// Creates a new saturating stream of external events.
+    pub fn create_saturating_stream(&self) -> impl Stream<Item = NonZeroUsize> + Send + Sync {
+        self.exti_int.add_saturating_pulse_stream(self.new_fib())
     }
 
-    // /// Creates a new saturating stream of external events.
-    // pub fn create_saturating_stream(&self) -> impl Stream<Item = NonZeroUsize> + Send + Sync {
-    //     self.exti_int.add_saturating_pulse_stream(self.new_fib())
-    // }
-
-    // /// Creates a new fallible stream of external events.
-    // pub fn create_try_stream(
-    //     &self,
-    // ) -> impl Stream<Item = Result<NonZeroUsize, ExtiOverflow>> + Send + Sync {
-    //     self.exti_int
-    //         .add_pulse_try_stream(|| Err(ExtiOverflow), self.new_fib())
-    // }
+    /// Creates a new fallible stream of external events.
+    pub fn create_try_stream(
+        &self,
+    ) -> impl Stream<Item = Result<NonZeroUsize, ExtiOverflow>> + Send + Sync {
+        self.exti_int
+            .add_pulse_try_stream(|| Err(ExtiOverflow), self.new_fib())
+    }
 
     fn new_fib<R>(&self) -> impl Fiber<Input = (), Yield = Option<usize>, Return = R> {
         let exti_pr_pif = self.exti.exti_pr_pif;
         fib::new_fn(move || {
             if exti_pr_pif.read_bit() {
-                // selected trigger request occurred
+                // Selected trigger request occurred: clear pending flag
                 exti_pr_pif.set_bit();
                 fib::Yielded(Some(1))
             } else {

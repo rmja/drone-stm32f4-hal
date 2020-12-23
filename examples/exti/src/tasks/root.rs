@@ -3,13 +3,14 @@
 use crate::{thr, thr::ThrsInit, Regs};
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    exti::periph_exti4,
+    exti::periph_exti2,
     gpio::{
-        periph_gpio_b_head,
-        periph_gpio_b4,
+        periph_gpio_i_head,
+        periph_gpio_i2,
     },
 };
-use drone_stm32f4_hal::{exti::{ExtiDrv, ExtiSetup, prelude::*}, gpio::{prelude::*, GpioHead}};
+use drone_stm32f4_hal::{exti::{ExtiDrv, ExtiSetup, Syscfg, prelude::*,periph_syscfg}, gpio::{prelude::*, GpioHead}};
+use futures::prelude::*;
 
 /// The root task handler.
 #[inline(never)]
@@ -21,20 +22,24 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     println!("Hello, world!");
 
     // Enable interrupts.
-    thr.exti_4.enable_int();
+    thr.exti_2.enable_int();
 
-    let gpio = GpioHead::with_enabled_clock(periph_gpio_b_head!(reg));
-    let pin = gpio.pin(periph_gpio_b4!(reg)).into_input();
+    let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
+    let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pp().into_pulldown();
 
-    let setup = ExtiSetup::new(periph_exti4!(reg), thr.exti_4);
-    let exti = ExtiDrv::init(setup).into_rising_edge();
+    // unsafe {
+    //     gpio.disable_clock();
+    // }
 
-    let line = exti.line(pin);
+    let setup = ExtiSetup::new(periph_exti2!(reg), thr.exti_2);
+    let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
+    let exti = ExtiDrv::init(setup, &syscfg).into_rising_edge();
 
-    line.when_triggered().root_wait();
+    pin.get();
 
+    let line = exti.line(&pin);
     while let Some(tick) = line.create_saturating_stream().next().root_wait() {
-
+        let _ = pin.get();
     }
 
     // Enter a sleep state on ISR exit.
