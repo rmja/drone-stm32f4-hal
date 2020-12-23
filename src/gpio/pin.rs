@@ -205,7 +205,7 @@ impl<Af: PinAfToken> SpeedableMode for AlternateMode<Af> {}
 impl<Pin: GpioPinMap, Mode: PinModeToken + SpeedableMode, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
-    fn with_speed(self, speed: GpioPinSpeed) -> Self {
+    pub fn with_speed(self, speed: GpioPinSpeed) -> Self {
         self.pin.gpio_ospeedr_ospeedr.write_bits(match speed {
             GpioPinSpeed::LowSpeed => 0,
             GpioPinSpeed::MediumSpeed => 1,
