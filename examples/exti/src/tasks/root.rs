@@ -9,7 +9,7 @@ use drone_stm32_map::periph::{
         periph_gpio_i2,
     },
 };
-use drone_stm32f4_hal::{exti::{ExtiDrv, ExtiSetup, Syscfg, prelude::*,periph_syscfg}, gpio::{prelude::*, GpioHead}};
+use drone_stm32f4_hal::{exti::{ExtiDrv, Syscfg, prelude::*,periph_syscfg}, gpio::{prelude::*, GpioHead}};
 use futures::prelude::*;
 
 /// The root task handler.
@@ -31,14 +31,16 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     //     gpio.disable_clock();
     // }
 
-    let setup = ExtiSetup::new(periph_exti2!(reg), thr.exti_2);
     let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
-    let exti = ExtiDrv::init(setup, &syscfg).into_rising_edge();
+    let exti = ExtiDrv::new(periph_exti2!(reg), thr.exti_2, &syscfg).into_rising_edge();
 
     pin.get();
 
     let line = exti.line(&pin);
-    while let Some(tick) = line.create_saturating_stream().next().root_wait() {
+    let stream = line.create_saturating_stream();
+    exti.listen();
+
+    while let Some(tick) = stream.next().root_wait() {
         let _ = pin.get();
     }
 

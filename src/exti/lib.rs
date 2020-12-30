@@ -9,13 +9,14 @@ mod mappings;
 mod periph;
 mod syscfg;
 
-pub use self::drv::{ExtiDrv, ExtiSetup};
+pub use self::drv::ExtiDrv;
 pub use self::line::{ExtiLine, ExtiOverflow};
 pub use self::periph::*;
 pub use self::syscfg::Syscfg;
 
 pub mod prelude {
     pub use crate::drv::ExtiDrvLine;
+    pub use crate::drv::{RisingEdge, FallingEdge, BothEdges};
 }
 
 #[prelude_import]

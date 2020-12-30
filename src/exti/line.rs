@@ -1,7 +1,6 @@
 use crate::{ExtiDrv, diverged::ExtiDiverged, drv::EdgeToken};
-use core::num::NonZeroUsize;
+use core::{marker::PhantomData, num::NonZeroUsize};
 use displaydoc::Display;
-use drone_core::fib::FiberFuture;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::exti::{
     ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
@@ -16,22 +15,26 @@ pub struct ExtiLine<
     'drv,
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
+    Edge: EdgeToken + 'static,
 > {
     exti: &'drv ExtiDiverged<Exti>,
     exti_int: ExtiInt,
+    edge: PhantomData<Edge>,
 }
 
 impl<
         'drv,
         Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
         ExtiInt: IntToken,
-    > ExtiLine<'drv, Exti, ExtiInt>
+        Edge: EdgeToken,
+    > ExtiLine<'drv, Exti, ExtiInt, Edge>
 {
-    pub(crate) fn init<Edge: EdgeToken>(exti: &'drv ExtiDrv<Exti, ExtiInt, Edge>, port_num: u32) -> Self {
+    pub(crate) fn init(exti: &'drv ExtiDrv<Exti, ExtiInt, Edge>, port_num: u32) -> Self {
         exti.exti.syscfg_exticr_exti.write_bits(port_num);
         Self {
             exti: &exti.exti,
             exti_int: exti.exti_int,
+            edge: PhantomData,
         }
     }
 
