@@ -36,12 +36,12 @@ pub mod config {
             pins: SpiPins<Spi, Defined, Defined, Defined>,
             clk: ConfiguredClk<Clk>,
             baud_rate: BaudRate,
-        ) -> SpiSetup<Spi, SpiInt, Clk>;
+        ) -> Self;
     }
 
     pub enum BaudRate {
         Max(u32),
-        Custom(Prescaler),
+        Prescaler(Prescaler),
     }
 
     #[derive(Copy, Clone, PartialEq)]
@@ -87,7 +87,7 @@ macro_rules! spi_setup {
                 >,
                 clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
                 baud_rate: crate::drv::config::BaudRate,
-            ) -> crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
+            ) -> Self
             {
                 Self {
                     spi,
@@ -116,13 +116,13 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
             spi_int: setup.spi_int,
             clk: PhantomData,
         };
-        drv.init_spi(setup.clk, setup.baud_rate, setup.clk_pol, setup.first_bit);
+        drv.init_spi(&setup.clk, setup.baud_rate, setup.clk_pol, setup.first_bit);
         drv
     }
 
     fn init_spi(
         &mut self,
-        clk: ConfiguredClk<Clk>,
+        clk: &ConfiguredClk<Clk>,
         baud_rate: BaudRate,
         clk_pol: ClkPol,
         first_bit: FirstBit,
@@ -226,7 +226,7 @@ macro_rules! master_drv_init {
     };
 }
 
-fn spi_br<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
+fn spi_br<Clk: PClkToken>(clk: &ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
     use config::*;
     let f_pclk = clk.freq();
     let presc = match baud_rate {
@@ -241,7 +241,7 @@ fn spi_br<Clk: PClkToken>(clk: ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
             65..=128 => Prescaler::Div128,
             _ => Prescaler::Div256,
         },
-        BaudRate::Custom(prescaler) => prescaler,
+        BaudRate::Prescaler(prescaler) => prescaler,
     };
 
     match presc {
