@@ -2,14 +2,21 @@ use crate::{ExtiDrv, diverged::ExtiDiverged, drv::EdgeToken};
 use core::{marker::PhantomData, num::NonZeroUsize};
 use displaydoc::Display;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::exti::{
-    ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
+use drone_stm32_map::periph::{
+    exti::{
+        ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
+    },
+    gpio::head::GpioHeadMap,
 };
 use futures::Stream;
 
 /// EXTI stream overflow
 #[derive(Display, Debug)]
 pub struct ExtiOverflow;
+
+pub trait HeadNum {
+    fn num() -> u32;
+}
 
 pub struct ExtiLine<
     'drv,
@@ -29,8 +36,8 @@ impl<
         Edge: EdgeToken,
     > ExtiLine<'drv, Exti, ExtiInt, Edge>
 {
-    pub(crate) fn init(exti: &'drv ExtiDrv<Exti, ExtiInt, Edge>, port_num: u32) -> Self {
-        exti.exti.syscfg_exticr_exti.write_bits(port_num);
+    pub(crate) fn init<Head: GpioHeadMap + HeadNum>(exti: &'drv ExtiDrv<Exti, ExtiInt, Head, Edge>) -> Self {
+        exti.exti.syscfg_exticr_exti.write_bits(Head::num());
         Self {
             exti: &exti.exti,
             exti_int: exti.exti_int,
