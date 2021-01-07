@@ -8,13 +8,13 @@ pub struct GpioHead<Head: GpioHeadMap> {
 impl<Head: GpioHeadMap> GpioHead<Head> {
     /// Initialize a new gpio port head.
     #[must_use]
-    pub fn with_enabled_clock(port: GpioHeadPeriph<Head>) -> GpioHead<Head> {
+    pub fn with_enabled_clock(port: GpioHeadPeriph<Head>) -> Self {
         port.rcc_busenr_gpioen.set_bit();
         Self { port }
     }
 
     /// Disable the port clock.
-    pub unsafe fn disable_clock(self) {
+    pub unsafe fn disable_clock(&self) {
         self.port.rcc_busenr_gpioen.clear_bit();
     }
 }
