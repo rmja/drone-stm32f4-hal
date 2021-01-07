@@ -23,5 +23,8 @@ pub extern crate drone_stm32f4_rcc_drv as rcc;
 #[cfg(feature = "spi")]
 pub extern crate drone_stm32f4_spi_drv as spi;
 
+#[cfg(feature = "tim")]
+pub extern crate drone_stm32f4_tim_drv as tim;
+
 #[cfg(feature = "uart")]
 pub extern crate drone_stm32f4_uart_drv as uart;

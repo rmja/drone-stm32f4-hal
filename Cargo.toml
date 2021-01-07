@@ -33,6 +33,7 @@ exti = ["drone-stm32f4-exti-drv"]
 fmc = ["drone-stm32f4-fmc-drv"]
 gpio = ["drone-stm32f4-gpio-drv"]
 rcc = ["drone-stm32f4-rcc-drv"]
+tim = ["drone-stm32f4-tim-drv"]
 uart = ["drone-stm32f4-uart-drv"]
 spi = ["drone-stm32f4-spi-drv"]
 
@@ -63,6 +64,11 @@ optional = true
 [dependencies.drone-stm32f4-rcc-drv]
 version = "=0.1.0"
 path = "src/rcc"
+optional = true
+
+[dependencies.drone-stm32f4-tim-drv]
+version = "=0.1.0"
+path = "src/tim"
 optional = true
 
 [dependencies.drone-stm32f4-uart-drv]
