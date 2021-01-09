@@ -51,7 +51,7 @@ macro_rules! pin_impl {
                 Pull,
             > for $type_name<$($pins_in),+>
         {
-            fn $fn_name(self, _pin: drone_stm32f4_gpio_drv::GpioPin<
+            fn $fn_name(self, _pin: &drone_stm32f4_gpio_drv::GpioPin<
                 $pin,
                 $mode,
                 Type,
@@ -74,7 +74,7 @@ macro_rules! pin_impl {
                 $($pins_in),+
             > for $type_name<$($pins_in),+>
         {
-            fn $fn_name(self, _pin: drone_stm32f4_gpio_drv::GpioPin<
+            fn $fn_name(self, _pin: &drone_stm32f4_gpio_drv::GpioPin<
                 $pin,
                 $mode,
                 Type,
