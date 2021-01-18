@@ -1,11 +1,14 @@
 use alloc::rc::Rc;
-use core::{cell::RefCell, marker::PhantomData};
-use drone_cortexm::reg::prelude::*;
+use drone_core::fib;
+use fib::Fiber;
+use core::{marker::PhantomData, num::NonZeroUsize};
+use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output,
-    TimCcmr2OutputCc3S, TimCcmr2OutputCc4S, TimCcr2, TimCcr3, TimCcr4,
+    TimCcr2, TimCcr3, TimCcr4,
     TimDierCc2Ie, TimSrCc2If, TimDierCc3Ie, TimSrCc3If, TimDierCc4Ie, TimSrCc4If
 };
+use futures::Stream;
 
 use crate::shared::DontCare;
 
@@ -30,6 +33,8 @@ impl<Sel: SelectionToken> ModeToken for InputCaptureMode<Sel> {
     const CC_SEL: u32 = Sel::CC_SEL;
 }
 
+pub struct CaptureOverflow;
+
 /// Channel X maps directly to the input for channel X.
 pub struct DirectSelection;
 /// Channel X maps to its indirect neighbour channel Y.
@@ -50,39 +55,42 @@ impl SelectionToken for TrcSelection {
     const CC_SEL: u32 = 0b11;
 }
 
-pub struct TimChCfg<Tim: GeneralTimMap, Ch, Mode> {
+pub struct TimChCfg<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
     pub(crate) tim: Rc<GeneralTimPeriph<Tim>>,
+    pub(crate) tim_int: Int,
     ch: PhantomData<Ch>,
     mode: PhantomData<Mode>,
 }
 
-impl<Tim: GeneralTimMap, Ch, Mode> TimChCfg<Tim, Ch, Mode> {
-    pub fn new(tim: Rc<GeneralTimPeriph<Tim>>) -> Self {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
+    pub fn new(tim: Rc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
         Self {
             tim,
+            tim_int,
             ch: PhantomData,
             mode: PhantomData,
         }
     }
 }
 
-impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>> TimChCfg<Tim, Ch, DontCare> {
-    pub fn into_output_compare(self) -> TimChCfg<Tim, Ch, OutputCompareMode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>> TimChCfg<Tim, Int, Ch, DontCare> {
+    pub fn into_output_compare(self) -> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
         Ch::configure_output(&self.tim);
-        TimChCfg::new(self.tim)
+        TimChCfg::new(self.tim, self.tim_int)
     }
 
     pub fn into_input_capture<Sel: SelectionToken>(
         self,
         sel: Sel,
-    ) -> TimChCfg<Tim, Ch, InputCaptureMode<Sel>> {
+    ) -> TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>> {
         Ch::configure_input(&self.tim, sel);
-        TimChCfg::new(self.tim)
+        TimChCfg::new(self.tim, self.tim_int)
     }
 }
 
 pub trait IntoPinInputCaptureMode<
     Tim: GeneralTimMap,
+    Int: IntToken,
     Ch: TimChToken<Tim>,
     Selection: SelectionToken,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
@@ -99,23 +107,24 @@ pub trait IntoPinInputCaptureMode<
             Type,
             Pull,
         >,
-    ) -> TimChCfg<Tim, Ch, InputCaptureMode<Selection>>;
+    ) -> TimChCfg<Tim, Int, Ch, InputCaptureMode<Selection>>;
 }
 
 #[macro_export]
 macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
-            impl<Type: drone_stm32f4_gpio_drv::PinTypeToken, Pull: drone_stm32f4_gpio_drv::PinPullToken>
+            impl<Int: drone_cortexm::thr::IntToken, Type: drone_stm32f4_gpio_drv::PinTypeToken, Pull: drone_stm32f4_gpio_drv::PinPullToken>
                 crate::IntoPinInputCaptureMode<
                     $tim,
+                    Int,
                     $tim_ch,
                     $sel,
                     $pin,
                     $pin_af,
                     Type,
                     Pull,
-                > for TimChCfg<$tim, $tim_ch, crate::shared::DontCare>
+                > for TimChCfg<$tim, Int, $tim_ch, crate::shared::DontCare>
             {
                 fn into_input_capture_pin(
                     self,
@@ -125,7 +134,7 @@ macro_rules! general_tim_channel {
                         Type,
                         Pull,
                     >,
-                ) -> TimChCfg<$tim, $tim_ch, crate::InputCaptureMode<$sel>> {
+                ) -> TimChCfg<$tim, Int, $tim_ch, crate::InputCaptureMode<$sel>> {
                     self.into_input_capture($sel)
                 }
             }
@@ -133,7 +142,7 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>, Mode: ModeToken> TimChCfg<Tim, Ch, Mode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken> TimChCfg<Tim, Int, Ch, Mode> {
     pub fn enable_interrupt(&mut self) {
         Ch::set_ccie(&self.tim);
     }
@@ -151,15 +160,35 @@ impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>, Mode: ModeToken> TimChCfg<Tim, Ch,
     }
 }
 
-impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>> TimChCfg<Tim, Ch, OutputCompareMode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
     pub fn set_compare(&mut self, value: u32) {
         Ch::set_ccr(&self.tim, value);
     }
 }
 
-impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>, Sel: SelectionToken> TimChCfg<Tim, Ch, InputCaptureMode<Sel>> {
-    pub fn get_capture(&mut self) -> u32 {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim> + 'static, Sel: SelectionToken + 'static> TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>> {
+    pub fn capture(&mut self) -> u32 {
         Ch::get_ccr(&self.tim)
+    }
+
+    pub fn capture_pulse_try_stream(&self) -> impl Stream<Item = Result<NonZeroUsize, CaptureOverflow>> {
+        self.tim_int.add_pulse_try_stream(|| Err(CaptureOverflow), Self::capture_fiber())
+    }
+
+    pub fn capture_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
+        self.tim_int.add_saturating_pulse_stream(Self::capture_fiber())
+    }
+
+    fn capture_fiber<T>() -> impl Fiber<Input = (), Yield = Option<usize>, Return = T> {
+        fib::new_fn(move || {
+            // if self.is_pending() {
+            //     self.clear_pending();
+            //     fib::Yielded(Some(1))
+            // }
+            // else {
+                fib::Yielded(None)
+            // }
+        })
     }
 }
 
