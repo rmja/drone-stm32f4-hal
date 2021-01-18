@@ -3,9 +3,9 @@ use core::{cell::RefCell, marker::PhantomData};
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output,
-    TimCcmr2OutputCc3S, TimCcmr2OutputCc4S,
+    TimCcmr2OutputCc3S, TimCcmr2OutputCc4S, TimCcr2, TimCcr3, TimCcr4,
+    TimDierCc2Ie, TimSrCc2If, TimDierCc3Ie, TimSrCc3If, TimDierCc4Ie, TimSrCc4If
 };
-use drone_stm32f4_gpio_drv::pin_ext;
 
 use crate::shared::DontCare;
 
@@ -133,19 +133,69 @@ macro_rules! general_tim_channel {
     };
 }
 
+impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>, Mode: ModeToken> TimChCfg<Tim, Ch, Mode> {
+    pub fn enable_interrupt(&mut self) {
+        Ch::set_ccie(&self.tim);
+    }
+
+    pub fn disable_interrupt(&mut self) {
+        Ch::clear_ccie(&self.tim);
+    }
+
+    pub fn is_pending(&self) -> bool {
+        Ch::get_ccif(&self.tim)
+    }
+
+    pub fn clear_pending(&mut self) {
+        Ch::clear_ccif(&self.tim);
+    }
+}
+
+impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>> TimChCfg<Tim, Ch, OutputCompareMode> {
+    pub fn set_compare(&mut self, value: u32) {
+        Ch::set_ccr(&self.tim, value);
+    }
+}
+
+impl<Tim: GeneralTimMap, Ch: TimChToken<Tim>, Sel: SelectionToken> TimChCfg<Tim, Ch, InputCaptureMode<Sel>> {
+    pub fn get_capture(&mut self) -> u32 {
+        Ch::get_ccr(&self.tim)
+    }
+}
+
 pub trait TimChToken<Tim: GeneralTimMap> {
     fn configure_output(tim: &GeneralTimPeriph<Tim>);
-
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
 
-    // /// Enable interrupt
-    // fn set_ccie<Tim: GeneralTimMap>(tim: &GeneralTimPeriph<Tim>);
+    fn set_ccie(tim: &GeneralTimPeriph<Tim>);
+    fn clear_ccie(tim: &GeneralTimPeriph<Tim>);
+    fn get_ccif(tim: &GeneralTimPeriph<Tim>) -> bool;
+    fn clear_ccif(tim: &GeneralTimPeriph<Tim>);
 
-    // /// Disable interrupt
-    // fn clear_ccie<Tim: GeneralTimMap>(tim: &GeneralTimPeriph<Tim>);
+    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32;
+    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32);
 }
 
 impl<Tim: GeneralTimMap> TimChToken<Tim> for TimCh1 {
+    fn set_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc1ie().set(v));
+    }
+
+    fn clear_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc1ie().clear(v));
+    }
+
+    fn get_ccif(tim: &GeneralTimPeriph<Tim>) -> bool {
+        tim.tim_sr.cc1if().read_bit()
+    }
+
+    fn clear_ccif(tim: &GeneralTimPeriph<Tim>) {
+        // rc_w0: Clear flag by writing a 0, 1 has no effect.
+        let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
+        tim.tim_sr.cc1if().clear(&mut val);
+        tim.tim_sr.store_val(val);
+    }
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, OutputCompareMode::CC_SEL));
@@ -155,9 +205,17 @@ impl<Tim: GeneralTimMap> TimChToken<Tim> for TimCh1 {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
     }
+
+    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
+        tim.tim_ccr1.load_bits()
+    }
+
+    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
+        tim.tim_ccr1.store_bits(value);
+    }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S> TimChToken<Tim> for TimCh2 {
+impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCcr2> TimChToken<Tim> for TimCh2 {
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, OutputCompareMode::CC_SEL));
@@ -167,9 +225,36 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S> TimChToken<Tim> for TimCh2 {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
     }
+
+    fn set_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc2ie().set(v));
+    }
+
+    fn clear_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc2ie().clear(v));
+    }
+
+    fn get_ccif(tim: &GeneralTimPeriph<Tim>) -> bool {
+        tim.tim_sr.cc2if().read_bit()
+    }
+
+    fn clear_ccif(tim: &GeneralTimPeriph<Tim>) {
+        // rc_w0: Clear flag by writing a 0, 1 has no effect.
+        let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
+        tim.tim_sr.cc2if().clear(&mut val);
+        tim.tim_sr.store_val(val);
+    }
+
+    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
+        tim.tim_ccr2.load_bits()
+    }
+
+    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
+        tim.tim_ccr2.store_bits(value);
+    }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output> TimChToken<Tim> for TimCh3 {
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> TimChToken<Tim> for TimCh3 {
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, OutputCompareMode::CC_SEL));
@@ -179,9 +264,36 @@ impl<Tim: GeneralTimMap + TimCcmr2Output> TimChToken<Tim> for TimCh3 {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
+
+    fn set_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc3ie().set(v));
+    }
+
+    fn clear_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc3ie().clear(v));
+    }
+
+    fn get_ccif(tim: &GeneralTimPeriph<Tim>) -> bool {
+        tim.tim_sr.cc3if().read_bit()
+    }
+
+    fn clear_ccif(tim: &GeneralTimPeriph<Tim>) {
+        // rc_w0: Clear flag by writing a 0, 1 has no effect.
+        let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
+        tim.tim_sr.cc3if().clear(&mut val);
+        tim.tim_sr.store_val(val);
+    }
+
+    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
+        tim.tim_ccr3.load_bits()
+    }
+
+    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
+        tim.tim_ccr3.store_bits(value);
+    }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output> TimChToken<Tim> for TimCh4 {
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> TimChToken<Tim> for TimCh4 {
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, OutputCompareMode::CC_SEL));
@@ -191,79 +303,31 @@ impl<Tim: GeneralTimMap + TimCcmr2Output> TimChToken<Tim> for TimCh4 {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
     }
+
+    fn set_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc4ie().set(v));
+    }
+
+    fn clear_ccie(tim: &GeneralTimPeriph<Tim>) {
+        tim.tim_dier.modify_reg(|r, v| r.cc4ie().clear(v));
+    }
+
+    fn get_ccif(tim: &GeneralTimPeriph<Tim>) -> bool {
+        tim.tim_sr.cc4if().read_bit()
+    }
+
+    fn clear_ccif(tim: &GeneralTimPeriph<Tim>) {
+        // rc_w0: Clear flag by writing a 0, 1 has no effect.
+        let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
+        tim.tim_sr.cc4if().clear(&mut val);
+        tim.tim_sr.store_val(val);
+    }
+
+    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
+        tim.tim_ccr4.load_bits()
+    }
+
+    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
+        tim.tim_ccr4.store_bits(value);
+    }
 }
-
-// impl TimChToken for TimCh4 {
-//     fn configure_output<Tim: GeneralTimMap>(tim: &GeneralTimPeriph<Tim>) {
-//         todo!()
-//     }
-
-//     fn configure_input<Tim: GeneralTimMap, Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
-//         todo!()
-//     }
-// }
-
-// impl<Mode: ModeToken> TimChToken for TimChCfg<TimCh1, Mode> {
-//     fn configure_output<Tim: GeneralTimMap + >(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_ccmr1_output.modify_reg(|r, v| r.cc1s().write(v, 0));
-//     }
-
-//     fn configure_input<Tim: GeneralTimMap + >(tim: &GeneralTimPeriph<Tim>, sel: u8) {
-//         tim.tim_ccmr1_output.modify_reg(|r, v| r.cc1s().write(v, sel as u32));
-//     }
-
-//     fn set_ccie<Tim: GeneralTimMap>(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc1ie().set(v));
-//     }
-
-//     fn clear_ccie<Tim: GeneralTimMap>(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc1ie().clear(v));
-//     }
-// }
-
-// Set capture/compare register
-// fn store_ccr(tim: &GeneralTimPeriph<Tim>, ccr: u16) {
-//     tim.tim_ccr1.store_bits(ccr as u32);
-// }
-
-// impl<Tim: GeneralTimMap + TimCcr2 + TimDierCc2Ie> TimChCfg<Tim> for TimCh2 {
-//     fn set_ccr(tim: &GeneralTimPeriph<Tim>, ccr: u16) {
-//         tim.tim_ccr2.store_bits(ccr as u32);
-//     }
-
-//     fn enable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc2ie().set(v));
-//     }
-
-//     fn disable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc2ie().clear(v));
-//     }
-// }
-
-// impl<Tim: GeneralTimMap + TimCcr3 + TimDierCc3Ie> TimChCfg<Tim> for TimCh3 {
-//     fn set_ccr(tim: &GeneralTimPeriph<Tim>, ccr: u16) {
-//         tim.tim_ccr3.store_bits(ccr as u32);
-//     }
-
-//     fn enable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc3ie().set(v));
-//     }
-
-//     fn disable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc3ie().clear(v));
-//     }
-// }
-
-// impl<Tim: GeneralTimMap + TimCcr4 + TimDierCc4Ie> TimChCfg<Tim> for TimCh4 {
-//     fn set_ccr(tim: &GeneralTimPeriph<Tim>, ccr: u16) {
-//         tim.tim_ccr4.store_bits(ccr as u32);
-//     }
-
-//     fn enable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc4ie().set(v));
-//     }
-
-//     fn disable_interrupt(tim: &GeneralTimPeriph<Tim>) {
-//         tim.tim_dier.modify_reg(|r, v| r.cc4ie().clear(v));
-//     }
-// }
