@@ -1,44 +1,36 @@
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::tim::{
-    general::{GeneralTimMap, GeneralTimPeriph, TimCr1Dir, TimCr1Cms, traits::*},
+    general::{GeneralTimMap, GeneralTimPeriph, traits::*},
 };
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
-use config::*;
 
-pub mod config {
-    use super::*;
+use crate::TimFreq;
 
-    pub struct GeneralTimSetup<Tim: GeneralTimMap, Clk: PClkToken> {
-        pub tim: GeneralTimPeriph<Tim>,
-        pub clk: ConfiguredClk<Clk>,
-        pub freq: TimFreq,
-    }
+pub struct GeneralTimSetup<Tim: GeneralTimMap, Clk: PClkToken> {
+    pub tim: GeneralTimPeriph<Tim>,
+    pub clk: ConfiguredClk<Clk>,
+    pub freq: TimFreq,
+}
 
-    pub trait NewGeneralTimSetup<Tim: GeneralTimMap, Clk: PClkToken> {
-        /// Create a new tim setup with sensible defaults.
-        fn new(
-            tim: GeneralTimPeriph<Tim>,
-            clk: ConfiguredClk<Clk>,
-            freq: TimFreq,
-        ) -> GeneralTimSetup<Tim, Clk>;
-    }
-
-    pub enum TimFreq {
-        Nominal(u32),
-        Prescaler(u16),
-    }
+pub trait NewGeneralTimSetup<Tim: GeneralTimMap, Clk: PClkToken> {
+    /// Create a new tim setup with sensible defaults.
+    fn new(
+        tim: GeneralTimPeriph<Tim>,
+        clk: ConfiguredClk<Clk>,
+        freq: TimFreq,
+    ) -> GeneralTimSetup<Tim, Clk>;
 }
 
 #[macro_export]
 macro_rules! general_tim_setup {
     ($tim:ident, $pclk:ident) => {
-        impl crate::general::config::NewGeneralTimSetup<$tim, $pclk>
-            for crate::general::config::GeneralTimSetup<$tim, $pclk>
+        impl crate::general::NewGeneralTimSetup<$tim, $pclk>
+            for crate::general::GeneralTimSetup<$tim, $pclk>
         {
             fn new(
                 tim: drone_stm32_map::periph::tim::general::GeneralTimPeriph<$tim>,
                 clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
-                freq: crate::general::config::TimFreq,
+                freq: crate::TimFreq,
             ) -> Self
             {
                 Self {
@@ -67,7 +59,7 @@ impl<Tim: GeneralTimMap, Clk: PClkToken> GeneralTimCfg<Tim, Clk> {
         } = setup;
         tim.rcc_busenr_timen.set_bit();
 
-        // PSC is only 16 bits - is this a bug?
+        // Set prescaler
         tim.tim_psc.psc().write_bits(tim_psc(&clk, freq) as u32);
 
         Self { tim, clk }
@@ -85,7 +77,6 @@ impl<Tim: GeneralTimMap, Clk: PClkToken> GeneralTimCfg<Tim, Clk> {
 }
 
 fn tim_psc<Clk: PClkToken>(clk: &ConfiguredClk<Clk>, freq: TimFreq) -> u16 {
-    use config::*;
     let f_pclk_timer = clk.freq() * 2; // The PCLK is multipled by 2 before it enters the timer, see the clock tree for reference.
     match freq {
         TimFreq::Nominal(freq) => (((f_pclk_timer + (freq/2)) / freq) - 1) as u16,

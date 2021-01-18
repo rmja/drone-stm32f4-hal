@@ -4,11 +4,16 @@
 #[macro_use]
 mod general;
 mod mappings;
+mod shared;
 
-pub use self::general::{GeneralTimCfg, config};
+pub use self::general::{GeneralTimCfg, GeneralTimSetup, NewGeneralTimSetup};
+pub use self::shared::TimFreq;
 
 pub mod prelude {
-    pub use crate::general::config::NewGeneralTimSetup;
+    pub use super::{
+        general::NewGeneralTimSetup,
+        shared::TimFreq,
+    };
 }
 
 #[prelude_import]
