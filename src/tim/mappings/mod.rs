@@ -11,6 +11,53 @@ mod tim1;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
+mod tim10;
+mod tim11;
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+))]
+mod tim12;
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+))]
+mod tim13;
+#[cfg(any(
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+))]
+mod tim14;
+#[cfg(any(
+    stm32_mcu = "stm32f401",
+    stm32_mcu = "stm32f405",
+    stm32_mcu = "stm32f407",
+    stm32_mcu = "stm32f411",
+    stm32_mcu = "stm32f412",
+    stm32_mcu = "stm32f413",
+    stm32_mcu = "stm32f427",
+    stm32_mcu = "stm32f429",
+    stm32_mcu = "stm32f446",
+    stm32_mcu = "stm32f469",
+))]
 mod tim2;
 #[cfg(any(
     stm32_mcu = "stm32f401",
@@ -63,6 +110,8 @@ mod tim7;
 ))]
 mod tim8;
 mod tim9;
+
+pub use self::tim1::*;
 #[cfg(any(
     stm32_mcu = "stm32f401",
     stm32_mcu = "stm32f405",
@@ -75,8 +124,8 @@ mod tim9;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod tim10;
-mod tim11;
+pub use self::tim10::*;
+pub use self::tim11::*;
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -87,7 +136,7 @@ mod tim11;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod tim12;
+pub use self::tim12::*;
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -98,7 +147,7 @@ mod tim12;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod tim13;
+pub use self::tim13::*;
 #[cfg(any(
     stm32_mcu = "stm32f405",
     stm32_mcu = "stm32f407",
@@ -109,9 +158,7 @@ mod tim13;
     stm32_mcu = "stm32f446",
     stm32_mcu = "stm32f469",
 ))]
-mod tim14;
-
-pub use self::tim1::*;
+pub use self::tim14::*;
 #[cfg(any(
     stm32_mcu = "stm32f401",
     stm32_mcu = "stm32f405",
@@ -176,50 +223,3 @@ pub use self::tim7::*;
 ))]
 pub use self::tim8::*;
 pub use self::tim9::*;
-#[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-pub use self::tim10::*;
-pub use self::tim11::*;
-#[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-pub use self::tim12::*;
-#[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-pub use self::tim13::*;
-#[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-))]
-pub use self::tim14::*;
