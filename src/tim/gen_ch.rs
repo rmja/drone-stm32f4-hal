@@ -1,13 +1,12 @@
 use alloc::rc::Rc;
-use drone_core::fib;
-use fib::Fiber;
 use core::{marker::PhantomData, num::NonZeroUsize};
+use drone_core::fib;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
-    traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output,
-    TimCcr2, TimCcr3, TimCcr4,
-    TimDierCc2Ie, TimSrCc2If, TimDierCc3Ie, TimSrCc3If, TimDierCc4Ie, TimSrCc4If
+    traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
+    TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If, TimSrCc4If,
 };
+use fib::Fiber;
 use futures::Stream;
 
 use crate::shared::DontCare;
@@ -142,7 +141,9 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken> TimChCfg<Tim, Int, Ch, Mode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken>
+    TimChCfg<Tim, Int, Ch, Mode>
+{
     pub fn enable_interrupt(&mut self) {
         Ch::set_ccie(&self.tim);
     }
@@ -160,23 +161,35 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken> Ti
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>>
+    TimChCfg<Tim, Int, Ch, OutputCompareMode>
+{
     pub fn set_compare(&mut self, value: u32) {
         Ch::set_ccr(&self.tim, value);
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim> + 'static, Sel: SelectionToken + 'static> TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>> {
+impl<
+        Tim: GeneralTimMap,
+        Int: IntToken,
+        Ch: TimChToken<Tim> + 'static,
+        Sel: SelectionToken + 'static,
+    > TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>>
+{
     pub fn capture(&mut self) -> u32 {
         Ch::get_ccr(&self.tim)
     }
 
-    pub fn capture_pulse_try_stream(&self) -> impl Stream<Item = Result<NonZeroUsize, CaptureOverflow>> {
-        self.tim_int.add_pulse_try_stream(|| Err(CaptureOverflow), Self::capture_fiber())
+    pub fn capture_pulse_try_stream(
+        &self,
+    ) -> impl Stream<Item = Result<NonZeroUsize, CaptureOverflow>> {
+        self.tim_int
+            .add_pulse_try_stream(|| Err(CaptureOverflow), Self::capture_fiber())
     }
 
     pub fn capture_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
-        self.tim_int.add_saturating_pulse_stream(Self::capture_fiber())
+        self.tim_int
+            .add_saturating_pulse_stream(Self::capture_fiber())
     }
 
     fn capture_fiber<T>() -> impl Fiber<Input = (), Yield = Option<usize>, Return = T> {
@@ -186,7 +199,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim> + 'static, Sel: Sele
             //     fib::Yielded(Some(1))
             // }
             // else {
-                fib::Yielded(None)
+            fib::Yielded(None)
             // }
         })
     }
@@ -244,7 +257,9 @@ impl<Tim: GeneralTimMap> TimChToken<Tim> for TimCh1 {
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCcr2> TimChToken<Tim> for TimCh2 {
+impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCcr2> TimChToken<Tim>
+    for TimCh2
+{
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, OutputCompareMode::CC_SEL));
@@ -283,7 +298,9 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCc
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> TimChToken<Tim> for TimCh3 {
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> TimChToken<Tim>
+    for TimCh3
+{
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, OutputCompareMode::CC_SEL));
@@ -322,7 +339,9 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> 
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> TimChToken<Tim> for TimCh4 {
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> TimChToken<Tim>
+    for TimCh4
+{
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, OutputCompareMode::CC_SEL));

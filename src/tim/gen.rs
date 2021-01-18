@@ -327,8 +327,16 @@ macro_rules! general_tim_ch {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken, Dir: DirToken, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
-    GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+impl<
+        Tim: GeneralTimMap,
+        Int: IntToken,
+        Clk: PClkToken,
+        Dir: DirToken,
+        Ch1Mode,
+        Ch2Mode,
+        Ch3Mode,
+        Ch4Mode,
+    > GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     /// Disable the timer clock.
     pub unsafe fn disable_clock(&self) {
