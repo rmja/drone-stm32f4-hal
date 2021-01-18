@@ -62,7 +62,7 @@ pub struct TimChCfg<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
-    pub fn new(tim: Rc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
+    pub(crate) fn new(tim: Rc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
         Self {
             tim,
             tim_int,
@@ -73,11 +73,13 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>> TimChCfg<Tim, Int, Ch, DontCare> {
+    /// Configure the channel as Output/Compare.
     pub fn into_output_compare(self) -> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
         Ch::configure_output(&self.tim);
         TimChCfg::new(self.tim, self.tim_int)
     }
 
+    /// Configure the channel as Input/Capture.
     pub fn into_input_capture<Sel: SelectionToken>(
         self,
         sel: Sel,
@@ -98,6 +100,7 @@ pub trait IntoPinInputCaptureMode<
     Pull: drone_stm32f4_gpio_drv::PinPullToken,
 >
 {
+    /// Configure the channel as Input/Capture from a specific GPIO pin.
     fn into_input_capture_pin(
         self,
         pin: &drone_stm32f4_gpio_drv::GpioPin<
@@ -144,18 +147,22 @@ macro_rules! general_tim_channel {
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken>
     TimChCfg<Tim, Int, Ch, Mode>
 {
+    /// Enable channel interrupt.
     pub fn enable_interrupt(&mut self) {
         Ch::set_ccie(&self.tim);
     }
 
+    /// Disable channel interrupt.
     pub fn disable_interrupt(&mut self) {
         Ch::clear_ccie(&self.tim);
     }
 
+    /// Get the channel pending interrupt flag.
     pub fn is_pending(&self) -> bool {
         Ch::get_ccif(&self.tim)
     }
 
+    /// Clear the channel pending interrupt flag.
     pub fn clear_pending(&mut self) {
         Ch::clear_ccif(&self.tim);
     }
@@ -164,6 +171,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken>
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>>
     TimChCfg<Tim, Int, Ch, OutputCompareMode>
 {
+    /// Set the channel compare value.
     pub fn set_compare(&mut self, value: u32) {
         Ch::set_ccr(&self.tim, value);
     }
@@ -176,10 +184,12 @@ impl<
         Sel: SelectionToken + 'static,
     > TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
+    /// Get the channel capture value.
     pub fn capture(&mut self) -> u32 {
         Ch::get_ccr(&self.tim)
     }
 
+    /// Returns a stream of pulses that are generated on each channel capture. Fails on overflow.
     pub fn capture_pulse_try_stream(
         &self,
     ) -> impl Stream<Item = Result<NonZeroUsize, CaptureOverflow>> {
@@ -187,6 +197,7 @@ impl<
             .add_pulse_try_stream(|| Err(CaptureOverflow), Self::capture_fiber())
     }
 
+    /// Returns a stream of pulses that are generated on each channel capture. Overflows are ignored.
     pub fn capture_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
         self.tim_int
             .add_saturating_pulse_stream(Self::capture_fiber())

@@ -116,10 +116,10 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
 
         // Set some sensible register values.
         tim.tim_cr1.store_reg(|r, v| {
+            // dir and cms are set for count direction is configured.
             r.udis().clear(v); // Enable counter overflow event generation
             r.urs().set(v); // Only counter overflow generates an update interrupt
             r.opm().clear(v); // Counter is not stopped at update event
-                              // dir and cms are set for count direction is configured.
             r.arpe().set(v) // Use buffered auto reload value
         });
 
@@ -162,6 +162,7 @@ impl<
         Ch4Mode,
     > GeneralTimCfg<Tim, Int, Clk, DontCare, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
+    // Let the counter "count up".
     pub fn into_count_up(
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, DirCountUp, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
@@ -193,6 +194,7 @@ impl<
         }
     }
 
+    // Let the counter "count down".
     pub fn into_count_down(
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, DirCountDown, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
@@ -235,6 +237,7 @@ pub trait ConfigureTimCh1<
     Ch4Mode,
 >
 {
+    /// Get the capture/compare channel 1.
     fn ch1<F, Ch1Mode: ModeToken>(
         self,
         configure: F,
@@ -253,6 +256,7 @@ pub trait ConfigureTimCh2<
     Ch4Mode,
 >
 {
+    /// Get the capture/compare channel 2.
     fn ch2<F, Ch2Mode: ModeToken>(
         self,
         configure: F,
@@ -271,6 +275,7 @@ pub trait ConfigureTimCh3<
     Ch4Mode,
 >
 {
+    /// Get the capture/compare channel 3.
     fn ch3<F, Ch3Mode: ModeToken>(
         self,
         configure: F,
@@ -289,6 +294,7 @@ pub trait ConfigureTimCh4<
     Ch3Mode,
 >
 {
+    /// Get the capture/compare channel 4.
     fn ch4<F, Ch4Mode: ModeToken>(
         self,
         configure: F,
