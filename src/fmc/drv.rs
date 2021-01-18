@@ -561,12 +561,7 @@ impl FmcDrv {
     fn slice<'a, T: Sized>(base_address: u32, capacity: usize) -> &'a mut [T] {
         // Memory bank base addresses are in PM0090 figure 457: FMC memory banks.
         let sizeof_t = core::mem::size_of::<T>();
-        unsafe {
-            core::slice::from_raw_parts_mut(
-                base_address as *mut T,
-                capacity / sizeof_t,
-            )
-        }
+        unsafe { core::slice::from_raw_parts_mut(base_address as *mut T, capacity / sizeof_t) }
     }
 }
 

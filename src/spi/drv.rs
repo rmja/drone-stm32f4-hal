@@ -87,8 +87,7 @@ macro_rules! spi_setup {
                 >,
                 clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
                 baud_rate: crate::drv::config::BaudRate,
-            ) -> Self
-            {
+            ) -> Self {
                 Self {
                     spi,
                     spi_int,

@@ -1,40 +1,61 @@
-use crate::{drv::{EdgeToken, ExtiDrv}, line::HeadNum};
+use crate::{
+    drv::{EdgeToken, ExtiDrv},
+    line::HeadNum,
+};
 use drone_stm32_map::periph::{exti::*, gpio::head::*, gpio::pin::*};
 
 impl HeadNum for GpioAHead {
-    fn num() -> u32 { 0 }
+    fn num() -> u32 {
+        0
+    }
 }
 
 impl HeadNum for GpioBHead {
-    fn num() -> u32 { 1 }
+    fn num() -> u32 {
+        1
+    }
 }
 
 impl HeadNum for GpioCHead {
-    fn num() -> u32 { 2 }
+    fn num() -> u32 {
+        2
+    }
 }
 
 impl HeadNum for GpioDHead {
-    fn num() -> u32 { 3 }
+    fn num() -> u32 {
+        3
+    }
 }
 
 impl HeadNum for GpioEHead {
-    fn num() -> u32 { 4 }
+    fn num() -> u32 {
+        4
+    }
 }
 
 impl HeadNum for GpioFHead {
-    fn num() -> u32 { 5 }
+    fn num() -> u32 {
+        5
+    }
 }
 
 impl HeadNum for GpioGHead {
-    fn num() -> u32 { 6 }
+    fn num() -> u32 {
+        6
+    }
 }
 
 impl HeadNum for GpioHHead {
-    fn num() -> u32 { 7 }
+    fn num() -> u32 {
+        7
+    }
 }
 
 impl HeadNum for GpioIHead {
-    fn num() -> u32 { 8 }
+    fn num() -> u32 {
+        8
+    }
 }
 
 #[cfg(any(
@@ -45,7 +66,9 @@ impl HeadNum for GpioIHead {
     stm32_mcu = "stm32f469",
 ))]
 impl HeadNum for GpioJHead {
-    fn num() -> u32 { 9 }
+    fn num() -> u32 {
+        9
+    }
 }
 
 #[cfg(any(
@@ -56,9 +79,10 @@ impl HeadNum for GpioJHead {
     stm32_mcu = "stm32f469",
 ))]
 impl HeadNum for GpioKHead {
-    fn num() -> u32 { 10 }
+    fn num() -> u32 {
+        10
+    }
 }
-
 
 exti_line!(Exti0, GpioAHead, GpioA0);
 exti_line!(Exti0, GpioBHead, GpioB0);

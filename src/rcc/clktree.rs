@@ -385,7 +385,7 @@ impl HClk {
     }
 
     pub const fn to_systickclk(self) -> SysTickClk {
-        SysTickClk{ src: self }
+        SysTickClk { src: self }
     }
 }
 

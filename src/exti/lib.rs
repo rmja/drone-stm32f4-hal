@@ -16,7 +16,7 @@ pub use self::syscfg::Syscfg;
 
 pub mod prelude {
     pub use crate::drv::ExtiDrvLine;
-    pub use crate::drv::{RisingEdge, FallingEdge, BothEdges};
+    pub use crate::drv::{BothEdges, FallingEdge, RisingEdge};
 }
 
 #[prelude_import]

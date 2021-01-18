@@ -178,7 +178,9 @@ impl PullableMode for InputMode {}
 impl PullableMode for OutputMode {}
 impl<Af: PinAfToken> PullableMode for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + PullableMode> GpioPin<Pin, Mode, PushPullType, DontCare> {
+impl<Pin: GpioPinMap, Mode: PinModeToken + PullableMode>
+    GpioPin<Pin, Mode, PushPullType, DontCare>
+{
     /// No pull-up nor pull-down.
     pub fn into_nopull(self) -> GpioPin<Pin, Mode, PushPullType, NoPull> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b00);
@@ -202,7 +204,12 @@ pub trait SpeedableMode {}
 impl SpeedableMode for OutputMode {}
 impl<Af: PinAfToken> SpeedableMode for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + SpeedableMode, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Mode, Type, Pull>
+impl<
+        Pin: GpioPinMap,
+        Mode: PinModeToken + SpeedableMode,
+        Type: PinTypeToken,
+        Pull: PinPullToken,
+    > GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
     pub fn with_speed(self, speed: GpioPinSpeed) -> Self {
@@ -221,7 +228,8 @@ impl GetableMode for InputMode {}
 impl GetableMode for OutputMode {}
 impl<Af: PinAfToken> GetableMode for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + GetableMode, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Mode, Type, Pull>
+impl<Pin: GpioPinMap, Mode: PinModeToken + GetableMode, Type: PinTypeToken, Pull: PinPullToken>
+    GpioPin<Pin, Mode, Type, Pull>
 {
     /// Get the current pin state.
     pub fn get(&self) -> bool {

@@ -1,11 +1,9 @@
-use crate::{ExtiDrv, diverged::ExtiDiverged, drv::EdgeToken};
+use crate::{diverged::ExtiDiverged, drv::EdgeToken, ExtiDrv};
 use core::{marker::PhantomData, num::NonZeroUsize};
 use displaydoc::Display;
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    exti::{
-        ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
-    },
+    exti::{ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti},
     gpio::head::GpioHeadMap,
 };
 use futures::Stream;
@@ -36,7 +34,9 @@ impl<
         Edge: EdgeToken,
     > ExtiLine<'drv, Exti, ExtiInt, Edge>
 {
-    pub(crate) fn init<Head: GpioHeadMap + HeadNum>(exti: &'drv ExtiDrv<Exti, ExtiInt, Head, Edge>) -> Self {
+    pub(crate) fn init<Head: GpioHeadMap + HeadNum>(
+        exti: &'drv ExtiDrv<Exti, ExtiInt, Head, Edge>,
+    ) -> Self {
         exti.exti.syscfg_exticr_exti.write_bits(Head::num());
         Self {
             exti: &exti.exti,

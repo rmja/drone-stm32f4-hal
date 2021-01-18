@@ -1,14 +1,11 @@
-use crate::{ExtiLine, Syscfg, diverged::ExtiDiverged};
+use crate::{diverged::ExtiDiverged, ExtiLine, Syscfg};
 use core::marker::PhantomData;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     exti::{
         ExtiFtsrFt, ExtiMap, ExtiPeriph, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
     },
-    gpio::{
-        head::GpioHeadMap,
-        pin::GpioPinMap,
-    },
+    gpio::{head::GpioHeadMap, pin::GpioPinMap},
 };
 use drone_stm32f4_gpio_drv::{prelude::*, GpioPin};
 // use futures::prelude::*;
@@ -97,17 +94,18 @@ impl<
     }
 }
 
-pub trait AnyEdge : EdgeToken {}
+pub trait AnyEdge: EdgeToken {}
 impl AnyEdge for RisingEdge {}
 impl AnyEdge for FallingEdge {}
 impl AnyEdge for BothEdges {}
 
 impl<
-    Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
-    ExtiInt: IntToken,
-    Head: GpioHeadMap,
-    Edge: AnyEdge,
-> ExtiDrv<Exti, ExtiInt, Head, Edge> {
+        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+        ExtiInt: IntToken,
+        Head: GpioHeadMap,
+        Edge: AnyEdge,
+    > ExtiDrv<Exti, ExtiInt, Head, Edge>
+{
     pub fn listen(&self) {
         self.exti.exti_imr_im.set_bit(); // Unmask interrupt request
     }
@@ -134,16 +132,14 @@ pub trait ExtiDrvLine<
 #[macro_export]
 macro_rules! exti_line {
     ($exti:ident, $head:ident, $pin:ident) => {
-        impl<
-            ExtiInt: drone_cortexm::thr::IntToken,
-            Edge: EdgeToken,
-        > crate::drv::ExtiDrvLine<
-            $exti,
-            ExtiInt,
-            Edge,
-            drone_stm32f4_gpio_drv::prelude::InputMode,
-            $pin
-        > for ExtiDrv<$exti, ExtiInt, $head, Edge>
+        impl<ExtiInt: drone_cortexm::thr::IntToken, Edge: EdgeToken>
+            crate::drv::ExtiDrvLine<
+                $exti,
+                ExtiInt,
+                Edge,
+                drone_stm32f4_gpio_drv::prelude::InputMode,
+                $pin,
+            > for ExtiDrv<$exti, ExtiInt, $head, Edge>
         {
             fn line<
                 Type: drone_stm32f4_gpio_drv::PinTypeToken,
@@ -162,16 +158,17 @@ macro_rules! exti_line {
         }
 
         impl<
-            ExtiInt: drone_cortexm::thr::IntToken,
-            Edge: EdgeToken,
-            Af: drone_stm32f4_gpio_drv::prelude::PinAfToken,
-        > crate::drv::ExtiDrvLine<
-            $exti,
-            ExtiInt,
-            Edge,
-            drone_stm32f4_gpio_drv::prelude::AlternateMode<Af>,
-            $pin
-        > for ExtiDrv<$exti, ExtiInt, $head, Edge>
+                ExtiInt: drone_cortexm::thr::IntToken,
+                Edge: EdgeToken,
+                Af: drone_stm32f4_gpio_drv::prelude::PinAfToken,
+            >
+            crate::drv::ExtiDrvLine<
+                $exti,
+                ExtiInt,
+                Edge,
+                drone_stm32f4_gpio_drv::prelude::AlternateMode<Af>,
+                $pin,
+            > for ExtiDrv<$exti, ExtiInt, $head, Edge>
         {
             fn line<
                 Type: drone_stm32f4_gpio_drv::PinTypeToken,
