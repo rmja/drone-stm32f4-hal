@@ -1,5 +1,5 @@
-use core::marker::PhantomData;
 use alloc::rc::Rc;
+use core::marker::PhantomData;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::{
     head::GpioHeadMap,
@@ -250,12 +250,9 @@ impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Outpu
     }
 }
 
-impl<
-    Pin: GpioPinMap,
-    Mode: PinModeToken,
-    Type: PinTypeToken,
-    Pull: PinPullToken,
-> GpioPin<Pin, Mode, Type, Pull> {
+impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken>
+    GpioPin<Pin, Mode, Type, Pull>
+{
     /// Clone the pin
     ///
     /// # Safety

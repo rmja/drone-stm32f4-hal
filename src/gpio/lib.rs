@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod head;
-mod pin;
 mod mappings;
+mod pin;
 mod pins;
 
 extern crate alloc;

@@ -8,7 +8,7 @@
             "name": "(gdb) Launch debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/spi",
+            "program": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/tim",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -23,10 +23,10 @@
                     "ignoreFailures": true
                 },
                 {
-                    "text": "file ${workspaceFolder}/target/thumbv7em-none-eabihf/debug/spi"
+                    "text": "file ${workspaceFolder}/target/thumbv7em-none-eabihf/debug/tim"
                 },
                 {
-                    "text": "target remote 172.25.240.1:2331"
+                    "text": "target remote 172.31.176.1:2331"
                 },
                 {
                     "text": "monitor halt"
@@ -43,7 +43,7 @@
             "name": "(gdb) Launch release",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/thumbv7em-none-eabihf/release/spi",
+            "program": "${workspaceFolder}/target/thumbv7em-none-eabihf/release/tim",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -58,10 +58,10 @@
                     "ignoreFailures": true
                 },
                 {
-                    "text": "file ${workspaceFolder}/target/thumbv7em-none-eabihf/release/spi"
+                    "text": "file ${workspaceFolder}/target/thumbv7em-none-eabihf/release/tim"
                 },
                 {
-                    "text": "target remote 172.25.240.1:2331"
+                    "text": "target remote 172.31.176.1:2331"
                 },
                 {
                     "text": "monitor halt"
