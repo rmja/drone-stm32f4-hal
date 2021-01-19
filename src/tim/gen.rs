@@ -1,7 +1,7 @@
 use core::{marker::PhantomData, num::NonZeroUsize};
 
 use alloc::rc::Rc;
-use drone_core::fib;
+use drone_core::{fib, token::Token};
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCr1Cms, TimCr1Dir,
@@ -84,15 +84,6 @@ pub struct GeneralTimCfg<
     pub ch3: TimChCfg<Tim, Int, TimCh3, Ch3Mode>,
     pub ch4: TimChCfg<Tim, Int, TimCh4, Ch4Mode>,
 }
-
-// pub struct GeneralTimDiverged<Tim: GeneralTimMap> {
-//     pub(crate) tim_cr1: Tim::STimCr1,
-//     pub(crate) tim_dier: Tim::CTimDier,
-//     pub(crate) tim_sr: Tim::CTimSr,
-//     pub(crate) tim_arr: Tim::STimArr,
-//     pub(crate) tim_egr: Tim::STimEgr,
-//     pub(crate) tim_cnt: Tim::CTimCnt,
-// }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
     GeneralTimCfg<Tim, Int, Clk, DontCare, DontCare, DontCare, DontCare, DontCare>
@@ -364,30 +355,30 @@ impl<
         self.tim.tim_cnt.cnt().read_bits() as u32
     }
 
-    // pub fn overflow_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
-
-    //     self.tim_int.add_saturating_pulse_stream(fib::new_fn(move || {
-    //         if self.is_pending_overflow() {
-    //             self.clear_pending_overflow();
-    //             fib::Yielded(Some(1))
-    //         }
-    //         else {
-    //             fib::Yielded(None)
-    //         }
-    //     }))
-    // }
+    pub fn overflow_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
+        let tim_sr = unsafe { Tim::CTimSr::take() };
+        self.tim_int.add_saturating_pulse_stream(fib::new_fn(move || {
+            if Self::is_pending_overflow(tim_sr) {
+                Self::clear_pending_overflow(tim_sr);
+                fib::Yielded(Some(1))
+            }
+            else {
+                fib::Yielded(None)
+            }
+        }))
+    }
 
     /// Get the overflow pending flag.
-    pub fn is_pending_overflow(&self) -> bool {
-        self.tim.tim_sr.uif().read_bit()
+    pub fn is_pending_overflow(tim_sr: Tim::CTimSr) -> bool {
+        tim_sr.uif().read_bit()
     }
 
     /// Clear the overflow pending flag.
-    pub fn clear_pending_overflow(&self) {
+    pub fn clear_pending_overflow(tim_sr: Tim::CTimSr) {
         // rc_w0: Clear flag by writing a 0, 1 has no effect.
         let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
-        self.tim.tim_sr.uif().clear(&mut val);
-        self.tim.tim_sr.store_val(val);
+        tim_sr.uif().clear(&mut val);
+        tim_sr.store_val(val);
     }
 
     /// Release the timer peripheral.
