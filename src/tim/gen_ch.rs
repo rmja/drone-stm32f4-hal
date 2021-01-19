@@ -116,7 +116,7 @@ pub trait IntoPinInputCaptureMode<
     /// Configure the channel as Input/Capture from a specific GPIO pin.
     fn into_input_capture_pin(
         self,
-        pin: &drone_stm32f4_gpio_drv::GpioPin<
+        pin: drone_stm32f4_gpio_drv::GpioPin<
             Pin,
             drone_stm32f4_gpio_drv::AlternateMode<Af>,
             Type,
@@ -143,7 +143,7 @@ macro_rules! general_tim_channel {
             {
                 fn into_input_capture_pin(
                     self,
-                    _pin: &drone_stm32f4_gpio_drv::GpioPin<
+                    _pin: drone_stm32f4_gpio_drv::GpioPin<
                         $pin,
                         drone_stm32f4_gpio_drv::AlternateMode<$pin_af>,
                         Type,

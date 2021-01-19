@@ -36,8 +36,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     pin.get();
 
-    let line = exti.line(&pin);
-    let stream = line.create_saturating_stream();
+    let line = exti.line(unsafe { pin.clone() });
+    let mut stream = line.create_saturating_stream();
     exti.listen();
 
     while let Some(tick) = stream.next().root_wait() {

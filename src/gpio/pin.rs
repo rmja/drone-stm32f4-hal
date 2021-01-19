@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use alloc::rc::Rc;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::{
     head::GpioHeadMap,
@@ -7,16 +8,16 @@ use drone_stm32_map::periph::gpio::{
 
 /// Pin configuration.
 pub struct GpioPin<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
-    pub(crate) pin: GpioPinPeriph<Pin>,
+    pub(crate) pin: Rc<GpioPinPeriph<Pin>>,
     mode: PhantomData<Mode>,
     type_: PhantomData<Type>,
     pull: PhantomData<Pull>,
 }
 
 impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken>
-    From<GpioPinPeriph<Pin>> for GpioPin<Pin, Mode, Type, Pull>
+    From<Rc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
-    fn from(pin: GpioPinPeriph<Pin>) -> Self {
+    fn from(pin: Rc<GpioPinPeriph<Pin>>) -> Self {
         Self {
             pin,
             mode: PhantomData,
@@ -94,15 +95,13 @@ pub struct PinAf14;
 pub struct PinAf15;
 
 pub trait PinAfToken {
-    fn num() -> u32;
+    const NUM: u32;
 }
 
 macro_rules! af_token {
     ($af:ident, $num:expr) => {
         impl PinAfToken for $af {
-            fn num() -> u32 {
-                $num
-            }
+            const NUM: u32 = $num;
         }
     };
 }
@@ -147,7 +146,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     }
 
     pub fn into_af<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
-        self.pin.gpio_afr_afr.write_bits(Af::num());
+        self.pin.gpio_afr_afr.write_bits(Af::NUM);
         self.pin.gpio_moder_moder.write_bits(0b10);
         self.pin.into()
     }
@@ -251,6 +250,26 @@ impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Outpu
     }
 }
 
+impl<
+    Pin: GpioPinMap,
+    Mode: PinModeToken,
+    Type: PinTypeToken,
+    Pull: PinPullToken,
+> GpioPin<Pin, Mode, Type, Pull> {
+    /// Clone the pin
+    ///
+    /// # Safety
+    /// The function is unsafe as there are no guarantees that the two configuration can co-exist.
+    pub unsafe fn clone(&self) -> Self {
+        Self {
+            pin: self.pin.clone(),
+            mode: self.mode,
+            type_: self.type_,
+            pull: self.pull,
+        }
+    }
+}
+
 pub trait NewPin<Head: GpioHeadMap, Pin: GpioPinMap> {
     /// Create a new pin configuration from a pin peripheral.
     fn pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare>;
@@ -258,26 +277,28 @@ pub trait NewPin<Head: GpioHeadMap, Pin: GpioPinMap> {
 
 #[macro_export]
 macro_rules! pin_init {
-    ($head:ident, $pin:ident) => {
-        impl
-            crate::pin::NewPin<
-                drone_stm32_map::periph::gpio::head::$head,
-                drone_stm32_map::periph::gpio::pin::$pin,
-            > for crate::head::GpioHead<drone_stm32_map::periph::gpio::head::$head>
-        {
-            fn pin(
-                &self,
-                pin: drone_stm32_map::periph::gpio::pin::GpioPinPeriph<
-                    drone_stm32_map::periph::gpio::pin::$pin,
-                >,
-            ) -> crate::pin::GpioPin<
-                drone_stm32_map::periph::gpio::pin::$pin,
-                crate::pin::DontCare,
-                crate::pin::DontCare,
-                crate::pin::DontCare,
-            > {
-                crate::pin::GpioPin::from(pin)
+    ($($head:ident, $pin:ident;)+) => {
+        $(
+            impl
+                crate::pin::NewPin<
+                    $head,
+                    $pin,
+                > for crate::head::GpioHead<$head>
+            {
+                fn pin(
+                    &self,
+                    pin: ::drone_stm32_map::periph::gpio::pin::GpioPinPeriph<
+                        $pin,
+                    >,
+                ) -> crate::pin::GpioPin<
+                    $pin,
+                    crate::pin::DontCare,
+                    crate::pin::DontCare,
+                    crate::pin::DontCare,
+                > {
+                    crate::pin::GpioPin::from(alloc::rc::Rc::new(pin))
+                }
             }
-        }
+        )+
     };
 }
