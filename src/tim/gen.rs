@@ -4,13 +4,13 @@ use alloc::rc::Rc;
 use drone_core::{fib, token::Token};
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
-    traits::*, GeneralTimMap, GeneralTimPeriph, TimCr1Cms, TimCr1Dir,
+    traits::*, GeneralTimMap, GeneralTimPeriph, TimCr1Cms, TimCr1Dir, TimCr2, TimSmcr,
 };
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 use futures::Stream;
 
 use crate::{
-    gen_ch::{ModeToken, TimCh1, TimCh2, TimChCfg},
+    gen_ch::{ChModeToken, TimCh1, TimCh2, TimChCfg},
     shared::DontCare,
     TimCh3, TimCh4, TimFreq,
 };
@@ -19,9 +19,17 @@ pub struct DirCountUp;
 pub struct DirCountDown;
 
 pub trait DirToken {}
-
 impl DirToken for DirCountUp {}
 impl DirToken for DirCountDown {}
+
+pub struct DefaultLink;
+pub struct MasterLink<MasterTim>(PhantomData<MasterTim>);
+pub struct SlaveLink<MasterTim>(PhantomData<MasterTim>);
+
+pub trait LinkToken {}
+impl LinkToken for DefaultLink {}
+impl<MasterTim> LinkToken for MasterLink<MasterTim> {}
+impl<MasterTim> LinkToken for SlaveLink<MasterTim> {}
 
 pub struct GeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> {
     pub tim: GeneralTimPeriph<Tim>,
@@ -70,6 +78,7 @@ pub struct GeneralTimCfg<
     Int: IntToken,
     Clk: PClkToken,
     Dir,
+    Link: LinkToken,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,
@@ -79,14 +88,56 @@ pub struct GeneralTimCfg<
     pub(crate) tim_int: Int,
     pub(crate) clk: ConfiguredClk<Clk>,
     pub(crate) dir: PhantomData<Dir>,
+    pub link: PhantomData<Link>,
     pub ch1: TimChCfg<Tim, Int, TimCh1, Ch1Mode>,
     pub ch2: TimChCfg<Tim, Int, TimCh2, Ch2Mode>,
     pub ch3: TimChCfg<Tim, Int, TimCh3, Ch3Mode>,
     pub ch4: TimChCfg<Tim, Int, TimCh4, Ch4Mode>,
 }
 
+impl<
+    Tim: GeneralTimMap,
+    Int: IntToken,
+    Clk: PClkToken,
+    FromDir,
+    FromLink: LinkToken,
+    Ch1Mode,
+    Ch2Mode,
+    Ch3Mode,
+    Ch4Mode,
+>
+    GeneralTimCfg<Tim, Int, Clk, FromDir, FromLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
+
+    pub(crate) fn into<
+        ToDir,
+        ToLink: LinkToken,
+    >(self) -> GeneralTimCfg<Tim, Int, Clk, ToDir, ToLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
+        let Self {
+            tim,
+            tim_int,
+            clk,
+            ch1,
+            ch2,
+            ch3,
+            ch4,
+            ..
+        } = self;
+        GeneralTimCfg {
+            tim,
+            tim_int,
+            clk,
+            dir: PhantomData,
+            link: PhantomData,
+            ch1,
+            ch2,
+            ch3,
+            ch4,
+        }
+    }
+}
+
 impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
-    GeneralTimCfg<Tim, Int, Clk, DontCare, DontCare, DontCare, DontCare, DontCare>
+    GeneralTimCfg<Tim, Int, Clk, DontCare, DefaultLink, DontCare, DontCare, DontCare, DontCare>
 {
     /// Initialize a general timer with the correct prescaler.
     #[must_use]
@@ -135,6 +186,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
             tim_int,
             clk,
             dir: PhantomData,
+            link: PhantomData,
             ch1: TimChCfg::new(tim.clone(), tim_int),
             ch2: TimChCfg::new(tim.clone(), tim_int),
             ch3: TimChCfg::new(tim.clone(), tim_int),
@@ -147,16 +199,17 @@ impl<
         Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms,
         Int: IntToken,
         Clk: PClkToken,
+        Link: LinkToken,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
         Ch4Mode,
-    > GeneralTimCfg<Tim, Int, Clk, DontCare, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    > GeneralTimCfg<Tim, Int, Clk, DontCare, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     // Let the counter "count up".
     pub fn into_count_up(
         self,
-    ) -> GeneralTimCfg<Tim, Int, Clk, DirCountUp, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
+    ) -> GeneralTimCfg<Tim, Int, Clk, DirCountUp, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
         let GeneralTimCfg {
             tim,
             tim_int,
@@ -168,7 +221,7 @@ impl<
             ..
         } = self;
 
-        tim.tim_cr1.store_reg(|r, v| {
+        tim.tim_cr1.modify_reg(|r, v| {
             r.dir().clear(v); // Count up
             r.cms().write(v, 0b00); // Count up or down depending on the direction bit (i.e. count up)
         });
@@ -178,6 +231,7 @@ impl<
             tim_int,
             clk,
             dir: PhantomData,
+            link: PhantomData,
             ch1,
             ch2,
             ch3,
@@ -188,7 +242,7 @@ impl<
     // Let the counter "count down".
     pub fn into_count_down(
         self,
-    ) -> GeneralTimCfg<Tim, Int, Clk, DirCountDown, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
+    ) -> GeneralTimCfg<Tim, Int, Clk, DirCountDown, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
         let GeneralTimCfg {
             tim,
             tim_int,
@@ -200,7 +254,7 @@ impl<
             ..
         } = self;
 
-        tim.tim_cr1.store_reg(|r, v| {
+        tim.tim_cr1.modify_reg(|r, v| {
             r.dir().set(v); // Count down
             r.cms().write(v, 0b00); // Count up or down depending on the direction bit (i.e. count down)
         });
@@ -210,6 +264,7 @@ impl<
             tim_int,
             clk,
             dir: PhantomData,
+            link: PhantomData,
             ch1,
             ch2,
             ch3,
@@ -218,21 +273,97 @@ impl<
     }
 }
 
+impl<
+        Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms + TimCr2 + TimSmcr,
+        Int: IntToken,
+        Clk: PClkToken,
+        Dir: DirToken,
+        Ch1Mode,
+        Ch2Mode,
+        Ch3Mode,
+        Ch4Mode,
+    > GeneralTimCfg<Tim, Int, Clk, Dir, DefaultLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+{
+    // Let the timer be in master mode
+    pub fn into_master(
+        self,
+    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, MasterLink<Tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
+        let GeneralTimCfg {
+            tim,
+            tim_int,
+            clk,
+            dir,
+            ch1,
+            ch2,
+            ch3,
+            ch4,
+            ..
+        } = self;
+
+        tim.tim_cr2.modify_reg(|r, v| {
+            r.mms().write(v, 0b001) // Enable master mode selection
+        });
+
+        tim.tim_smcr.modify_reg(|r, v| {
+            r.msm().set(v) // Enable master/slave mode
+        });
+
+        GeneralTimCfg {
+            tim,
+            tim_int,
+            clk,
+            dir,
+            link: PhantomData,
+            ch1,
+            ch2,
+            ch3,
+            ch4,
+        }
+    }
+}
+
+pub trait GeneralTimerLink<
+    Tim: GeneralTimMap + TimCr2 + TimSmcr,
+    Int: IntToken,
+    Clk: PClkToken,
+    Dir: DirToken,
+    Ch1Mode,
+    Ch2Mode,
+    Ch3Mode,
+    Ch4Mode,
+    MasterTim,
+>
+{
+    type Into = GeneralTimCfg<Tim, Int, Clk, Dir, SlaveLink<MasterTim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>;
+
+    /// The counter starts at a rising edge of the trigger TRGI (but it is not reset).
+    /// Only the start of the counter is controlled.
+    fn into_trigger_slave_of(self, master_link: PhantomData<MasterLink<MasterTim>>) -> Self::Into;
+}
+
+pub(crate) fn slave_of<Tim: GeneralTimMap + TimSmcr>(tim: &GeneralTimPeriph<Tim>, sms: u32, ts: u32) {
+    tim.tim_smcr.store_reg(|r, v| {
+        r.sms0_2().write(v, sms); // Slave mode selection
+        r.ts().write(v, ts); // Trigger selection
+    });
+}
+
 pub trait ConfigureTimCh1<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
     Dir: DirToken,
+    Link: LinkToken,
     Ch2Mode,
     Ch3Mode,
     Ch4Mode,
 >
 {
     /// Get the capture/compare channel 1.
-    fn ch1<F, Ch1Mode: ModeToken>(
+    fn ch1<F, Ch1Mode: ChModeToken>(
         self,
         configure: F,
-    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
         F: FnOnce(TimChCfg<Tim, Int, TimCh1, DontCare>) -> TimChCfg<Tim, Int, TimCh1, Ch1Mode>;
 }
@@ -242,16 +373,17 @@ pub trait ConfigureTimCh2<
     Int: IntToken,
     Clk: PClkToken,
     Dir: DirToken,
+    Link: LinkToken,
     Ch1Mode,
     Ch3Mode,
     Ch4Mode,
 >
 {
     /// Get the capture/compare channel 2.
-    fn ch2<F, Ch2Mode: ModeToken>(
+    fn ch2<F, Ch2Mode: ChModeToken>(
         self,
         configure: F,
-    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
         F: FnOnce(TimChCfg<Tim, Int, TimCh2, DontCare>) -> TimChCfg<Tim, Int, TimCh2, Ch2Mode>;
 }
@@ -261,16 +393,17 @@ pub trait ConfigureTimCh3<
     Int: IntToken,
     Clk: PClkToken,
     Dir: DirToken,
+    Link: LinkToken,
     Ch1Mode,
     Ch2Mode,
     Ch4Mode,
 >
 {
     /// Get the capture/compare channel 3.
-    fn ch3<F, Ch3Mode: ModeToken>(
+    fn ch3<F, Ch3Mode: ChModeToken>(
         self,
         configure: F,
-    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
         F: FnOnce(TimChCfg<Tim, Int, TimCh3, DontCare>) -> TimChCfg<Tim, Int, TimCh3, Ch3Mode>;
 }
@@ -280,16 +413,17 @@ pub trait ConfigureTimCh4<
     Int: IntToken,
     Clk: PClkToken,
     Dir: DirToken,
+    Link: LinkToken,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,
 >
 {
     /// Get the capture/compare channel 4.
-    fn ch4<F, Ch4Mode: ModeToken>(
+    fn ch4<F, Ch4Mode: ChModeToken>(
         self,
         configure: F,
-    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
         F: FnOnce(TimChCfg<Tim, Int, TimCh4, DontCare>) -> TimChCfg<Tim, Int, TimCh4, Ch4Mode>;
 }
@@ -297,27 +431,33 @@ pub trait ConfigureTimCh4<
 #[macro_export]
 macro_rules! general_tim_ch {
     ($tim_ch:ident; $trait_name:ident<$tim:ident, ..., $($modes:ident),+>.$fn_name:ident; $($ch_fields:ident),+ -> TimChCfg<$($out_modes:ident),+> for GeneralTimCfg<$($for_modes:ident),+>) => {
-        impl<Int: drone_cortexm::thr::IntToken, Clk: drone_stm32f4_rcc_drv::clktree::PClkToken, Dir: crate::DirToken, $($modes),+>
-            $trait_name<$tim, Int, Clk, Dir, $($modes),+> for crate::GeneralTimCfg<$tim, Int, Clk, Dir, $($for_modes),+>
+        impl<
+            Int: drone_cortexm::thr::IntToken,
+            Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
+            Dir: crate::DirToken,
+            Link: crate::LinkToken,
+            $($modes),+>
+            $trait_name<$tim, Int, Clk, Dir, Link, $($modes),+> for crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($for_modes),+>
         {
-            fn $fn_name<F, Mode: crate::ModeToken>(
+            fn $fn_name<F, ChMode: crate::ChModeToken>(
                 self,
                 configure: F,
-            ) -> crate::GeneralTimCfg<$tim, Int, Clk, Dir, $($out_modes),+>
+            ) -> crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($out_modes),+>
             where
-                F: FnOnce(TimChCfg<$tim, Int, $tim_ch, crate::shared::DontCare>) -> TimChCfg<$tim, Int, $tim_ch, Mode>,
+                F: FnOnce(TimChCfg<$tim, Int, $tim_ch, crate::shared::DontCare>) -> TimChCfg<$tim, Int, $tim_ch, ChMode>,
             {
                 let crate::GeneralTimCfg {
                     tim,
                     tim_int,
                     clk,
                     dir,
+                    link,
                     $fn_name,
                     $($ch_fields),+
                 } = self;
                 let $fn_name = configure($fn_name);
                 crate::GeneralTimCfg {
-                    tim, tim_int, clk, dir, $fn_name, $($ch_fields),+
+                    tim, tim_int, clk, dir, link, $fn_name, $($ch_fields),+
                 }
             }
         }
@@ -329,11 +469,12 @@ impl<
         Int: IntToken,
         Clk: PClkToken,
         Dir: DirToken,
+        Link: LinkToken,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
         Ch4Mode,
-    > GeneralTimCfg<Tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     /// Disable the timer clock.
     pub unsafe fn disable_clock(&self) {
@@ -357,15 +498,15 @@ impl<
 
     pub fn overflow_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
         let tim_sr = unsafe { Tim::CTimSr::take() };
-        self.tim_int.add_saturating_pulse_stream(fib::new_fn(move || {
-            if Self::is_pending_overflow(tim_sr) {
-                Self::clear_pending_overflow(tim_sr);
-                fib::Yielded(Some(1))
-            }
-            else {
-                fib::Yielded(None)
-            }
-        }))
+        self.tim_int
+            .add_saturating_pulse_stream(fib::new_fn(move || {
+                if Self::is_pending_overflow(tim_sr) {
+                    Self::clear_pending_overflow(tim_sr);
+                    fib::Yielded(Some(1))
+                } else {
+                    fib::Yielded(None)
+                }
+            }))
     }
 
     /// Get the overflow pending flag.

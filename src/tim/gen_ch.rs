@@ -1,10 +1,16 @@
 use alloc::rc::Rc;
-use core::{marker::PhantomData, num::NonZeroUsize};
+use core::{
+    marker::PhantomData,
+    num::NonZeroUsize,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use drone_core::{fib, token::Token};
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
-    traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2, TimDier,
-    TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If, TimSrCc4If,
+    traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
+    TimCcr3, TimCcr4, TimDier, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
+    TimSrCc4If,
 };
 use fib::Fiber;
 use futures::Stream;
@@ -36,13 +42,13 @@ pub struct OutputCompareMode;
 /// Timer Input Capture mode.
 pub struct InputCaptureMode<Sel: SelectionToken>(PhantomData<Sel>);
 
-pub trait ModeToken {
+pub trait ChModeToken {
     const CC_SEL: u32;
 }
-impl ModeToken for OutputCompareMode {
+impl ChModeToken for OutputCompareMode {
     const CC_SEL: u32 = 0b00;
 }
-impl<Sel: SelectionToken> ModeToken for InputCaptureMode<Sel> {
+impl<Sel: SelectionToken> ChModeToken for InputCaptureMode<Sel> {
     const CC_SEL: u32 = Sel::CC_SEL;
 }
 
@@ -85,7 +91,9 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>> TimChCfg<Tim, Int, Ch, DontCare> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
+    TimChCfg<Tim, Int, Ch, DontCare>
+{
     /// Configure the channel as Output/Compare.
     pub fn into_output_compare(self) -> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
         Ch::configure_output(&self.tim);
@@ -157,7 +165,7 @@ macro_rules! general_tim_channel {
     };
 }
 
-// impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ModeToken>
+// impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ChModeToken>
 //     TimChCfg<Tim, Int, Ch, Mode>
 // {
 //     /// Enable channel interrupt.
@@ -204,30 +212,85 @@ impl<
 
     /// Returns a stream of pulses that are generated on each channel capture. Fails on overflow.
     pub fn capture_pulse_try_stream(
-        &self,
-    ) -> impl Stream<Item = Result<NonZeroUsize, ChannelCaptureOverflow>> {
+        &mut self,
+    ) -> CaptureStream<'_, Tim, Int, Ch, Sel, Result<NonZeroUsize, ChannelCaptureOverflow>> {
         let tim_sr = unsafe { Tim::CTimSr::take() };
-        self.tim_int
-            .add_pulse_try_stream(|| Err(ChannelCaptureOverflow), Self::capture_fiber(tim_sr))
+        let stream = self
+            .tim_int
+            .add_pulse_try_stream(|| Err(ChannelCaptureOverflow), Self::capture_fiber(tim_sr));
+        Ch::set_ccie(&self.tim.tim_dier);
+        CaptureStream {
+            cfg: self,
+            stream: Box::pin(stream),
+        }
     }
 
     /// Returns a stream of pulses that are generated on each channel capture. Overflows are ignored.
-    pub fn capture_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
+    pub fn capture_saturating_pulse_stream(
+        &mut self,
+    ) -> CaptureStream<'_, Tim, Int, Ch, Sel, NonZeroUsize> {
         let tim_sr = unsafe { Tim::CTimSr::take() };
-        self.tim_int
-            .add_saturating_pulse_stream(Self::capture_fiber(tim_sr))
+        let stream = self
+            .tim_int
+            .add_saturating_pulse_stream(Self::capture_fiber(tim_sr));
+        Ch::set_ccie(&self.tim.tim_dier);
+        CaptureStream {
+            cfg: self,
+            stream: Box::pin(stream),
+        }
     }
 
-    fn capture_fiber<T>(tim_sr: Tim::CTimSr) -> impl Fiber<Input = (), Yield = Option<usize>, Return = T> {
+    fn capture_fiber<T>(
+        tim_sr: Tim::CTimSr,
+    ) -> impl Fiber<Input = (), Yield = Option<usize>, Return = T> {
         fib::new_fn(move || {
             if Ch::get_ccif(tim_sr) {
                 Ch::clear_ccif(tim_sr);
                 fib::Yielded(Some(1))
-            }
-            else {
+            } else {
                 fib::Yielded(None)
             }
         })
+    }
+}
+
+pub struct CaptureStream<
+    'a,
+    Tim: GeneralTimMap,
+    Int: IntToken,
+    Ch: TimChToken + TimChExt<Tim>,
+    Sel: SelectionToken,
+    Item,
+> {
+    cfg: &'a mut TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>>,
+    stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>,
+}
+
+impl<
+        Tim: GeneralTimMap,
+        Int: IntToken,
+        Ch: TimChToken + TimChExt<Tim>,
+        Sel: SelectionToken,
+        Item,
+    > Stream for CaptureStream<'_, Tim, Int, Ch, Sel, Item>
+{
+    type Item = Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.stream.as_mut().poll_next(cx)
+    }
+}
+
+impl<
+        Tim: GeneralTimMap,
+        Int: IntToken,
+        Ch: TimChToken + TimChExt<Tim>,
+        Sel: SelectionToken,
+        Item,
+    > Drop for CaptureStream<'_, Tim, Int, Ch, Sel, Item>
+{
+    fn drop(&mut self) {
+        Ch::clear_ccie(&self.cfg.tim.tim_dier);
     }
 }
 
@@ -235,8 +298,8 @@ pub trait TimChExt<Tim: GeneralTimMap> {
     fn configure_output(tim: &GeneralTimPeriph<Tim>);
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
 
-    fn set_ccie(tim_dier: Tim::CTimDier);
-    fn clear_ccie(tim_dier: Tim::CTimDier);
+    fn set_ccie(tim_dier: &Tim::STimDier);
+    fn clear_ccie(tim_dier: &Tim::STimDier);
     fn get_ccif(tim_sr: Tim::CTimSr) -> bool;
     fn clear_ccif(tim_sr: Tim::CTimSr);
 
@@ -255,11 +318,11 @@ impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
     }
 
-    fn set_ccie(tim_dier: Tim::CTimDier) {
+    fn set_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc1ie().set(v));
     }
 
-    fn clear_ccie(tim_dier: Tim::CTimDier) {
+    fn clear_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc1ie().clear(v));
     }
 
@@ -296,11 +359,11 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCc
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
     }
 
-    fn set_ccie(tim_dier: Tim::CTimDier) {
+    fn set_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc2ie().set(v));
     }
 
-    fn clear_ccie(tim_dier: Tim::CTimDier) {
+    fn clear_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc2ie().clear(v));
     }
 
@@ -337,11 +400,11 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> 
             .modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
 
-    fn set_ccie(tim_dier: Tim::CTimDier) {
+    fn set_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc3ie().set(v));
     }
 
-    fn clear_ccie(tim_dier: Tim::CTimDier) {
+    fn clear_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc3ie().clear(v));
     }
 
@@ -378,11 +441,11 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> 
             .modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
     }
 
-    fn set_ccie(tim_dier: Tim::CTimDier) {
+    fn set_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc4ie().set(v));
     }
 
-    fn clear_ccie(tim_dier: Tim::CTimDier) {
+    fn clear_ccie(tim_dier: &Tim::STimDier) {
         tim_dier.modify_reg(|r, v| r.cc4ie().clear(v));
     }
 

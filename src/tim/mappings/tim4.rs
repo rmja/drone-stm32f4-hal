@@ -9,10 +9,10 @@ use drone_stm32f4_rcc_drv::clktree::PClk1;
 
 general_tim_setup!(Tim4, PClk1);
 
-general_tim_ch!(TimCh1; ConfigureTimCh1<Tim4, ..., ChMode2, ChMode3, ChMode4>.ch1; ch2, ch3, ch4 -> TimChCfg<Mode, ChMode2, ChMode3, ChMode4> for GeneralTimCfg<DontCare, ChMode2, ChMode3, ChMode4>);
-general_tim_ch!(TimCh2; ConfigureTimCh2<Tim4, ..., ChMode1, ChMode3, ChMode4>.ch2; ch1, ch3, ch4 -> TimChCfg<ChMode1, Mode, ChMode3, ChMode4> for GeneralTimCfg<ChMode1, DontCare, ChMode3, ChMode4>);
-general_tim_ch!(TimCh3; ConfigureTimCh3<Tim4, ..., ChMode1, ChMode2, ChMode4>.ch3; ch1, ch2, ch4 -> TimChCfg<ChMode1, ChMode2, Mode, ChMode4> for GeneralTimCfg<ChMode1, ChMode2, DontCare, ChMode4>);
-general_tim_ch!(TimCh4; ConfigureTimCh4<Tim4, ..., ChMode1, ChMode2, ChMode3>.ch4; ch1, ch2, ch3 -> TimChCfg<ChMode1, ChMode2, ChMode3, Mode> for GeneralTimCfg<ChMode1, ChMode2, ChMode3, DontCare>);
+general_tim_ch!(TimCh1; ConfigureTimCh1<Tim4, ..., ChMode2, ChMode3, ChMode4>.ch1; ch2, ch3, ch4 -> TimChCfg<ChMode, ChMode2, ChMode3, ChMode4> for GeneralTimCfg<DontCare, ChMode2, ChMode3, ChMode4>);
+general_tim_ch!(TimCh2; ConfigureTimCh2<Tim4, ..., ChMode1, ChMode3, ChMode4>.ch2; ch1, ch3, ch4 -> TimChCfg<ChMode1, ChMode, ChMode3, ChMode4> for GeneralTimCfg<ChMode1, DontCare, ChMode3, ChMode4>);
+general_tim_ch!(TimCh3; ConfigureTimCh3<Tim4, ..., ChMode1, ChMode2, ChMode4>.ch3; ch1, ch2, ch4 -> TimChCfg<ChMode1, ChMode2, ChMode, ChMode4> for GeneralTimCfg<ChMode1, ChMode2, DontCare, ChMode4>);
+general_tim_ch!(TimCh4; ConfigureTimCh4<Tim4, ..., ChMode1, ChMode2, ChMode3>.ch4; ch1, ch2, ch3 -> TimChCfg<ChMode1, ChMode2, ChMode3, ChMode> for GeneralTimCfg<ChMode1, ChMode2, ChMode3, DontCare>);
 
 general_tim_channel!(
     TimCh1<Tim4>, GpioB6<PinAf2> -> DirectSelection;

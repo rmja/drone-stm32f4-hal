@@ -1,3 +1,5 @@
+mod links;
+
 mod tim1;
 #[cfg(any(
     stm32_mcu = "stm32f401",
