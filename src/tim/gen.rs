@@ -12,11 +12,18 @@ use futures::Stream;
 use crate::{DefaultLink, DirCountDown, DirCountUp, DirToken, LinkToken, MasterLink, TimCh3, TimCh4, TimFreq, gen_ch::{ChModeToken, TimCh1, TimCh2, TimChCfg}, shared::DontCare};
 
 pub struct GeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> {
+    /// The timer peripheral.
     pub tim: GeneralTimPeriph<Tim>,
+    /// The timer interrupt.
     pub tim_int: Int,
+    /// The configured timer clock.
     pub clk: ConfiguredClk<Clk>,
+    /// The timer frequency.
     pub freq: TimFreq,
+    /// The auto-reload value defining the top value for the timer. The default is 0xFFFF.
     pub arr: u32,
+    /// Whether the timer should stop during debugging.
+    pub debug_stop: bool,
 }
 
 pub trait NewGeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> {
@@ -47,6 +54,7 @@ macro_rules! general_tim_setup {
                     clk,
                     freq,
                     arr: 0xFFFF,
+                    debug_stop: false,
                 }
             }
         }
@@ -79,13 +87,13 @@ impl<
         Tim: GeneralTimMap,
         Int: IntToken,
         Clk: PClkToken,
-        FromDir,
-        FromLink: LinkToken,
+        Dir,
+        Link: LinkToken,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
         Ch4Mode,
-    > GeneralTimCfg<Tim, Int, Clk, FromDir, FromLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     pub(crate) fn into<ToDir, ToLink: LinkToken>(
         self,
@@ -112,6 +120,10 @@ impl<
             ch4,
         }
     }
+
+    pub fn reset_counter(&mut self) {
+        self.tim.tim_cnt.cnt().write_bits(0);
+    }
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
@@ -126,10 +138,15 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
             clk,
             freq,
             arr,
+            debug_stop,
         } = setup;
 
         // Enable clock.
         tim.rcc_busenr_timen.set_bit();
+
+        if debug_stop {
+            tim.dbg_dbgmcu_timstop.set_bit();
+        }
 
         // Set prescaler
         tim.tim_psc.psc().write_bits(Self::tim_psc(&clk, freq) as u32);
@@ -323,7 +340,7 @@ pub trait ConfigureTimCh1<
     Ch4Mode,
 >
 {
-    /// Get the capture/compare channel 1.
+    /// Configure the capture/compare channel 1.
     fn ch1<F, Ch1Mode: ChModeToken>(
         self,
         configure: F,
@@ -343,7 +360,7 @@ pub trait ConfigureTimCh2<
     Ch4Mode,
 >
 {
-    /// Get the capture/compare channel 2.
+    /// Configure the capture/compare channel 2.
     fn ch2<F, Ch2Mode: ChModeToken>(
         self,
         configure: F,
@@ -363,7 +380,7 @@ pub trait ConfigureTimCh3<
     Ch4Mode,
 >
 {
-    /// Get the capture/compare channel 3.
+    /// Configure the capture/compare channel 3.
     fn ch3<F, Ch3Mode: ChModeToken>(
         self,
         configure: F,
@@ -383,7 +400,7 @@ pub trait ConfigureTimCh4<
     Ch3Mode,
 >
 {
-    /// Get the capture/compare channel 4.
+    /// Configure the capture/compare channel 4.
     fn ch4<F, Ch4Mode: ChModeToken>(
         self,
         configure: F,
