@@ -99,6 +99,8 @@ pub mod traits {
 
 impl<RccInt: IntToken> StabilizingClkCtrl<HseClk> for Rcc<RccInt> {
     fn stabilize(&self, clk: HseClk) -> FiberFuture<ConfiguredClk<HseClk>> {
+        assert!(self.rcc_int.is_int_enabled());
+
         // Enable ready interrupt.
         self.rcc.rcc_cir.modify(|r| r.set_hserdyie());
 
@@ -129,6 +131,7 @@ impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll>
 {
     fn stabilize(&self, clk: Pll) -> FiberFuture<ConfiguredClk<Pll>> {
         let rcc = self.rcc;
+        assert!(rcc.rcc_int.is_int_enabled());
 
         // Enable ready interrupt.
         rcc.rcc.rcc_cir.modify(|r| r.set_pllrdyie());
