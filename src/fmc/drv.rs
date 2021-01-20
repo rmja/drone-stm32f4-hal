@@ -168,6 +168,7 @@ pub struct FmcDrv {
     bank2_capacity: Option<usize>,
 }
 
+#[allow(dead_code)]
 enum SdRamCommand {
     NormalMode,
     ClockConfigurationEnable,
@@ -215,9 +216,9 @@ impl FmcDrv {
         NBL3,
     >(
         setup: SdRamSetup,
-        pins: FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, D, D, D>,
-        address_pins: FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, A11, A12>,
-        data_pins: FmcSdRamDataPins<
+        _pins: FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, D, D, D>,
+        _address_pins: FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, A11, A12>,
+        _data_pins: FmcSdRamDataPins<
             D,
             D,
             D,
@@ -251,8 +252,8 @@ impl FmcDrv {
             D30,
             D31,
         >,
-        bank_pins: FmcSdRamBankPins<D, BA1>,
-        mask_pins: FmcSdRamByteMaskPins<D, D, NBL2, NBL3>,
+        _bank_pins: FmcSdRamBankPins<D, BA1>,
+        _mask_pins: FmcSdRamByteMaskPins<D, D, NBL2, NBL3>,
     ) -> Self {
         let bank1 = setup.bank1.as_ref();
         let bank2 = setup.bank2.as_ref();

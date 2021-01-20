@@ -1,23 +1,12 @@
 use alloc::sync::Arc;
-use core::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll},
-};
-use drone_core::{
-    fib::{self, Fiber, FiberFn},
-    inventory::Token,
-};
-use drone_cortexm::{
-    reg::prelude::*,
-    thr::{prelude::*, ThrTokens},
-};
+use core::{marker::PhantomData, pin::Pin};
+use drone_core::fib::{self, Fiber};
+use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
-    TimCcr3, TimCcr4, TimDier, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
+    TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
     TimSrCc4If,
 };
-use fib::FiberState;
 use futures::Stream;
 
 use crate::shared::DontCare;
@@ -123,14 +112,15 @@ impl<
         Sel: SelectionToken + Send + 'static,
     > GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
-    fn capture_stream<'a, Item>(
-        &'a mut self,
+    fn capture_stream<Item>(
+        &mut self,
         stream_factory: impl FnOnce(
             Int,
             Tim::CTimSr,
             Ch::CTimCcr,
-        ) -> Pin<Box<dyn Stream<Item = Item> + Send + 'a>>,
-    ) -> CaptureStream<'a, Self, Item> {
+        ) -> Pin<Box<dyn Stream<Item = Item> + Send>>,
+    ) -> CaptureStream<'_, Self, Item> {
+        assert!(self.tim_int.is_int_enabled());
         use drone_core::token::Token;
         let tim_sr = unsafe { Tim::CTimSr::take() };
         let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };

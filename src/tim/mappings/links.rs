@@ -4,7 +4,6 @@ use crate::{
 use core::marker::PhantomData;
 use drone_cortexm::thr::IntToken;
 use drone_stm32_map::periph::tim::advanced::*;
-use drone_stm32_map::periph::tim::basic::*;
 use drone_stm32_map::periph::tim::general::*;
 use drone_stm32f4_rcc_drv::clktree::PClkToken;
 

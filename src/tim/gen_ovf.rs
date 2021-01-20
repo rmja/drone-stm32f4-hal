@@ -4,10 +4,9 @@ use core::marker::PhantomData;
 use drone_core::{
     fib::{self, FiberStreamPulse},
     reg::prelude::*,
-    thr::prelude::*,
     token::Token,
 };
-use drone_cortexm::thr::IntToken;
+use drone_cortexm::thr::prelude::*;
 use drone_stm32_map::periph::tim::general::{traits::*, GeneralTimMap, GeneralTimPeriph};
 
 pub struct GeneralTimOvfDrv<Tim: GeneralTimMap, Int: IntToken> {
@@ -26,6 +25,7 @@ impl<Tim: GeneralTimMap, Int: IntToken> GeneralTimOvfDrv<Tim, Int> {
 
 impl<Tim: GeneralTimMap, Int: IntToken> TimerOverflow for GeneralTimOvfDrv<Tim, Int> {
     fn saturating_pulse_stream(&mut self) -> FiberStreamPulse {
+        assert!(self.tim_int.is_int_enabled());
         let tim_sr = unsafe { Tim::CTimSr::take() };
         self.tim_int
             .add_saturating_pulse_stream(fib::new_fn(move || {

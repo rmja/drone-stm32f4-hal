@@ -1,7 +1,7 @@
 // For signal names, see Table 296 in PM0090.
 
 use core::marker::PhantomData;
-use drone_stm32f4_gpio_drv::{pin_ext, prelude::*, GpioPin};
+use drone_stm32f4_gpio_drv::pin_ext;
 
 /// Defined marker type.
 pub struct D;
