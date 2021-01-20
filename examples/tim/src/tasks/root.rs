@@ -90,7 +90,12 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // while let Some(tick) = stream.next().root_wait() {
     loop {
         let capture = 123;
-        println!("TIM2 counter: {}, TIM4 counter: {}, TIM4 capture: {}", tim2.counter(), tim4.counter(), capture);
+        println!(
+            "TIM2 counter: {}, TIM4 counter: {}, TIM4 capture: {}",
+            tim2.cnt.value(),
+            tim4.cnt.value(),
+            capture
+        );
         swo::flush();
     }
 

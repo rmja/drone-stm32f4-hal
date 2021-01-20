@@ -3,39 +3,38 @@
 
 extern crate alloc;
 
-#[macro_use]
 mod gen;
-#[macro_use]
 mod gen_ch;
+mod gen_cnt;
+mod gen_ovf;
 mod mappings;
 mod shared;
 
 pub use self::gen::{
-    ConfigureTimCh1, ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4,
-    GeneralTimCfg, GeneralTimSetup, NewGeneralTimSetup,
+    ConfigureTimCh1, ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4, GeneralTimCfg,
+    GeneralTimSetup, NewGeneralTimSetup,
 };
-pub use self::gen_ch::{
-    ChModeToken, DirectSelection, IndirectSelection, InputCaptureMode, IntoPinInputCaptureMode,
-    OutputCompareMode, TimCh1, TimCh2, TimCh3, TimCh4, TimChCfg, TimChToken,
+pub use self::gen_ch::{IntoPinInputCaptureMode, TimChCfg};
+pub use self::gen_cnt::GeneralTimCntDrv;
+pub use self::gen_ovf::GeneralTimOvfDrv;
+pub use self::shared::{
+    ChModeToken, ChannelCaptureOverflow, DefaultLink, DirCountDown, DirCountUp, DirToken,
+    DirectSelection, IndirectSelection, InputCaptureMode, LinkToken, MasterLink, OutputCompareMode,
+    SelectionToken, SlaveLink, TimCh1, TimCh2, TimCh3, TimCh4, TimChToken, TimFreq, TimerCounter,
+    TimerLink, TimerOverflow,
 };
-pub use self::shared::{TimFreq, TimerLink, LinkToken, MasterLink, DefaultLink, DirToken, SlaveLink, DirCountDown, DirCountUp,};
 
 pub mod prelude {
     pub use super::{
         gen::{
             ConfigureTimCh1, ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4, NewGeneralTimSetup,
         },
-        gen_ch::{
-            ChModeToken, IntoPinInputCaptureMode, TimCh1, TimCh2, TimCh3, TimCh4, TimChToken,
-        },
+        gen_ch::IntoPinInputCaptureMode,
         shared::{
-            TimFreq,
-            DirToken,
-            TimerLink,
-            LinkToken,
-            DirCountDown,
-            DirCountUp,
-        }
+            ChModeToken, ChannelCaptureOverflow, DirCountDown, DirCountUp, DirToken,
+            InputCaptureMode, LinkToken, OutputCompareMode, SelectionToken, TimCh1, TimCh2, TimCh3,
+            TimCh4, TimChToken, TimFreq, TimerCounter, TimerLink, TimerOverflow,
+        },
     };
 }
 

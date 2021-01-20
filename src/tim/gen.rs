@@ -1,15 +1,16 @@
-use core::{marker::PhantomData, num::NonZeroUsize};
-
-use alloc::rc::Rc;
-use drone_core::{fib, token::Token};
+use alloc::sync::Arc;
+use core::marker::PhantomData;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCr1Cms, TimCr1Dir, TimCr2, TimSmcr,
 };
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
-use futures::Stream;
 
-use crate::{DefaultLink, DirCountDown, DirCountUp, DirToken, LinkToken, MasterLink, TimCh3, TimCh4, TimFreq, gen_ch::{ChModeToken, TimCh1, TimCh2, TimChCfg}, shared::DontCare};
+use crate::{
+    shared::DontCare, ChModeToken, DefaultLink, DirCountDown, DirCountUp, DirToken,
+    GeneralTimCntDrv, GeneralTimOvfDrv, LinkToken, MasterLink, TimCh1, TimCh2, TimCh3, TimCh4,
+    TimChCfg, TimFreq,
+};
 
 pub struct GeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> {
     /// The timer peripheral.
@@ -72,11 +73,13 @@ pub struct GeneralTimCfg<
     Ch3Mode,
     Ch4Mode,
 > {
-    pub(crate) tim: Rc<GeneralTimPeriph<Tim>>,
+    pub(crate) tim: Arc<GeneralTimPeriph<Tim>>,
     pub(crate) tim_int: Int,
     pub(crate) clk: ConfiguredClk<Clk>,
     pub(crate) dir: PhantomData<Dir>,
     pub link: PhantomData<Link>,
+    pub cnt: GeneralTimCntDrv<Tim>,
+    pub ovf: GeneralTimOvfDrv<Tim, Int>,
     pub ch1: TimChCfg<Tim, Int, TimCh1, Ch1Mode>,
     pub ch2: TimChCfg<Tim, Int, TimCh2, Ch2Mode>,
     pub ch3: TimChCfg<Tim, Int, TimCh3, Ch3Mode>,
@@ -102,6 +105,8 @@ impl<
             tim,
             tim_int,
             clk,
+            cnt,
+            ovf,
             ch1,
             ch2,
             ch3,
@@ -114,6 +119,8 @@ impl<
             clk,
             dir: PhantomData,
             link: PhantomData,
+            cnt,
+            ovf,
             ch1,
             ch2,
             ch3,
@@ -149,7 +156,9 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
         }
 
         // Set prescaler
-        tim.tim_psc.psc().write_bits(Self::tim_psc(&clk, freq) as u32);
+        tim.tim_psc
+            .psc()
+            .write_bits(Self::tim_psc(&clk, freq) as u32);
 
         // Set some sensible register values.
         tim.tim_cr1.store_reg(|r, v| {
@@ -167,13 +176,15 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
         // Re-initialize the counter and generate an update of the registers.
         tim.tim_egr.ug().set_bit();
 
-        let tim = Rc::new(tim);
+        let tim = Arc::new(tim);
         Self {
             tim: tim.clone(),
             tim_int,
             clk,
             dir: PhantomData,
             link: PhantomData,
+            cnt: GeneralTimCntDrv::new(tim.clone()),
+            ovf: GeneralTimOvfDrv::new(tim.clone(), tim_int),
             ch1: TimChCfg::new(tim.clone(), tim_int),
             ch2: TimChCfg::new(tim.clone(), tim_int),
             ch3: TimChCfg::new(tim.clone(), tim_int),
@@ -288,41 +299,10 @@ impl<
         self.tim.tim_cr1.cen().clear_bit();
     }
 
-    /// Get the current counter value.
-    pub fn counter(&self) -> u32 {
-        self.tim.tim_cnt.cnt().read_bits() as u32
-    }
-
-    pub fn overflow_saturating_pulse_stream(&self) -> impl Stream<Item = NonZeroUsize> {
-        let tim_sr = unsafe { Tim::CTimSr::take() };
-        self.tim_int
-            .add_saturating_pulse_stream(fib::new_fn(move || {
-                if Self::is_pending_overflow(tim_sr) {
-                    Self::clear_pending_overflow(tim_sr);
-                    fib::Yielded(Some(1))
-                } else {
-                    fib::Yielded(None)
-                }
-            }))
-    }
-
-    /// Get the overflow pending flag.
-    pub fn is_pending_overflow(tim_sr: Tim::CTimSr) -> bool {
-        tim_sr.uif().read_bit()
-    }
-
-    /// Clear the overflow pending flag.
-    pub fn clear_pending_overflow(tim_sr: Tim::CTimSr) {
-        // rc_w0: Clear flag by writing a 0, 1 has no effect.
-        let mut val = unsafe { Tim::STimSr::val_from(u32::MAX) };
-        tim_sr.uif().clear(&mut val);
-        tim_sr.store_val(val);
-    }
-
     /// Release the timer peripheral.
     pub fn release(self) -> GeneralTimPeriph<Tim> {
         let Self { tim, .. } = self;
-        match Rc::try_unwrap(tim) {
+        match Arc::try_unwrap(tim) {
             Ok(tim) => tim,
             Err(_) => unreachable!(),
         }
@@ -433,12 +413,14 @@ macro_rules! general_tim_ch {
                     clk,
                     dir,
                     link,
+                    cnt,
+                    ovf,
                     $fn_name,
                     $($ch_fields),+
                 } = self;
                 let $fn_name = configure($fn_name);
                 crate::GeneralTimCfg {
-                    tim, tim_int, clk, dir, link, $fn_name, $($ch_fields),+
+                    tim, tim_int, clk, dir, link, cnt, ovf, $fn_name, $($ch_fields),+
                 }
             }
         }

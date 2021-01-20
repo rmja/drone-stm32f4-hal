@@ -1,5 +1,5 @@
 use crate::{
-    gen::slave_of, DefaultLink, DirToken, GeneralTimCfg, MasterLink, TimerLink, SlaveLink,
+    gen::slave_of, DefaultLink, DirToken, GeneralTimCfg, MasterLink, SlaveLink, TimerLink,
 };
 use core::marker::PhantomData;
 use drone_cortexm::thr::IntToken;
@@ -24,7 +24,17 @@ macro_rules! timer_link {
                 Ch4Mode,
             >
         {
-            type Into = GeneralTimCfg<$slave_tim, Int, Clk, Dir, SlaveLink<$itr0_tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>;
+            type Into = GeneralTimCfg<
+                $slave_tim,
+                Int,
+                Clk,
+                Dir,
+                SlaveLink<$itr0_tim>,
+                Ch1Mode,
+                Ch2Mode,
+                Ch3Mode,
+                Ch4Mode,
+            >;
 
             fn into_trigger_slave_of(
                 self,
@@ -48,7 +58,17 @@ macro_rules! timer_link {
                 Ch4Mode,
             >
         {
-            type Into = GeneralTimCfg<$slave_tim, Int, Clk, Dir, SlaveLink<$itr0_tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>;
+            type Into = GeneralTimCfg<
+                $slave_tim,
+                Int,
+                Clk,
+                Dir,
+                SlaveLink<$itr0_tim>,
+                Ch1Mode,
+                Ch2Mode,
+                Ch3Mode,
+                Ch4Mode,
+            >;
 
             fn into_trigger_slave_of(
                 self,
@@ -72,7 +92,17 @@ macro_rules! timer_link {
                 Ch4Mode,
             >
         {
-            type Into = GeneralTimCfg<$slave_tim, Int, Clk, Dir, SlaveLink<$itr0_tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>;
+            type Into = GeneralTimCfg<
+                $slave_tim,
+                Int,
+                Clk,
+                Dir,
+                SlaveLink<$itr0_tim>,
+                Ch1Mode,
+                Ch2Mode,
+                Ch3Mode,
+                Ch4Mode,
+            >;
 
             fn into_trigger_slave_of(
                 self,
@@ -96,7 +126,17 @@ macro_rules! timer_link {
                 Ch4Mode,
             >
         {
-            type Into = GeneralTimCfg<$slave_tim, Int, Clk, Dir, SlaveLink<$itr0_tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>;
+            type Into = GeneralTimCfg<
+                $slave_tim,
+                Int,
+                Clk,
+                Dir,
+                SlaveLink<$itr0_tim>,
+                Ch1Mode,
+                Ch2Mode,
+                Ch3Mode,
+                Ch4Mode,
+            >;
 
             fn into_trigger_slave_of(
                 self,

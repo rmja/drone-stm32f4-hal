@@ -1,4 +1,4 @@
-use alloc::rc::Rc;
+use alloc::sync::Arc;
 use core::{
     marker::PhantomData,
     num::NonZeroUsize,
@@ -15,73 +15,21 @@ use drone_stm32_map::periph::tim::general::{
 use fib::Fiber;
 use futures::Stream;
 
-use crate::shared::DontCare;
-pub struct ChannelCaptureOverflow;
-
-/// Capture/Compare channel 1.
-pub struct TimCh1;
-
-/// Capture/Compare channel 2.
-pub struct TimCh2;
-
-/// Capture/Compare channel 3.
-pub struct TimCh3;
-
-/// Capture/Compare channel 4.
-pub struct TimCh4;
-
-pub trait TimChToken {}
-impl TimChToken for TimCh1 {}
-impl TimChToken for TimCh2 {}
-impl TimChToken for TimCh3 {}
-impl TimChToken for TimCh4 {}
-
-/// Timer Output Compare mode.
-pub struct OutputCompareMode;
-
-/// Timer Input Capture mode.
-pub struct InputCaptureMode<Sel: SelectionToken>(PhantomData<Sel>);
-
-pub trait ChModeToken {
-    const CC_SEL: u32;
-}
-impl ChModeToken for OutputCompareMode {
-    const CC_SEL: u32 = 0b00;
-}
-impl<Sel: SelectionToken> ChModeToken for InputCaptureMode<Sel> {
-    const CC_SEL: u32 = Sel::CC_SEL;
-}
-
-/// Channel X maps directly to the input for channel X.
-pub struct DirectSelection;
-/// Channel X maps to its indirect neighbour channel Y.
-pub struct IndirectSelection;
-/// TRC selection
-pub struct TrcSelection;
-
-pub trait SelectionToken {
-    const CC_SEL: u32;
-}
-impl SelectionToken for DirectSelection {
-    const CC_SEL: u32 = 0b01;
-}
-impl SelectionToken for IndirectSelection {
-    const CC_SEL: u32 = 0b10;
-}
-impl SelectionToken for TrcSelection {
-    const CC_SEL: u32 = 0b11;
-}
+use crate::{
+    shared::DontCare, ChModeToken, ChannelCaptureOverflow, InputCaptureMode, OutputCompareMode,
+    SelectionToken, TimCh1, TimCh2, TimCh3, TimCh4, TimChToken,
+};
 
 /// The timer channel configuration.
 pub struct TimChCfg<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
-    pub(crate) tim: Rc<GeneralTimPeriph<Tim>>,
+    pub(crate) tim: Arc<GeneralTimPeriph<Tim>>,
     pub(crate) tim_int: Int,
     ch: PhantomData<Ch>,
     mode: PhantomData<Mode>,
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
-    pub(crate) fn new(tim: Rc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
+    pub(crate) fn new(tim: Arc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
         Self {
             tim,
             tim_int,
@@ -164,30 +112,6 @@ macro_rules! general_tim_channel {
         )+
     };
 }
-
-// impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken<Tim>, Mode: ChModeToken>
-//     TimChCfg<Tim, Int, Ch, Mode>
-// {
-//     /// Enable channel interrupt.
-//     pub fn enable_interrupt(&mut self) {
-//         Ch::set_ccie(self.tim.tim_dier);
-//     }
-
-//     /// Disable channel interrupt.
-//     pub fn disable_interrupt(&mut self) {
-//         Ch::clear_ccie(&self.tim);
-//     }
-
-//     /// Get the channel pending interrupt flag.
-//     pub fn is_pending(&self) -> bool {
-//         Ch::get_ccif(&self.tim)
-//     }
-
-//     /// Clear the channel pending interrupt flag.
-//     pub fn clear_pending(&mut self) {
-//         Ch::clear_ccif(&self.tim);
-//     }
-// }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
     TimChCfg<Tim, Int, Ch, OutputCompareMode>

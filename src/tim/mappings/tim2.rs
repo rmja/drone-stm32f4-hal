@@ -1,6 +1,7 @@
 use crate::{
-    shared::DontCare, ConfigureTimCh1, ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4,
-    DirectSelection, IndirectSelection, TimCh1, TimCh2, TimCh3, TimCh4, TimChCfg,
+    general_tim_ch, general_tim_channel, general_tim_setup, shared::DontCare, ConfigureTimCh1,
+    ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4, DirectSelection, IndirectSelection, TimCh1,
+    TimCh2, TimCh3, TimCh4, TimChCfg,
 };
 use drone_stm32_map::periph::gpio::pin::*;
 use drone_stm32_map::periph::tim::general::Tim2;
