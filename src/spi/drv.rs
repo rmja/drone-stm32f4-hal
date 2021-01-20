@@ -4,7 +4,7 @@ use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    spi::{traits::*, SpiCr1, SpiMap, SpiPeriph},
+    spi::{traits::*, SpiMap, SpiPeriph},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
@@ -13,7 +13,7 @@ pub mod config {
     use super::*;
     pub use crate::pins::*;
 
-    pub struct SpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
+    pub struct SpiSetup<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
         /// Spi peripheral.
         pub spi: SpiPeriph<Spi>,
         /// Spi global interrupt.
@@ -28,7 +28,7 @@ pub mod config {
         pub first_bit: FirstBit,
     }
 
-    pub trait NewSpiSetup<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
+    pub trait NewSpiSetup<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
         /// Create a new spi setup with sensible defaults.
         fn new(
             spi: SpiPeriph<Spi>,
@@ -101,13 +101,13 @@ macro_rules! spi_setup {
     };
 }
 
-pub struct SpiDrv<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> {
+pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
     pub(crate) spi: SpiDiverged<Spi>,
     spi_int: SpiInt,
     clk: PhantomData<Clk>,
 }
 
-impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
+impl<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
     #[must_use]
     pub fn init(setup: config::SpiSetup<Spi, SpiInt, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
         let mut drv = Self {
@@ -168,7 +168,7 @@ impl<Spi: SpiMap + SpiCr1, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt,
 }
 
 pub trait SpiDrvInit<
-    Spi: SpiMap + SpiCr1,
+    Spi: SpiMap,
     DmaRxCh: DmaChMap,
     DmaRxStCh: DmaStChToken,
     DmaTxCh: DmaChMap,

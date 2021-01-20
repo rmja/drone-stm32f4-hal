@@ -5,14 +5,14 @@ use drone_stm32_map::periph::spi::{SpiMap, SpiPeriph};
 pub(crate) struct SpiDiverged<Spi: SpiMap> {
     pub(crate) rcc_busenr_spien: Spi::SRccBusenrSpien,
     pub(crate) rcc_busrstr_spirst: Spi::SRccBusrstrSpirst,
-    pub(crate) rcc_bussmenr_spilpen: Spi::SRccBussmenrSpilpen,
+    pub(crate) rcc_bussmenr_spismen: Spi::SRccBussmenrSpismen,
     pub(crate) spi_sr: Spi::CSpiSr,
     pub(crate) spi_dr: Spi::SSpiDr,
-    pub(crate) spi_cr1: Spi::SSpiCr1Opt,
+    pub(crate) spi_cr1: Spi::SSpiCr1,
     pub(crate) spi_cr2: Spi::SSpiCr2,
-    pub(crate) spi_crcpr: Spi::SSpiCrcprOpt,
-    pub(crate) spi_rxcrcr: Spi::SSpiRxcrcrOpt,
-    pub(crate) spi_txcrcr: Spi::SSpiTxcrcrOpt,
+    pub(crate) spi_crcpr: Spi::SSpiCrcpr,
+    pub(crate) spi_rxcrcr: Spi::SSpiRxcrcr,
+    pub(crate) spi_txcrcr: Spi::SSpiTxcrcr,
     pub(crate) spi_i2scfgr: Spi::SSpiI2ScfgrOpt,
     pub(crate) spi_i2spr: Spi::SSpiI2SprOpt,
 }
@@ -22,7 +22,7 @@ impl<Spi: SpiMap> From<SpiPeriph<Spi>> for SpiDiverged<Spi> {
         let SpiPeriph {
             rcc_busenr_spien,
             rcc_busrstr_spirst,
-            rcc_bussmenr_spilpen,
+            rcc_bussmenr_spismen,
             spi_sr,
             spi_dr,
             spi_cr1,
@@ -36,7 +36,7 @@ impl<Spi: SpiMap> From<SpiPeriph<Spi>> for SpiDiverged<Spi> {
         Self {
             rcc_busenr_spien,
             rcc_busrstr_spirst,
-            rcc_bussmenr_spilpen,
+            rcc_bussmenr_spismen,
             spi_sr: spi_sr.into_copy(),
             spi_dr,
             spi_cr1,

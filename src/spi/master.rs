@@ -2,13 +2,13 @@ use crate::diverged::{DmaChDiverged, SpiDiverged};
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    spi::{traits::*, SpiCr1, SpiMap},
+    spi::{traits::*, SpiMap},
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
 pub struct SpiMasterDrv<
     'drv,
-    Spi: SpiMap + SpiCr1,
+    Spi: SpiMap,
     DmaRx: DmaChMap,
     DmaRxInt: IntToken,
     DmaTx: DmaChMap,
@@ -23,7 +23,7 @@ pub struct SpiMasterDrv<
 
 impl<
         'drv,
-        Spi: SpiMap + SpiCr1,
+        Spi: SpiMap,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
         DmaTx: DmaChMap,
@@ -189,7 +189,7 @@ impl<
 }
 
 impl<
-        Spi: SpiMap + SpiCr1,
+        Spi: SpiMap,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
         DmaTx: DmaChMap,
