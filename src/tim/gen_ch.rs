@@ -1,34 +1,37 @@
 use alloc::sync::Arc;
 use core::{
     marker::PhantomData,
-    num::NonZeroUsize,
     pin::Pin,
     task::{Context, Poll},
 };
-use drone_core::{fib, token::Token};
-use drone_cortexm::{reg::prelude::*, thr::prelude::*};
+use drone_core::{
+    fib::{self, Fiber, FiberFn},
+    inventory::Token,
+};
+use drone_cortexm::{
+    reg::prelude::*,
+    thr::{prelude::*, ThrTokens},
+};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
     TimCcr3, TimCcr4, TimDier, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
     TimSrCc4If,
 };
-use fib::Fiber;
+use fib::FiberState;
 use futures::Stream;
 
-use crate::{
-    shared::DontCare, ChModeToken, ChannelCaptureOverflow, InputCaptureMode, OutputCompareMode,
-    SelectionToken, TimCh1, TimCh2, TimCh3, TimCh4, TimChToken,
-};
+use crate::shared::DontCare;
+use crate::traits::*;
 
 /// The timer channel configuration.
-pub struct TimChCfg<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
+pub struct GeneralTimChDrv<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
     pub(crate) tim: Arc<GeneralTimPeriph<Tim>>,
     pub(crate) tim_int: Int,
     ch: PhantomData<Ch>,
     mode: PhantomData<Mode>,
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> GeneralTimChDrv<Tim, Int, Ch, Mode> {
     pub(crate) fn new(tim: Arc<GeneralTimPeriph<Tim>>, tim_int: Int) -> Self {
         Self {
             tim,
@@ -40,21 +43,21 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> TimChCfg<Tim, Int, Ch, Mode> {
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
-    TimChCfg<Tim, Int, Ch, DontCare>
+    GeneralTimChDrv<Tim, Int, Ch, DontCare>
 {
     /// Configure the channel as Output/Compare.
-    pub fn into_output_compare(self) -> TimChCfg<Tim, Int, Ch, OutputCompareMode> {
+    pub fn into_output_compare(self) -> GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode> {
         Ch::configure_output(&self.tim);
-        TimChCfg::new(self.tim, self.tim_int)
+        GeneralTimChDrv::new(self.tim, self.tim_int)
     }
 
     /// Configure the channel as Input/Capture.
     pub fn into_input_capture<Sel: SelectionToken>(
         self,
         sel: Sel,
-    ) -> TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>> {
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>> {
         Ch::configure_input(&self.tim, sel);
-        TimChCfg::new(self.tim, self.tim_int)
+        GeneralTimChDrv::new(self.tim, self.tim_int)
     }
 }
 
@@ -78,7 +81,7 @@ pub trait IntoPinInputCaptureMode<
             Type,
             Pull,
         >,
-    ) -> TimChCfg<Tim, Int, Ch, InputCaptureMode<Selection>>;
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Selection>>;
 }
 
 #[macro_export]
@@ -95,7 +98,7 @@ macro_rules! general_tim_channel {
                     $pin_af,
                     Type,
                     Pull,
-                > for TimChCfg<$tim, Int, $tim_ch, crate::shared::DontCare>
+                > for GeneralTimChDrv<$tim, Int, $tim_ch, crate::shared::DontCare>
             {
                 fn into_input_capture_pin(
                     self,
@@ -105,7 +108,7 @@ macro_rules! general_tim_channel {
                         Type,
                         Pull,
                     >,
-                ) -> TimChCfg<$tim, Int, $tim_ch, crate::InputCaptureMode<$sel>> {
+                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$sel>> {
                     self.into_input_capture($sel)
                 }
             }
@@ -113,64 +116,38 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
-    TimChCfg<Tim, Int, Ch, OutputCompareMode>
-{
-    /// Set the channel compare value.
-    pub fn set_compare(&mut self, value: u32) {
-        Ch::set_ccr(&self.tim, value);
-    }
-}
-
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim> + 'static,
-        Sel: SelectionToken + 'static,
-    > TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>>
+        Ch: TimChToken + TimChExt<Tim> + Send + 'static,
+        Sel: SelectionToken + Send + 'static,
+    > GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
-    /// Get the channel capture value.
-    pub fn capture(&self) -> u32 {
-        Ch::get_ccr(&self.tim)
-    }
-
-    /// Returns a stream of pulses that are generated on each channel capture. Fails on overflow.
-    pub fn capture_pulse_try_stream(
-        &mut self,
-    ) -> CaptureStream<'_, Tim, Int, Ch, Sel, Result<NonZeroUsize, ChannelCaptureOverflow>> {
+    fn capture_stream<'a, Item>(
+        &'a mut self,
+        stream_factory: impl FnOnce(
+            Int,
+            Tim::CTimSr,
+            Ch::CTimCcr,
+        ) -> Pin<Box<dyn Stream<Item = Item> + Send + 'a>>,
+    ) -> CaptureStream<'a, Self, Item> {
+        use drone_core::token::Token;
         let tim_sr = unsafe { Tim::CTimSr::take() };
-        let stream = self
-            .tim_int
-            .add_pulse_try_stream(|| Err(ChannelCaptureOverflow), Self::capture_fiber(tim_sr));
+        let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };
+        let stream = stream_factory(self.tim_int, tim_sr, tim_ch_ccr);
         Ch::set_ccie(&self.tim.tim_dier);
-        CaptureStream {
-            cfg: self,
-            stream: Box::pin(stream),
-        }
+        CaptureStream::new(self, stream)
     }
 
-    /// Returns a stream of pulses that are generated on each channel capture. Overflows are ignored.
-    pub fn capture_saturating_pulse_stream(
-        &mut self,
-    ) -> CaptureStream<'_, Tim, Int, Ch, Sel, NonZeroUsize> {
-        let tim_sr = unsafe { Tim::CTimSr::take() };
-        let stream = self
-            .tim_int
-            .add_saturating_pulse_stream(Self::capture_fiber(tim_sr));
-        Ch::set_ccie(&self.tim.tim_dier);
-        CaptureStream {
-            cfg: self,
-            stream: Box::pin(stream),
-        }
-    }
-
-    fn capture_fiber<T>(
+    fn capture_fib<Return>(
         tim_sr: Tim::CTimSr,
-    ) -> impl Fiber<Input = (), Yield = Option<usize>, Return = T> {
+        tim_ch_ccr: Ch::CTimCcr,
+    ) -> impl Fiber<Input = (), Yield = Option<u32>, Return = Return> {
         fib::new_fn(move || {
             if Ch::get_ccif(tim_sr) {
+                let capture = Ch::get_ccr(tim_ch_ccr);
                 Ch::clear_ccif(tim_sr);
-                fib::Yielded(Some(1))
+                fib::Yielded(Some(capture))
             } else {
                 fib::Yielded(None)
             }
@@ -178,47 +155,56 @@ impl<
     }
 }
 
-pub struct CaptureStream<
-    'a,
-    Tim: GeneralTimMap,
-    Int: IntToken,
-    Ch: TimChToken + TimChExt<Tim>,
-    Sel: SelectionToken,
-    Item,
-> {
-    cfg: &'a mut TimChCfg<Tim, Int, Ch, InputCaptureMode<Sel>>,
-    stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>,
-}
-
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim>,
-        Sel: SelectionToken,
-        Item,
-    > Stream for CaptureStream<'_, Tim, Int, Ch, Sel, Item>
+        Ch: TimChToken + TimChExt<Tim> + Send + 'static,
+        Sel: SelectionToken + Send + 'static,
+    > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
-    type Item = Item;
+    type Stop = Self;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.stream.as_mut().poll_next(cx)
+    fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
+        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+            Box::pin(int.add_saturating_stream(capacity, Self::capture_fib(tim_sr, tim_ch_ccr)))
+        })
+    }
+
+    fn overwriting_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
+        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+            Box::pin(int.add_overwriting_stream(capacity, Self::capture_fib(tim_sr, tim_ch_ccr)))
+        })
+    }
+
+    fn try_stream(
+        &mut self,
+        capacity: usize,
+    ) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>> {
+        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+            Box::pin(int.add_try_stream(
+                capacity,
+                |_| Err(ChannelCaptureOverflow),
+                Self::capture_fib(tim_sr, tim_ch_ccr),
+            ))
+        })
     }
 }
 
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim>,
-        Sel: SelectionToken,
-        Item,
-    > Drop for CaptureStream<'_, Tim, Int, Ch, Sel, Item>
+        Ch: TimChToken + TimChExt<Tim> + Send,
+        Sel: SelectionToken + Send,
+    > CaptureStop for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
-    fn drop(&mut self) {
-        Ch::clear_ccie(&self.cfg.tim.tim_dier);
+    fn stop(&mut self) {
+        Ch::clear_ccie(&self.tim.tim_dier);
     }
 }
 
 pub trait TimChExt<Tim: GeneralTimMap> {
+    type CTimCcr: RReg<Crt> + Copy;
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>);
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
 
@@ -227,11 +213,13 @@ pub trait TimChExt<Tim: GeneralTimMap> {
     fn get_ccif(tim_sr: Tim::CTimSr) -> bool;
     fn clear_ccif(tim_sr: Tim::CTimSr);
 
-    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32;
-    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32);
+    fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32;
+    fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32);
 }
 
 impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
+    type CTimCcr = Tim::CTimCcr1;
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, OutputCompareMode::CC_SEL));
@@ -261,18 +249,20 @@ impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
         tim_sr.store_val(val);
     }
 
-    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
-        tim.tim_ccr1.load_bits()
+    fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32 {
+        tim_cr_ccr.load_bits()
     }
 
-    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
-        tim.tim_ccr1.store_bits(value);
+    fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32) {
+        tim_cr_ccr.store_bits(value);
     }
 }
 
 impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCcr2> TimChExt<Tim>
     for TimCh2
 {
+    type CTimCcr = Tim::CTimCcr2;
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, OutputCompareMode::CC_SEL));
@@ -302,18 +292,20 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCc
         tim_sr.store_val(val);
     }
 
-    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
-        tim.tim_ccr2.load_bits()
+    fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32 {
+        tim_cr_ccr.load_bits()
     }
 
-    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
-        tim.tim_ccr2.store_bits(value);
+    fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32) {
+        tim_cr_ccr.store_bits(value);
     }
 }
 
 impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> TimChExt<Tim>
     for TimCh3
 {
+    type CTimCcr = Tim::CTimCcr3;
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, OutputCompareMode::CC_SEL));
@@ -343,18 +335,20 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> 
         tim_sr.store_val(val);
     }
 
-    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
-        tim.tim_ccr3.load_bits()
+    fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32 {
+        tim_cr_ccr.load_bits()
     }
 
-    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
-        tim.tim_ccr3.store_bits(value);
+    fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32) {
+        tim_cr_ccr.store_bits(value);
     }
 }
 
 impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> TimChExt<Tim>
     for TimCh4
 {
+    type CTimCcr = Tim::CTimCcr4;
+
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, OutputCompareMode::CC_SEL));
@@ -384,11 +378,11 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> 
         tim_sr.store_val(val);
     }
 
-    fn get_ccr(tim: &GeneralTimPeriph<Tim>) -> u32 {
-        tim.tim_ccr4.load_bits()
+    fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32 {
+        tim_cr_ccr.load_bits()
     }
 
-    fn set_ccr(tim: &GeneralTimPeriph<Tim>, value: u32) {
-        tim.tim_ccr4.store_bits(value);
+    fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32) {
+        tim_cr_ccr.store_bits(value);
     }
 }

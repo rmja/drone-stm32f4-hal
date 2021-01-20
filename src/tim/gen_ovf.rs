@@ -1,6 +1,6 @@
-use core::marker::PhantomData;
-
+use crate::traits::*;
 use alloc::sync::Arc;
+use core::marker::PhantomData;
 use drone_core::{
     fib::{self, FiberStreamPulse},
     reg::prelude::*,
@@ -9,8 +9,6 @@ use drone_core::{
 };
 use drone_cortexm::thr::IntToken;
 use drone_stm32_map::periph::tim::general::{traits::*, GeneralTimMap, GeneralTimPeriph};
-
-use crate::TimerOverflow;
 
 pub struct GeneralTimOvfDrv<Tim: GeneralTimMap, Int: IntToken> {
     tim: PhantomData<Tim>,

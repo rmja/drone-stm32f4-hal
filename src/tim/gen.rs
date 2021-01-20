@@ -7,9 +7,7 @@ use drone_stm32_map::periph::tim::general::{
 use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
 
 use crate::{
-    shared::DontCare, ChModeToken, DefaultLink, DirCountDown, DirCountUp, DirToken,
-    GeneralTimCntDrv, GeneralTimOvfDrv, LinkToken, MasterLink, TimCh1, TimCh2, TimCh3, TimCh4,
-    TimChCfg, TimFreq,
+    shared::DontCare, traits::*, GeneralTimChDrv, GeneralTimCntDrv, GeneralTimOvfDrv, TimFreq,
 };
 
 pub struct GeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> {
@@ -80,10 +78,10 @@ pub struct GeneralTimCfg<
     pub link: PhantomData<Link>,
     pub cnt: GeneralTimCntDrv<Tim>,
     pub ovf: GeneralTimOvfDrv<Tim, Int>,
-    pub ch1: TimChCfg<Tim, Int, TimCh1, Ch1Mode>,
-    pub ch2: TimChCfg<Tim, Int, TimCh2, Ch2Mode>,
-    pub ch3: TimChCfg<Tim, Int, TimCh3, Ch3Mode>,
-    pub ch4: TimChCfg<Tim, Int, TimCh4, Ch4Mode>,
+    pub ch1: GeneralTimChDrv<Tim, Int, TimCh1, Ch1Mode>,
+    pub ch2: GeneralTimChDrv<Tim, Int, TimCh2, Ch2Mode>,
+    pub ch3: GeneralTimChDrv<Tim, Int, TimCh3, Ch3Mode>,
+    pub ch4: GeneralTimChDrv<Tim, Int, TimCh4, Ch4Mode>,
 }
 
 impl<
@@ -185,10 +183,10 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
             link: PhantomData,
             cnt: GeneralTimCntDrv::new(tim.clone()),
             ovf: GeneralTimOvfDrv::new(tim.clone(), tim_int),
-            ch1: TimChCfg::new(tim.clone(), tim_int),
-            ch2: TimChCfg::new(tim.clone(), tim_int),
-            ch3: TimChCfg::new(tim.clone(), tim_int),
-            ch4: TimChCfg::new(tim.clone(), tim_int),
+            ch1: GeneralTimChDrv::new(tim.clone(), tim_int),
+            ch2: GeneralTimChDrv::new(tim.clone(), tim_int),
+            ch3: GeneralTimChDrv::new(tim.clone(), tim_int),
+            ch4: GeneralTimChDrv::new(tim.clone(), tim_int),
         }
     }
 
@@ -326,7 +324,9 @@ pub trait ConfigureTimCh1<
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
-        F: FnOnce(TimChCfg<Tim, Int, TimCh1, DontCare>) -> TimChCfg<Tim, Int, TimCh1, Ch1Mode>;
+        F: FnOnce(
+            GeneralTimChDrv<Tim, Int, TimCh1, DontCare>,
+        ) -> GeneralTimChDrv<Tim, Int, TimCh1, Ch1Mode>;
 }
 
 pub trait ConfigureTimCh2<
@@ -346,7 +346,9 @@ pub trait ConfigureTimCh2<
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
-        F: FnOnce(TimChCfg<Tim, Int, TimCh2, DontCare>) -> TimChCfg<Tim, Int, TimCh2, Ch2Mode>;
+        F: FnOnce(
+            GeneralTimChDrv<Tim, Int, TimCh2, DontCare>,
+        ) -> GeneralTimChDrv<Tim, Int, TimCh2, Ch2Mode>;
 }
 
 pub trait ConfigureTimCh3<
@@ -366,7 +368,9 @@ pub trait ConfigureTimCh3<
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
-        F: FnOnce(TimChCfg<Tim, Int, TimCh3, DontCare>) -> TimChCfg<Tim, Int, TimCh3, Ch3Mode>;
+        F: FnOnce(
+            GeneralTimChDrv<Tim, Int, TimCh3, DontCare>,
+        ) -> GeneralTimChDrv<Tim, Int, TimCh3, Ch3Mode>;
 }
 
 pub trait ConfigureTimCh4<
@@ -386,12 +390,14 @@ pub trait ConfigureTimCh4<
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     where
-        F: FnOnce(TimChCfg<Tim, Int, TimCh4, DontCare>) -> TimChCfg<Tim, Int, TimCh4, Ch4Mode>;
+        F: FnOnce(
+            GeneralTimChDrv<Tim, Int, TimCh4, DontCare>,
+        ) -> GeneralTimChDrv<Tim, Int, TimCh4, Ch4Mode>;
 }
 
 #[macro_export]
 macro_rules! general_tim_ch {
-    ($tim_ch:ident; $trait_name:ident<$tim:ident, ..., $($modes:ident),+>.$fn_name:ident; $($ch_fields:ident),+ -> TimChCfg<$($out_modes:ident),+> for GeneralTimCfg<$($for_modes:ident),+>) => {
+    ($tim_ch:ident; $trait_name:ident<$tim:ident, ..., $($modes:ident),+>.$fn_name:ident; $($ch_fields:ident),+ -> GeneralTimChDrv<$($out_modes:ident),+> for GeneralTimCfg<$($for_modes:ident),+>) => {
         impl<
             Int: drone_cortexm::thr::IntToken,
             Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
@@ -405,7 +411,7 @@ macro_rules! general_tim_ch {
                 configure: F,
             ) -> crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($out_modes),+>
             where
-                F: FnOnce(TimChCfg<$tim, Int, $tim_ch, crate::shared::DontCare>) -> TimChCfg<$tim, Int, $tim_ch, ChMode>,
+                F: FnOnce(GeneralTimChDrv<$tim, Int, $tim_ch, crate::shared::DontCare>) -> GeneralTimChDrv<$tim, Int, $tim_ch, ChMode>,
             {
                 let crate::GeneralTimCfg {
                     tim,
