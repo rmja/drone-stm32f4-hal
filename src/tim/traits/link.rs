@@ -16,7 +16,7 @@ pub trait TimerLink<
     Tim,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,

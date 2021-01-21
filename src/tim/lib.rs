@@ -15,7 +15,7 @@ pub use self::gen::{
     ConfigureTimCh1, ConfigureTimCh2, ConfigureTimCh3, ConfigureTimCh4, GeneralTimCfg,
     GeneralTimSetup, NewGeneralTimSetup,
 };
-pub use self::gen_ch::{GeneralTimChDrv, IntoPinInputCaptureMode};
+pub use self::gen_ch::{GeneralTimCh, GeneralTimChDrv, IntoPinInputCaptureMode};
 pub use self::gen_cnt::GeneralTimCntDrv;
 pub use self::gen_ovf::GeneralTimOvfDrv;
 pub use self::shared::TimFreq;

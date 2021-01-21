@@ -64,19 +64,18 @@ pub struct GeneralTimCfg<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Link,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,
     Ch4Mode,
 > {
-    pub(crate) tim: Arc<GeneralTimPeriph<Tim>>,
+    pub(crate) tim: Arc<GeneralTimDiverged<Tim>>,
     pub(crate) tim_int: Int,
     pub(crate) clk: ConfiguredClk<Clk>,
-    pub(crate) dir: PhantomData<Dir>,
     pub link: PhantomData<Link>,
-    pub cnt: GeneralTimCntDrv<Tim>,
+    pub cnt: GeneralTimCntDrv<Tim, Dir>,
     pub ovf: GeneralTimOvfDrv<Tim, Int>,
     pub ch1: GeneralTimChDrv<Tim, Int, TimCh1, Ch1Mode>,
     pub ch2: GeneralTimChDrv<Tim, Int, TimCh2, Ch2Mode>,
@@ -84,11 +83,22 @@ pub struct GeneralTimCfg<
     pub ch4: GeneralTimChDrv<Tim, Int, TimCh4, Ch4Mode>,
 }
 
+pub struct GeneralTimDiverged<Tim: GeneralTimMap> {
+    pub(crate) rcc_busenr_timen: Tim::SRccBusenrTimen,
+    pub(crate) tim_cr1: Tim::STimCr1,
+    pub(crate) tim_dier: Tim::CTimDier,
+    pub(crate) tim_sr: Tim::CTimSr,
+    pub(crate) tim_ccmr1_output: Tim::STimCcmr1Output,
+    pub(crate) tim_ccer: Tim::CTimCcer,
+    pub(crate) tim_cnt: Tim::STimCnt,
+    pub(crate) tim_arr: Tim::STimArr,
+}
+
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
         Clk: PClkToken,
-        Dir,
+        Dir: Send + Sync,
         Link,
         Ch1Mode,
         Ch2Mode,
@@ -96,7 +106,7 @@ impl<
         Ch4Mode,
     > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
-    pub(crate) fn into<ToDir, ToLink>(
+    pub(crate) fn into<ToDir: Send + Sync, ToLink>(
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, ToDir, ToLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
         let Self {
@@ -115,9 +125,8 @@ impl<
             tim,
             tim_int,
             clk,
-            dir: PhantomData,
             link: PhantomData,
-            cnt,
+            cnt: cnt.into(),
             ovf,
             ch1,
             ch2,
@@ -132,7 +141,7 @@ impl<
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
-    GeneralTimCfg<Tim, Int, Clk, DontCare, DefaultLink, DontCare, DontCare, DontCare, DontCare>
+    GeneralTimCfg<Tim, Int, Clk, DirCountUp, DefaultLink, DontCare, DontCare, DontCare, DontCare>
 {
     /// Initialize a general timer with the correct prescaler.
     #[must_use]
@@ -174,14 +183,22 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
         // Re-initialize the counter and generate an update of the registers.
         tim.tim_egr.ug().set_bit();
 
-        let tim = Arc::new(tim);
+        let tim = Arc::new(GeneralTimDiverged {
+            rcc_busenr_timen: tim.rcc_busenr_timen,
+            tim_cr1: tim.tim_cr1,
+            tim_dier: tim.tim_dier.into_copy(),
+            tim_sr: tim.tim_sr.into_copy(),
+            tim_ccmr1_output: tim.tim_ccmr1_output,
+            tim_ccer: tim.tim_ccer.into_copy(),
+            tim_cnt: tim.tim_cnt,
+            tim_arr: tim.tim_arr,
+        });
         Self {
             tim: tim.clone(),
             tim_int,
             clk,
-            dir: PhantomData,
             link: PhantomData,
-            cnt: GeneralTimCntDrv::new(tim.clone()),
+            cnt: GeneralTimCntDrv::new(tim.clone(), DirCountUp),
             ovf: GeneralTimOvfDrv::new(tim.clone(), tim_int),
             ch1: GeneralTimChDrv::new(tim.clone(), tim_int),
             ch2: GeneralTimChDrv::new(tim.clone(), tim_int),
@@ -203,12 +220,13 @@ impl<
         Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms,
         Int: IntToken,
         Clk: PClkToken,
+        Dir: Send + Sync,
         Link,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
         Ch4Mode,
-    > GeneralTimCfg<Tim, Int, Clk, DontCare, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+    > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     // Let the counter "count up".
     pub fn into_count_up(
@@ -237,7 +255,7 @@ impl<
         Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms + TimCr2 + TimSmcr,
         Int: IntToken,
         Clk: PClkToken,
-        Dir,
+        Dir: Send + Sync,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
@@ -249,10 +267,13 @@ impl<
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, MasterLink<Tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
     {
-        self.tim.tim_cr2.modify_reg(|r, v| {
+        use drone_core::token::Token;
+        let tim_cr2 = unsafe { Tim::STimCr2::take() };
+        let tim_smcr = unsafe { Tim::STimSmcr::take() };
+        tim_cr2.modify_reg(|r, v| {
             r.mms().write(v, 0b001) // Enable master mode selection
         });
-        self.tim.tim_smcr.modify_reg(|r, v| {
+        tim_smcr.modify_reg(|r, v| {
             r.msm().set(v) // Enable master/slave mode
         });
         self.into()
@@ -260,11 +281,13 @@ impl<
 }
 
 pub(crate) fn slave_of<Tim: GeneralTimMap + TimSmcr>(
-    tim: &GeneralTimPeriph<Tim>,
+    _tim: &GeneralTimDiverged<Tim>,
     sms: u32,
     ts: u32,
 ) {
-    tim.tim_smcr.store_reg(|r, v| {
+    use drone_core::token::Token;
+    let tim_smcr = unsafe { Tim::STimSmcr::take() };
+    tim_smcr.store_reg(|r, v| {
         r.sms0_2().write(v, sms); // Slave mode selection
         r.ts().write(v, ts); // Trigger selection
     });
@@ -274,7 +297,7 @@ impl<
         Tim: GeneralTimMap,
         Int: IntToken,
         Clk: PClkToken,
-        Dir,
+        Dir: Send + Sync,
         Link,
         Ch1Mode,
         Ch2Mode,
@@ -296,22 +319,13 @@ impl<
     pub fn stop(&self) {
         self.tim.tim_cr1.cen().clear_bit();
     }
-
-    /// Release the timer peripheral.
-    pub fn release(self) -> GeneralTimPeriph<Tim> {
-        let Self { tim, .. } = self;
-        match Arc::try_unwrap(tim) {
-            Ok(tim) => tim,
-            Err(_) => unreachable!(),
-        }
-    }
 }
 
 pub trait ConfigureTimCh1<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Link,
     Ch2Mode,
     Ch3Mode,
@@ -333,7 +347,7 @@ pub trait ConfigureTimCh2<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Link,
     Ch1Mode,
     Ch3Mode,
@@ -355,7 +369,7 @@ pub trait ConfigureTimCh3<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Link,
     Ch1Mode,
     Ch2Mode,
@@ -377,7 +391,7 @@ pub trait ConfigureTimCh4<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir,
+    Dir: Send + Sync,
     Link,
     Ch1Mode,
     Ch2Mode,
@@ -401,7 +415,7 @@ macro_rules! general_tim_ch {
         impl<
             Int: drone_cortexm::thr::IntToken,
             Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
-            Dir,
+            Dir: Send + Sync,
             Link,
             $($modes),+>
             $trait_name<$tim, Int, Clk, Dir, Link, $($modes),+> for crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($for_modes),+>
@@ -417,7 +431,6 @@ macro_rules! general_tim_ch {
                     tim,
                     tim_int,
                     clk,
-                    dir,
                     link,
                     cnt,
                     ovf,
@@ -426,7 +439,7 @@ macro_rules! general_tim_ch {
                 } = self;
                 let $fn_name = configure($fn_name);
                 crate::GeneralTimCfg {
-                    tim, tim_int, clk, dir, link, cnt, ovf, $fn_name, $($ch_fields),+
+                    tim, tim_int, clk, link, cnt, ovf, $fn_name, $($ch_fields),+
                 }
             }
         }

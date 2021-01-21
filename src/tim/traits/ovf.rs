@@ -4,6 +4,14 @@ use futures::Stream;
 pub trait TimerOverflow {
     type Stop: OverflowStop;
 
+    fn int_enable(&self);
+
+    fn int_disable(&self);
+
+    fn is_pending(&self) -> bool;
+
+    fn clear_pending(&self);
+
     /// Get a stream of pulses that yield for each timer overflow.
     fn saturating_pulse_stream(&mut self) -> OverflowStream<'_, Self::Stop, NonZeroUsize>;
 }
@@ -24,7 +32,6 @@ impl<'a, Stop: OverflowStop, Item> OverflowStream<'a, Stop, Item> {
     }
 
     /// Stop the overflow stream.
-    #[inline]
     pub fn stop(mut self: Pin<&mut Self>) {
         self.stop.stop();
     }
