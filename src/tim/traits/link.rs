@@ -3,8 +3,6 @@ use core::marker::PhantomData;
 use drone_cortexm::thr::IntToken;
 use drone_stm32f4_rcc_drv::clktree::PClkToken;
 
-use crate::DirToken;
-
 pub struct DefaultLink;
 pub struct MasterLink<MasterTim>(PhantomData<MasterTim>);
 pub struct SlaveLink<MasterTim>(PhantomData<MasterTim>);
@@ -18,7 +16,7 @@ pub trait TimerLink<
     Tim,
     Int: IntToken,
     Clk: PClkToken,
-    Dir: DirToken,
+    Dir,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,

@@ -1,5 +1,5 @@
 use crate::{
-    gen::slave_of, DefaultLink, DirToken, GeneralTimCfg, MasterLink, SlaveLink, TimerLink,
+    gen::slave_of, DefaultLink, GeneralTimCfg, MasterLink, SlaveLink, TimerLink,
 };
 use core::marker::PhantomData;
 use drone_cortexm::thr::IntToken;
@@ -9,7 +9,7 @@ use drone_stm32f4_rcc_drv::clktree::PClkToken;
 
 macro_rules! timer_link {
     ($type_type:ident<$slave_tim:ident>; $itr0_tim:ident, $itr1_tim:ident, $itr2_tim:ident, $itr3_tim:ident) => {
-        impl<Int: IntToken, Clk: PClkToken, Dir: DirToken, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+        impl<Int: IntToken, Clk: PClkToken, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
             TimerLink<$slave_tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode, $itr0_tim>
             for $type_type<
                 $slave_tim,
@@ -43,7 +43,7 @@ macro_rules! timer_link {
                 self.into()
             }
         }
-        impl<Int: IntToken, Clk: PClkToken, Dir: DirToken, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+        impl<Int: IntToken, Clk: PClkToken, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
             TimerLink<$slave_tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode, $itr1_tim>
             for $type_type<
                 $slave_tim,
@@ -77,7 +77,7 @@ macro_rules! timer_link {
                 self.into()
             }
         }
-        impl<Int: IntToken, Clk: PClkToken, Dir: DirToken, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+        impl<Int: IntToken, Clk: PClkToken, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
             TimerLink<$slave_tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode, $itr2_tim>
             for $type_type<
                 $slave_tim,
@@ -111,7 +111,7 @@ macro_rules! timer_link {
                 self.into()
             }
         }
-        impl<Int: IntToken, Clk: PClkToken, Dir: DirToken, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
+        impl<Int: IntToken, Clk: PClkToken, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
             TimerLink<$slave_tim, Int, Clk, Dir, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode, $itr3_tim>
             for $type_type<
                 $slave_tim,

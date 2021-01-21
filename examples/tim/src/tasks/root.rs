@@ -85,9 +85,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     tim2.start();
 
     // let mut overflow_stream = tim4.ovf.saturating_pulse_stream();
-
     let mut capture_stream = tim4.ch1.saturating_stream(10);
-
     while let Some(capture) = capture_stream.next().root_wait() {
         println!(
             "TIM2 counter: {}, TIM4 counter: {}, TIM4 capture: {}",

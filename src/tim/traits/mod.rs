@@ -1,8 +1,7 @@
 mod capture_ch;
 mod ch;
-mod cnt;
-mod dir;
+mod tim;
 mod link;
 mod ovf;
 
-pub use self::{capture_ch::*, ch::*, cnt::*, dir::*, link::*, ovf::*};
+pub use self::{capture_ch::*, ch::*, tim::*, link::*, ovf::*};

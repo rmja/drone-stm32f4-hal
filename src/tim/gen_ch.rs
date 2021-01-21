@@ -31,7 +31,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> GeneralTimChDrv<Tim, Int, Ch, 
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChExt<Tim>>
     GeneralTimChDrv<Tim, Int, Ch, DontCare>
 {
     /// Configure the channel as Output/Compare.
@@ -41,7 +41,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
     }
 
     /// Configure the channel as Input/Capture.
-    pub fn into_input_capture<Sel: SelectionToken>(
+    pub fn into_input_capture<Sel: InputSelection>(
         self,
         sel: Sel,
     ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>> {
@@ -53,8 +53,8 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: TimChToken + TimChExt<Tim>>
 pub trait IntoPinInputCaptureMode<
     Tim: GeneralTimMap,
     Int: IntToken,
-    Ch: TimChToken,
-    Selection: SelectionToken,
+    Ch,
+    Sel,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
     Af: drone_stm32f4_gpio_drv::PinAfToken,
     Type: drone_stm32f4_gpio_drv::PinTypeToken,
@@ -70,7 +70,7 @@ pub trait IntoPinInputCaptureMode<
             Type,
             Pull,
         >,
-    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Selection>>;
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>;
 }
 
 #[macro_export]
@@ -108,8 +108,8 @@ macro_rules! general_tim_channel {
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim> + Send + 'static,
-        Sel: SelectionToken + Send + 'static,
+        Ch: TimChExt<Tim> + Send + 'static,
+        Sel: Send,
     > GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
     fn capture_stream<Item>(
@@ -149,8 +149,8 @@ impl<
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim> + Send + 'static,
-        Sel: SelectionToken + Send + 'static,
+        Ch: TimChExt<Tim> + Send + 'static,
+        Sel: Send + 'static,
     > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
     type Stop = Self;
@@ -184,8 +184,8 @@ impl<
 impl<
         Tim: GeneralTimMap,
         Int: IntToken,
-        Ch: TimChToken + TimChExt<Tim> + Send,
-        Sel: SelectionToken + Send,
+        Ch: TimChExt<Tim> + Send,
+        Sel: Send,
     > CaptureStop for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
     fn stop(&mut self) {
@@ -198,7 +198,7 @@ pub trait TimChExt<Tim: GeneralTimMap> {
     type CTimCcr: RReg<Crt> + Copy;
 
     fn configure_output(tim: &GeneralTimPeriph<Tim>);
-    fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
+    fn configure_input<Sel: InputSelection>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
 
     fn set_cce(tim_ccer: &Tim::STimCcer);
     fn clear_cce(tim_ccer: &Tim::STimCcer);
@@ -210,15 +210,29 @@ pub trait TimChExt<Tim: GeneralTimMap> {
     fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32);
 }
 
+pub trait InputSelection {
+    const CC_SEL: u32;
+}
+impl InputSelection for DirectSelection {
+    const CC_SEL: u32 = 0b01;
+}
+impl InputSelection for IndirectSelection {
+    const CC_SEL: u32 = 0b10;
+}
+impl InputSelection for TrcSelection {
+    const CC_SEL: u32 = 0b11;
+}
+
+
 impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
     type CTimCcr = Tim::CTimCcr1;
 
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
-            .modify_reg(|r, v| r.cc1s().write(v, OutputCompareMode::CC_SEL));
+            .modify_reg(|r, v| r.cc1s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
     }
@@ -266,10 +280,10 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimCcerCc2E + TimS
 
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr1_output
-            .modify_reg(|r, v| r.cc2s().write(v, OutputCompareMode::CC_SEL));
+            .modify_reg(|r, v| r.cc2s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
     }
@@ -317,10 +331,10 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3
 
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
-            .modify_reg(|r, v| r.cc3s().write(v, OutputCompareMode::CC_SEL));
+            .modify_reg(|r, v| r.cc3s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
@@ -368,10 +382,10 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4
 
     fn configure_output(tim: &GeneralTimPeriph<Tim>) {
         tim.tim_ccmr2_output
-            .modify_reg(|r, v| r.cc4s().write(v, OutputCompareMode::CC_SEL));
+            .modify_reg(|r, v| r.cc4s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
     }

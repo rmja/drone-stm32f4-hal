@@ -65,7 +65,7 @@ pub struct GeneralTimCfg<
     Int: IntToken,
     Clk: PClkToken,
     Dir,
-    Link: LinkToken,
+    Link,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,
@@ -89,14 +89,14 @@ impl<
         Int: IntToken,
         Clk: PClkToken,
         Dir,
-        Link: LinkToken,
+        Link,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
         Ch4Mode,
     > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
-    pub(crate) fn into<ToDir, ToLink: LinkToken>(
+    pub(crate) fn into<ToDir, ToLink>(
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, ToDir, ToLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode> {
         let Self {
@@ -203,7 +203,7 @@ impl<
         Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms,
         Int: IntToken,
         Clk: PClkToken,
-        Link: LinkToken,
+        Link,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
@@ -237,7 +237,7 @@ impl<
         Tim: GeneralTimMap + TimCr1Dir + TimCr1Cms + TimCr2 + TimSmcr,
         Int: IntToken,
         Clk: PClkToken,
-        Dir: DirToken,
+        Dir,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
@@ -274,8 +274,8 @@ impl<
         Tim: GeneralTimMap,
         Int: IntToken,
         Clk: PClkToken,
-        Dir: DirToken,
-        Link: LinkToken,
+        Dir,
+        Link,
         Ch1Mode,
         Ch2Mode,
         Ch3Mode,
@@ -311,15 +311,15 @@ pub trait ConfigureTimCh1<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir: DirToken,
-    Link: LinkToken,
+    Dir,
+    Link,
     Ch2Mode,
     Ch3Mode,
     Ch4Mode,
 >
 {
     /// Configure the capture/compare channel 1.
-    fn ch1<F, Ch1Mode: ChModeToken>(
+    fn ch1<F, Ch1Mode>(
         self,
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
@@ -333,15 +333,15 @@ pub trait ConfigureTimCh2<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir: DirToken,
-    Link: LinkToken,
+    Dir,
+    Link,
     Ch1Mode,
     Ch3Mode,
     Ch4Mode,
 >
 {
     /// Configure the capture/compare channel 2.
-    fn ch2<F, Ch2Mode: ChModeToken>(
+    fn ch2<F, Ch2Mode>(
         self,
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
@@ -355,15 +355,15 @@ pub trait ConfigureTimCh3<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir: DirToken,
-    Link: LinkToken,
+    Dir,
+    Link,
     Ch1Mode,
     Ch2Mode,
     Ch4Mode,
 >
 {
     /// Configure the capture/compare channel 3.
-    fn ch3<F, Ch3Mode: ChModeToken>(
+    fn ch3<F, Ch3Mode>(
         self,
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
@@ -377,15 +377,15 @@ pub trait ConfigureTimCh4<
     Tim: GeneralTimMap,
     Int: IntToken,
     Clk: PClkToken,
-    Dir: DirToken,
-    Link: LinkToken,
+    Dir,
+    Link,
     Ch1Mode,
     Ch2Mode,
     Ch3Mode,
 >
 {
     /// Configure the capture/compare channel 4.
-    fn ch4<F, Ch4Mode: ChModeToken>(
+    fn ch4<F, Ch4Mode>(
         self,
         configure: F,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
@@ -401,12 +401,12 @@ macro_rules! general_tim_ch {
         impl<
             Int: drone_cortexm::thr::IntToken,
             Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
-            Dir: crate::DirToken,
-            Link: crate::LinkToken,
+            Dir,
+            Link,
             $($modes),+>
             $trait_name<$tim, Int, Clk, Dir, Link, $($modes),+> for crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($for_modes),+>
         {
-            fn $fn_name<F, ChMode: crate::ChModeToken>(
+            fn $fn_name<F, ChMode>(
                 self,
                 configure: F,
             ) -> crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($out_modes),+>
