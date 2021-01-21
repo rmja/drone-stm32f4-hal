@@ -82,7 +82,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .ch2(|ch| ch.into_output_compare())
         .into_trigger_slave_of(tim2.link);
 
-    tim2.start();
+    tim2.start(); // Also starts tim4
 
     // let mut overflow_stream = tim4.ovf.saturating_pulse_stream();
     let mut capture_stream = tim4.ch1.saturating_stream(10);
