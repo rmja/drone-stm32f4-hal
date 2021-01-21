@@ -25,7 +25,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     thr.exti_2.enable_int();
 
     let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
-    let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pp().into_pulldown();
+    let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pushpull().into_pulldown();
 
     // unsafe {
     //     gpio.disable_clock();

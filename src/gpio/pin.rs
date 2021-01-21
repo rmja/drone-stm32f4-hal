@@ -145,7 +145,8 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
         self.pin.into()
     }
 
-    pub fn into_af<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
+    /// Set the pin into alternate function mode.
+    pub fn into_alternate<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
         self.pin.gpio_afr_afr.write_bits(Af::NUM);
         self.pin.gpio_moder_moder.write_bits(0b10);
         self.pin.into()
@@ -159,14 +160,14 @@ impl<Af: PinAfToken> TypeableMode for AlternateMode<Af> {}
 
 impl<Pin: GpioPinMap, Mode: PinModeToken + TypeableMode> GpioPin<Pin, Mode, DontCare, DontCare> {
     /// Let pin type be push/pull.
-    pub fn into_pp(self) -> GpioPin<Pin, Mode, PushPullType, DontCare> {
+    pub fn into_pushpull(self) -> GpioPin<Pin, Mode, PushPullType, DontCare> {
         self.pin.gpio_otyper_ot.clear_bit();
         self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
         self.pin.into()
     }
 
     /// Let pin type be open-drain.
-    pub fn into_od(self) -> GpioPin<Pin, Mode, OpenDrainType, DontCare> {
+    pub fn into_opendrain(self) -> GpioPin<Pin, Mode, OpenDrainType, DontCare> {
         self.pin.gpio_otyper_ot.set_bit();
         self.pin.into()
     }

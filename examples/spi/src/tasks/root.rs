@@ -39,16 +39,16 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Configure SPI GPIO pins.
     let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
-        .into_af()
-        .into_pp()
+        .into_alternate()
+        .into_pushpull()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
     let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
-        .into_af()
-        .into_pp()
+        .into_alternate()
+        .into_pushpull()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
     let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
-        .into_af()
-        .into_pp()
+        .into_alternate()
+        .into_pushpull()
         .with_speed(GpioPinSpeed::VeryHighSpeed);
     let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
         .into_output()

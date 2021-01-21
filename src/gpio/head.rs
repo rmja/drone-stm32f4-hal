@@ -14,6 +14,10 @@ impl<Head: GpioHeadMap> GpioHead<Head> {
     }
 
     /// Disable the port clock.
+    ///
+    /// # Safety
+    ///
+    /// The port will halt when the clock is disabled.
     pub unsafe fn disable_clock(&self) {
         self.port.rcc_busenr_gpioen.clear_bit();
     }

@@ -109,8 +109,8 @@ use drone_stm32f4_hal::gpio::{prelude::*, GpioHead};
 
 let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 ```
 The `pin_sck` has type `GpioPin<GpioA5, AlternateMode<Af>, PushPullType, NoPull>` where `Af` is any of the alternate function marker types `PinAf0,...,PinAf15`.
@@ -157,7 +157,7 @@ let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
 let exti = ExtiDrv::new(periph_exti2!(reg), thr.exti_2, &syscfg).into_rising_edge();
 
 let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
-let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pp().into_pulldown();
+let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pushpull().into_pulldown();
 
 let line = exti.line(&pin);
 
@@ -185,16 +185,16 @@ thr.dma_2_ch_3.enable_int();
 
 let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 
 let dma2 = DmaCfg::with_enabled_clock(periph_dma2!(reg));
@@ -269,12 +269,12 @@ thr.dma_1_ch_6.enable_int();
 
 let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
 let pin_tx = gpio_a.pin(periph_gpio_a2!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 let pin_rx = GpioPin::from(periph_gpio_a3!(reg))
-  .into_af()
-  .into_pp()
+  .into_alternate()
+  .into_pushpull()
   .with_speed(GpioPinSpeed::VeryHighSpeed);
 
 let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
@@ -364,19 +364,19 @@ After that, the initialization and use of the driver is straight forward:
 
 ```rust
 let sdram_pins = FmcSdRamPins::default()
-  .sdclk(gpio_g.pin(periph_gpio_g8!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  .sdclk(gpio_g.pin(periph_gpio_g8!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 let address_pins = FmcSdRamAddressPins::default()
-  .a0(gpio_f.pin(periph_gpio_f0!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  .a0(gpio_f.pin(periph_gpio_f0!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 let data_pins = FmcSdRamDataPins::default()
-  .d0(gpio_d.pin(periph_gpio_d14!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  .d0(gpio_d.pin(periph_gpio_d14!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 let bank_pins = FmcSdRamBankPins::default()
-  .ba0(gpio_g.pin(periph_gpio_g4!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  .ba0(gpio_g.pin(periph_gpio_g4!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 let mask_pins = FmcSdRamByteMaskPins::default()
-  .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_af().with_speed(GpioPinSpeed::HighSpeed))
+  .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 
 let fmc = FmcDrv::init_sdram(SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);

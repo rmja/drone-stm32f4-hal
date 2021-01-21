@@ -12,6 +12,7 @@ pub struct GeneralTimCntDrv<Tim: GeneralTimMap, Dir: Send + Sync>(
 );
 
 impl<Tim: GeneralTimMap, Dir: Send + Sync> GeneralTimCntDrv<Tim, Dir> {
+    /// Create a new timer counter driver.
     pub(crate) fn new(tim: Arc<GeneralTimDiverged<Tim>>, dir: Dir) -> Self {
         Self(tim, PhantomData)
     }

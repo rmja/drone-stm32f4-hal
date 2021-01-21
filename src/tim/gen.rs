@@ -74,12 +74,19 @@ pub struct GeneralTimCfg<
     pub(crate) tim: Arc<GeneralTimDiverged<Tim>>,
     pub(crate) tim_int: Int,
     pub(crate) clk: ConfiguredClk<Clk>,
+    /// The timer link. Can be used on a master timer to assign as master for some other slave timer.
     pub link: PhantomData<Link>,
-    pub cnt: GeneralTimCntDrv<Tim, Dir>,
-    pub ovf: GeneralTimOvfDrv<Tim, Int>,
+    /// The timer counter.
+    pub counter: GeneralTimCntDrv<Tim, Dir>,
+    /// The timer overflow.
+    pub overflow: GeneralTimOvfDrv<Tim, Int>,
+    /// The capture/compare channel 1.
     pub ch1: GeneralTimChDrv<Tim, Int, TimCh1, Ch1Mode>,
+    /// The capture/compare channel 2.
     pub ch2: GeneralTimChDrv<Tim, Int, TimCh2, Ch2Mode>,
+    /// The capture/compare channel 3.
     pub ch3: GeneralTimChDrv<Tim, Int, TimCh3, Ch3Mode>,
+    /// The capture/compare channel 4.
     pub ch4: GeneralTimChDrv<Tim, Int, TimCh4, Ch4Mode>,
 }
 
@@ -113,8 +120,8 @@ impl<
             tim,
             tim_int,
             clk,
-            cnt,
-            ovf,
+            counter: cnt,
+            overflow: ovf,
             ch1,
             ch2,
             ch3,
@@ -126,17 +133,13 @@ impl<
             tim_int,
             clk,
             link: PhantomData,
-            cnt: cnt.into(),
-            ovf,
+            counter: cnt.into(),
+            overflow: ovf,
             ch1,
             ch2,
             ch3,
             ch4,
         }
-    }
-
-    pub fn reset_counter(&mut self) {
-        self.tim.tim_cnt.cnt().write_bits(0);
     }
 }
 
@@ -159,6 +162,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
         tim.rcc_busenr_timen.set_bit();
 
         if debug_stop {
+            // Stop the timer when the debugger breaks.
             tim.dbg_dbgmcu_timstop.set_bit();
         }
 
@@ -198,8 +202,8 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
             tim_int,
             clk,
             link: PhantomData,
-            cnt: GeneralTimCntDrv::new(tim.clone(), DirCountUp),
-            ovf: GeneralTimOvfDrv::new(tim.clone(), tim_int),
+            counter: GeneralTimCntDrv::new(tim.clone(), DirCountUp),
+            overflow: GeneralTimOvfDrv::new(tim.clone(), tim_int),
             ch1: GeneralTimChDrv::new(tim.clone(), tim_int),
             ch2: GeneralTimChDrv::new(tim.clone(), tim_int),
             ch3: GeneralTimChDrv::new(tim.clone(), tim_int),
@@ -262,7 +266,8 @@ impl<
         Ch4Mode,
     > GeneralTimCfg<Tim, Int, Clk, Dir, DefaultLink, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
-    // Let the timer be in master mode.
+    /// Let the timer be in master mode.
+    /// It can then be assigned as slave to other timers.
     pub fn into_master(
         self,
     ) -> GeneralTimCfg<Tim, Int, Clk, Dir, MasterLink<Tim>, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
@@ -306,6 +311,10 @@ impl<
     > GeneralTimCfg<Tim, Int, Clk, Dir, Link, Ch1Mode, Ch2Mode, Ch3Mode, Ch4Mode>
 {
     /// Disable the timer clock.
+    ///
+    /// # Safety
+    ///
+    /// The timer will halt when the clock is disabled.
     pub unsafe fn disable_clock(&self) {
         self.tim.rcc_busenr_timen.clear_bit();
     }
@@ -432,14 +441,14 @@ macro_rules! general_tim_ch {
                     tim_int,
                     clk,
                     link,
-                    cnt,
-                    ovf,
+                    counter,
+                    overflow,
                     $fn_name,
                     $($ch_fields),+
                 } = self;
                 let $fn_name = configure($fn_name);
                 crate::GeneralTimCfg {
-                    tim, tim_int, clk, link, cnt, ovf, $fn_name, $($ch_fields),+
+                    tim, tim_int, clk, link, counter, overflow, $fn_name, $($ch_fields),+
                 }
             }
         }

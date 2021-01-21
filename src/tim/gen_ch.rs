@@ -25,6 +25,7 @@ pub struct GeneralTimChDrv<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> GeneralTimChDrv<Tim, Int, Ch, Mode> {
+    /// Create a new timer channel driver.
     pub(crate) fn new(tim: Arc<GeneralTimDiverged<Tim>>, tim_int: Int) -> Self {
         Self {
             tim,

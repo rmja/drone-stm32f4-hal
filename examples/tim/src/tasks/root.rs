@@ -67,8 +67,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     let capture_pin = gpio_d
         .pin(periph_gpio_d13!(reg))
-        .into_af()
-        .into_pp()
+        .into_alternate()
+        .into_pushpull()
         .into_pulldown()
         .with_speed(GpioPinSpeed::MediumSpeed);
 
@@ -89,8 +89,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     while let Some(capture) = capture_stream.next().root_wait() {
         println!(
             "TIM2 counter: {}, TIM4 counter: {}, TIM4 capture: {}",
-            tim2.cnt.value(),
-            tim4.cnt.value(),
+            tim2.counter.value(),
+            tim4.counter.value(),
             capture
         );
         swo::flush();
