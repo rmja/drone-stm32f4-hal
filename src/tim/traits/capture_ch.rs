@@ -28,7 +28,7 @@ pub trait TimerCaptureCh {
 }
 
 pub trait CaptureStop: Send {
-    /// Stops the capture.
+    /// Stop the capture stream.
     fn stop(&mut self);
 }
 

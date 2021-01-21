@@ -5,14 +5,14 @@ use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
     TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
-    TimSrCc4If,
+    TimSrCc4If, TimCcerCc2E, TimCcerCc3E, TimCcerCc4E
 };
 use futures::Stream;
 
 use crate::shared::DontCare;
 use crate::traits::*;
 
-/// The timer channel configuration.
+/// The timer channel driver.
 pub struct GeneralTimChDrv<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
     pub(crate) tim: Arc<GeneralTimPeriph<Tim>>,
     pub(crate) tim_int: Int,
@@ -125,6 +125,7 @@ impl<
         let tim_sr = unsafe { Tim::CTimSr::take() };
         let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };
         let stream = stream_factory(self.tim_int, tim_sr, tim_ch_ccr);
+        Ch::set_cce(&self.tim.tim_ccer);
         Ch::set_ccie(&self.tim.tim_dier);
         CaptureStream::new(self, stream)
     }
@@ -189,6 +190,7 @@ impl<
 {
     fn stop(&mut self) {
         Ch::clear_ccie(&self.tim.tim_dier);
+        Ch::clear_cce(&self.tim.tim_ccer);
     }
 }
 
@@ -198,11 +200,12 @@ pub trait TimChExt<Tim: GeneralTimMap> {
     fn configure_output(tim: &GeneralTimPeriph<Tim>);
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, sel: Sel);
 
+    fn set_cce(tim_ccer: &Tim::STimCcer);
+    fn clear_cce(tim_ccer: &Tim::STimCcer);
     fn set_ccie(tim_dier: &Tim::STimDier);
     fn clear_ccie(tim_dier: &Tim::STimDier);
     fn get_ccif(tim_sr: Tim::CTimSr) -> bool;
     fn clear_ccif(tim_sr: Tim::CTimSr);
-
     fn get_ccr(tim_cr_ccr: Self::CTimCcr) -> u32;
     fn set_ccr(tim_cr_ccr: Self::CTimCcr, value: u32);
 }
@@ -218,6 +221,14 @@ impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
+    }
+
+    fn set_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc1e().set_bit();
+    }
+
+    fn clear_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc1e().clear_bit();
     }
 
     fn set_ccie(tim_dier: &Tim::STimDier) {
@@ -248,7 +259,7 @@ impl<Tim: GeneralTimMap> TimChExt<Tim> for TimCh1 {
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCcr2> TimChExt<Tim>
+impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimCcerCc2E + TimSrCc2If + TimCcr2> TimChExt<Tim>
     for TimCh2
 {
     type CTimCcr = Tim::CTimCcr2;
@@ -261,6 +272,14 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCc
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
+    }
+
+    fn set_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc2e().set_bit();
+    }
+
+    fn clear_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc2e().clear_bit();
     }
 
     fn set_ccie(tim_dier: &Tim::STimDier) {
@@ -291,7 +310,7 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimSrCc2If + TimCc
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> TimChExt<Tim>
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3If + TimCcr3> TimChExt<Tim>
     for TimCh3
 {
     type CTimCcr = Tim::CTimCcr3;
@@ -304,6 +323,14 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> 
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
+    }
+
+    fn set_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc3e().set_bit();
+    }
+
+    fn clear_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc3e().clear_bit();
     }
 
     fn set_ccie(tim_dier: &Tim::STimDier) {
@@ -334,7 +361,7 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimSrCc3If + TimCcr3> 
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> TimChExt<Tim>
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4If + TimCcr4> TimChExt<Tim>
     for TimCh4
 {
     type CTimCcr = Tim::CTimCcr4;
@@ -347,6 +374,14 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimSrCc4If + TimCcr4> 
     fn configure_input<Sel: SelectionToken>(tim: &GeneralTimPeriph<Tim>, _sel: Sel) {
         tim.tim_ccmr2_output
             .modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
+    }
+
+    fn set_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc4e().set_bit();
+    }
+
+    fn clear_cce(tim_ccer: &Tim::STimCcer) {
+        tim_ccer.cc4e().clear_bit();
     }
 
     fn set_ccie(tim_dier: &Tim::STimDier) {

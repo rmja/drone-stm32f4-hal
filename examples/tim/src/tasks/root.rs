@@ -69,6 +69,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .pin(periph_gpio_d13!(reg))
         .into_af()
         .into_pp()
+        .into_pulldown()
         .with_speed(GpioPinSpeed::MediumSpeed);
 
     let tim2 = GeneralTimCfg::with_enabled_clock(tim2_setup)
@@ -83,13 +84,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     tim2.start();
 
-    // let capture = tim4.ch1.capture();
+    // let mut overflow_stream = tim4.ovf.saturating_pulse_stream();
 
-    // let mut stream = tim4.ch1.capture_pulse_try_stream();
+    let mut capture_stream = tim4.ch1.saturating_stream(10);
 
-    // while let Some(tick) = stream.next().root_wait() {
-    loop {
-        let capture = 123;
+    while let Some(capture) = capture_stream.next().root_wait() {
         println!(
             "TIM2 counter: {}, TIM4 counter: {}, TIM4 capture: {}",
             tim2.cnt.value(),
@@ -98,28 +97,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         );
         swo::flush();
     }
-
-    // tim4.ch2.set_compare(0x1234);
-
-    // let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
-    // let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pp().into_pulldown();
-
-    // // unsafe {
-    // //     gpio.disable_clock();
-    // // }
-
-    // let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
-    // let exti = ExtiDrv::new(periph_exti2!(reg), thr.exti_2, &syscfg).into_rising_edge();
-
-    // pin.get();
-
-    // let line = exti.line(&pin);
-    // let stream = line.create_saturating_stream();
-    // exti.listen();
-
-    // while let Some(tick) = stream.next().root_wait() {
-    //     let _ = pin.get();
-    // }
 
     // Enter a sleep state on ISR exit.
     reg.scb_scr.sleeponexit.set_bit();
