@@ -4,9 +4,12 @@ use alloc::sync::Arc;
 use drone_core::reg::prelude::*;
 use drone_stm32_map::periph::tim::general::{traits::*, GeneralTimMap};
 
-use crate::{TimerCounter, gen::GeneralTimDiverged};
+use crate::{gen::GeneralTimDiverged, TimerCounter};
 
-pub struct GeneralTimCntDrv<Tim: GeneralTimMap, Dir: Send + Sync>(Arc<GeneralTimDiverged<Tim>>, PhantomData<Dir>);
+pub struct GeneralTimCntDrv<Tim: GeneralTimMap, Dir: Send + Sync>(
+    Arc<GeneralTimDiverged<Tim>>,
+    PhantomData<Dir>,
+);
 
 impl<Tim: GeneralTimMap, Dir: Send + Sync> GeneralTimCntDrv<Tim, Dir> {
     pub(crate) fn new(tim: Arc<GeneralTimDiverged<Tim>>, dir: Dir) -> Self {

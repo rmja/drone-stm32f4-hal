@@ -1,4 +1,8 @@
-use core::{num::NonZeroUsize, pin::Pin, task::{Context, Poll}};
+use core::{
+    num::NonZeroUsize,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use futures::Stream;
 
 pub trait TimerOverflow {

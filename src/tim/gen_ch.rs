@@ -1,16 +1,20 @@
 use alloc::sync::Arc;
-use core::{marker::PhantomData, pin::Pin, convert::TryFrom};
-use drone_core::{fib::{self, Fiber}, inventory::Token, reg::marker::RwReg};
+use core::{convert::TryFrom, marker::PhantomData, pin::Pin};
+use drone_core::{
+    fib::{self, Fiber},
+    inventory::Token,
+    reg::marker::RwReg,
+};
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
-    traits::*, GeneralTimMap, TimCcmr1OutputCc2S, TimCcmr2Output, TimCcr2,
-    TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
-    TimSrCc4If, TimCcerCc2E, TimCcerCc3E, TimCcerCc4E
+    traits::*, GeneralTimMap, TimCcerCc2E, TimCcerCc3E, TimCcerCc4E, TimCcmr1OutputCc2S,
+    TimCcmr2Output, TimCcr2, TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie,
+    TimSrCc2If, TimSrCc3If, TimSrCc4If,
 };
-use futures::{Stream, future};
+use futures::{future, Stream};
 
-use crate::{gen::GeneralTimDiverged, shared::DontCare};
 use crate::traits::*;
+use crate::{gen::GeneralTimDiverged, shared::DontCare};
 
 /// The timer channel driver.
 pub struct GeneralTimChDrv<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
@@ -50,9 +54,11 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>>
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh for GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode> {
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh
+    for GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode>
+{
     type Stop = Self;
-    
+
     fn next(&mut self, compare: u32, soon: bool) -> TimerCompareNext<'_, Self::Stop> {
         let tim_sr = self.tim.tim_sr;
         let tim_dier = self.tim.tim_dier;
@@ -96,8 +102,8 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh fo
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send>
-    TimerCompareStop for GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send> TimerCompareStop
+    for GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode>
 {
     fn stop(&mut self) {
         Ch::clear_ccie(self.tim.tim_dier);
@@ -159,12 +165,8 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<
-        Tim: GeneralTimMap,
-        Int: IntToken,
-        Ch: GeneralTimCh<Tim> + Send + 'static,
-        Sel: Send,
-    > GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send + 'static, Sel: Send>
+    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
     fn capture_stream<Item>(
         &mut self,
@@ -234,12 +236,8 @@ impl<
     }
 }
 
-impl<
-        Tim: GeneralTimMap,
-        Int: IntToken,
-        Ch: GeneralTimCh<Tim> + Send,
-        Sel: Send,
-    > CaptureStop for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send, Sel: Send> CaptureStop
+    for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
 {
     fn stop(&mut self) {
         Ch::clear_ccie(self.tim.tim_dier);
@@ -275,7 +273,6 @@ impl InputSelection for IndirectSelection {
 impl InputSelection for TrcSelection {
     const CC_SEL: u32 = 0b11;
 }
-
 
 impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {
     type CTimCcr = Tim::CTimCcr1;
@@ -326,8 +323,9 @@ impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimCcerCc2E + TimSrCc2If + TimCcr2> GeneralTimCh<Tim>
-    for TimCh2
+impl<
+        Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimCcerCc2E + TimSrCc2If + TimCcr2,
+    > GeneralTimCh<Tim> for TimCh2
 {
     type CTimCcr = Tim::CTimCcr2;
 
@@ -377,23 +375,21 @@ impl<Tim: GeneralTimMap + TimCcmr1OutputCc2S + TimDierCc2Ie + TimCcerCc2E + TimS
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3If + TimCcr3> GeneralTimCh<Tim>
-    for TimCh3
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3If + TimCcr3>
+    GeneralTimCh<Tim> for TimCh3
 {
     type CTimCcr = Tim::CTimCcr3;
 
     fn configure_output(tim: &GeneralTimDiverged<Tim>) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
-        tim_ccmr2_output
-            .modify_reg(|r, v| r.cc3s().write(v, 0b00));
+        tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, 0b00));
     }
 
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
-        tim_ccmr2_output
-            .modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
+        tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
 
     fn set_cce(tim_ccer: Tim::CTimCcer) {
@@ -432,23 +428,21 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3
     }
 }
 
-impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4If + TimCcr4> GeneralTimCh<Tim>
-    for TimCh4
+impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4If + TimCcr4>
+    GeneralTimCh<Tim> for TimCh4
 {
     type CTimCcr = Tim::CTimCcr4;
 
     fn configure_output(tim: &GeneralTimDiverged<Tim>) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
-        tim_ccmr2_output
-            .modify_reg(|r, v| r.cc4s().write(v, 0b00));
+        tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, 0b00));
     }
 
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
-        tim_ccmr2_output
-            .modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
+        tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
     }
 
     fn set_cce(tim_ccer: Tim::CTimCcer) {

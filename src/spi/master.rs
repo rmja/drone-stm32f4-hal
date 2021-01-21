@@ -188,13 +188,8 @@ impl<
     }
 }
 
-impl<
-        Spi: SpiMap,
-        DmaRx: DmaChMap,
-        DmaRxInt: IntToken,
-        DmaTx: DmaChMap,
-        DmaTxInt: IntToken,
-    > Drop for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+impl<Spi: SpiMap, DmaRx: DmaChMap, DmaRxInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
+    for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
     fn drop(&mut self) {
         self.wait_for_idle();

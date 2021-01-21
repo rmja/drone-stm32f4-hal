@@ -1,4 +1,7 @@
-use core::{pin::Pin, task::{Context, Poll}};
+use core::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use futures::Future;
 
