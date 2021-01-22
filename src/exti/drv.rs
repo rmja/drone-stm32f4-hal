@@ -7,30 +7,19 @@ use drone_stm32_map::periph::{
     },
     gpio::{head::GpioHeadMap, pin::GpioPinMap},
 };
-use drone_stm32f4_gpio_drv::{prelude::*, GpioPin};
-// use futures::prelude::*;
+use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, InputMode, PinAf};
 
 pub struct RisingEdge;
 pub struct FallingEdge;
 pub struct BothEdges;
 pub struct NoEdge;
 
-pub trait EdgeToken {}
-
-impl EdgeToken for RisingEdge {}
-
-impl EdgeToken for FallingEdge {}
-
-impl EdgeToken for BothEdges {}
-
-impl EdgeToken for NoEdge {}
-
 /// EXTI driver.
 pub struct ExtiDrv<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
     Head: GpioHeadMap,
-    Edge: EdgeToken,
+    Edge,
 > {
     pub(crate) exti: ExtiDiverged<Exti>,
     pub(crate) exti_int: ExtiInt,
@@ -94,96 +83,52 @@ impl<
     }
 }
 
-pub trait AnyEdge: EdgeToken {}
-impl AnyEdge for RisingEdge {}
-impl AnyEdge for FallingEdge {}
-impl AnyEdge for BothEdges {}
-
-impl<
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
-        ExtiInt: IntToken,
-        Head: GpioHeadMap,
-        Edge: AnyEdge,
-    > ExtiDrv<Exti, ExtiInt, Head, Edge>
-{
-    pub fn listen(&self) {
-        self.exti.exti_imr_im.set_bit(); // Unmask interrupt request
-    }
-
-    pub fn unlisten(&self) {
-        self.exti.exti_imr_im.clear_bit(); // Mask interrupt request
-    }
-}
-
 pub trait ExtiDrvLine<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
-    Edge: EdgeToken,
-    Mode,
     Pin: GpioPinMap,
+    PinMode: 'static,
+    Edge,
 >
 {
-    fn line<Type, Pull>(
+    fn line<PinType: 'static, PinPull: 'static>(
         &self,
-        pin: GpioPin<Pin, Mode, Type, Pull>,
-    ) -> ExtiLine<Exti, ExtiInt, Edge>;
+        pin: GpioPin<Pin, PinMode, PinType, PinPull>,
+    ) -> ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, Edge>;
 }
+
+pub trait ExtiPinModes: Send + Sync + 'static {}
+impl ExtiPinModes for InputMode {}
+impl<Af: PinAf> ExtiPinModes for AlternateMode<Af> {}
 
 #[macro_export]
 macro_rules! exti_line {
-    ($exti:ident, $head:ident, $pin:ident) => {
-        impl<ExtiInt: drone_cortexm::thr::IntToken, Edge: EdgeToken>
-            crate::drv::ExtiDrvLine<
-                $exti,
-                ExtiInt,
-                Edge,
-                drone_stm32f4_gpio_drv::prelude::InputMode,
-                $pin,
-            > for ExtiDrv<$exti, ExtiInt, $head, Edge>
-        {
-            fn line<
-                Type,
-                Pull,
-            >(
-                &self,
-                _pin: drone_stm32f4_gpio_drv::GpioPin<
+    ($($exti:ident, $head:ident, $pin:ident;)+) => {
+        $(
+            impl<ExtiInt: drone_cortexm::thr::IntToken, PinMode: crate::drv::ExtiPinModes, Edge>
+                crate::drv::ExtiDrvLine<
+                    $exti,
+                    ExtiInt,
                     $pin,
-                    drone_stm32f4_gpio_drv::prelude::InputMode,
-                    Type,
-                    Pull,
-                >,
-            ) -> crate::line::ExtiLine<$exti, ExtiInt, Edge> {
-                crate::line::ExtiLine::init(self)
+                    PinMode,
+                    Edge,
+                > for crate::drv::ExtiDrv<$exti, ExtiInt, $head, Edge>
+            {
+                fn line<
+                    PinType: 'static,
+                    PinPull: 'static,
+                >(
+                    &self,
+                    pin: drone_stm32f4_gpio_drv::GpioPin<
+                        $pin,
+                        PinMode,
+                        PinType,
+                        PinPull,
+                    >,
+                ) -> crate::line::ExtiLine<$exti, ExtiInt, $pin, PinMode, PinType, PinPull, Edge> {
+                    crate::line::ExtiLine::init(self, pin)
+                }
             }
-        }
-
-        impl<
-                ExtiInt: drone_cortexm::thr::IntToken,
-                Edge: EdgeToken,
-                Af: drone_stm32f4_gpio_drv::prelude::PinAf,
-            >
-            crate::drv::ExtiDrvLine<
-                $exti,
-                ExtiInt,
-                Edge,
-                drone_stm32f4_gpio_drv::prelude::AlternateMode<Af>,
-                $pin,
-            > for ExtiDrv<$exti, ExtiInt, $head, Edge>
-        {
-            fn line<
-                Type,
-                Pull,
-            >(
-                &self,
-                _pin: drone_stm32f4_gpio_drv::GpioPin<
-                    $pin,
-                    drone_stm32f4_gpio_drv::prelude::AlternateMode<Af>,
-                    Type,
-                    Pull,
-                >,
-            ) -> crate::line::ExtiLine<$exti, ExtiInt, Edge> {
-                crate::line::ExtiLine::init(self)
-            }
-        }
+        )+
     };
 }

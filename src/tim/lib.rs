@@ -20,6 +20,7 @@ pub use self::gen_cnt::GeneralTimCntDrv;
 pub use self::gen_ovf::GeneralTimOvfDrv;
 pub use self::shared::TimFreq;
 pub use self::traits::*;
+pub use drone_cortexm::thr::IntToken;
 
 pub mod prelude {
     pub use super::{

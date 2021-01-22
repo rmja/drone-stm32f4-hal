@@ -8,7 +8,7 @@ pub(crate) struct ExtiDiverged<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
 > {
     pub(crate) syscfg_exticr_exti: Exti::SSyscfgExticrExti,
-    pub(crate) exti_imr_im: Exti::SExtiImrIm,
+    pub(crate) exti_imr_im: Exti::CExtiImrIm,
     pub(crate) exti_emr_em: Exti::SExtiEmrEm,
     pub(crate) exti_rtsr_rt: Exti::SExtiRtsrRt,
     pub(crate) exti_ftsr_ft: Exti::SExtiFtsrFt,
@@ -31,7 +31,7 @@ impl<Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi +
         } = periph;
         Self {
             syscfg_exticr_exti,
-            exti_imr_im,
+            exti_imr_im: exti_imr_im.into_copy(),
             exti_emr_em,
             exti_rtsr_rt,
             exti_ftsr_ft,

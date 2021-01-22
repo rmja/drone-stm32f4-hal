@@ -77,7 +77,7 @@ pub struct PinAf13;
 pub struct PinAf14;
 pub struct PinAf15;
 
-pub trait PinAf: Send + Sync {
+pub trait PinAf: Send + Sync + 'static {
     const NUM: u32;
 }
 
@@ -206,12 +206,12 @@ impl<
     }
 }
 
-pub trait GetModes: Send + Sync {}
-impl GetModes for InputMode {}
-impl GetModes for OutputMode {}
-impl<Af: PinAf> GetModes for AlternateMode<Af> {}
+pub trait PinGetMode: Send + Sync {}
+impl PinGetMode for InputMode {}
+impl PinGetMode for OutputMode {}
+impl<Af: PinAf> PinGetMode for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: GetModes, Type, Pull>
+impl<Pin: GpioPinMap, Mode: PinGetMode, Type, Pull>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Get the current pin state.
