@@ -116,7 +116,7 @@ pub trait IntoPinInputCaptureMode<
     Ch: GeneralTimCh<Tim>,
     Sel,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
-    Af: drone_stm32f4_gpio_drv::PinAfToken,
+    Af: drone_stm32f4_gpio_drv::PinAf,
     Type,
     Pull,
 >

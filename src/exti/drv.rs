@@ -160,7 +160,7 @@ macro_rules! exti_line {
         impl<
                 ExtiInt: drone_cortexm::thr::IntToken,
                 Edge: EdgeToken,
-                Af: drone_stm32f4_gpio_drv::prelude::PinAfToken,
+                Af: drone_stm32f4_gpio_drv::prelude::PinAf,
             >
             crate::drv::ExtiDrvLine<
                 $exti,

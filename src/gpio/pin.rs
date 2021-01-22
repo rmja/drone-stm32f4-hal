@@ -37,7 +37,7 @@ pub struct InputMode;
 pub struct OutputMode;
 
 /// Alternate function mode  (MODER=0b10).
-pub struct AlternateMode<Af: PinAfToken> {
+pub struct AlternateMode<Af: PinAf> {
     af: PhantomData<Af>,
 }
 
@@ -77,13 +77,13 @@ pub struct PinAf13;
 pub struct PinAf14;
 pub struct PinAf15;
 
-pub trait PinAfToken {
+pub trait PinAf: Send {
     const NUM: u32;
 }
 
 macro_rules! af_token {
     ($af:ident, $num:expr) => {
-        impl PinAfToken for $af {
+        impl PinAf for $af {
             const NUM: u32 = $num;
         }
     };
@@ -129,7 +129,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     }
 
     /// Set the pin into alternate function mode.
-    pub fn into_alternate<Af: PinAfToken>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
+    pub fn into_alternate<Af: PinAf>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
         self.pin.gpio_afr_afr.write_bits(Af::NUM);
         self.pin.gpio_moder_moder.write_bits(0b10);
         self.pin.into()
@@ -139,7 +139,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
 pub trait TypeModes {}
 impl TypeModes for InputMode {}
 impl TypeModes for OutputMode {}
-impl<Af: PinAfToken> TypeModes for AlternateMode<Af> {}
+impl<Af: PinAf> TypeModes for AlternateMode<Af> {}
 
 impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
     /// Let pin type be push/pull.
@@ -159,7 +159,7 @@ impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
 pub trait PullModes {}
 impl PullModes for InputMode {}
 impl PullModes for OutputMode {}
-impl<Af: PinAfToken> PullModes for AlternateMode<Af> {}
+impl<Af: PinAf> PullModes for AlternateMode<Af> {}
 
 impl<Pin: GpioPinMap, Mode: PullModes>
     GpioPin<Pin, Mode, PushPullType, DontCare>
@@ -185,7 +185,7 @@ impl<Pin: GpioPinMap, Mode: PullModes>
 
 pub trait WithSpeedModes {}
 impl WithSpeedModes for OutputMode {}
-impl<Af: PinAfToken> WithSpeedModes for AlternateMode<Af> {}
+impl<Af: PinAf> WithSpeedModes for AlternateMode<Af> {}
 
 impl<
         Pin: GpioPinMap,
@@ -209,7 +209,7 @@ impl<
 pub trait GetModes {}
 impl GetModes for InputMode {}
 impl GetModes for OutputMode {}
-impl<Af: PinAfToken> GetModes for AlternateMode<Af> {}
+impl<Af: PinAf> GetModes for AlternateMode<Af> {}
 
 impl<Pin: GpioPinMap, Mode: GetModes, Type, Pull>
     GpioPin<Pin, Mode, Type, Pull>
