@@ -1,8 +1,7 @@
 use alloc::sync::Arc;
-use core::{convert::TryFrom, marker::PhantomData, pin::Pin};
+use core::{marker::PhantomData, pin::Pin};
 use drone_core::{
     fib::{self, Fiber},
-    inventory::Token,
     reg::marker::RwReg,
 };
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
@@ -118,8 +117,8 @@ pub trait IntoPinInputCaptureMode<
     Sel,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
     Af: drone_stm32f4_gpio_drv::PinAfToken,
-    Type: drone_stm32f4_gpio_drv::PinTypeToken,
-    Pull: drone_stm32f4_gpio_drv::PinPullToken,
+    Type,
+    Pull,
 >
 {
     /// Configure the channel as Input/Capture from a specific GPIO pin.
@@ -138,7 +137,7 @@ pub trait IntoPinInputCaptureMode<
 macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
-            impl<Int: drone_cortexm::thr::IntToken, Type: drone_stm32f4_gpio_drv::PinTypeToken, Pull: drone_stm32f4_gpio_drv::PinPullToken>
+            impl<Int: drone_cortexm::thr::IntToken, Type, Pull>
                 crate::IntoPinInputCaptureMode<
                     $tim,
                     Int,

@@ -7,14 +7,14 @@ use drone_stm32_map::periph::gpio::{
 };
 
 /// Pin configuration.
-pub struct GpioPin<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken> {
+pub struct GpioPin<Pin: GpioPinMap, Mode, Type, Pull> {
     pub(crate) pin: Rc<GpioPinPeriph<Pin>>,
     mode: PhantomData<Mode>,
     type_: PhantomData<Type>,
     pull: PhantomData<Pull>,
 }
 
-impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken>
+impl<Pin: GpioPinMap, Mode, Type, Pull>
     From<Rc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
     fn from(pin: Rc<GpioPinPeriph<Pin>>) -> Self {
@@ -43,12 +43,6 @@ pub struct AlternateMode<Af: PinAfToken> {
 
 // TODO: Analog mode
 
-pub trait PinModeToken {}
-impl PinModeToken for InputMode {}
-impl PinModeToken for OutputMode {}
-impl<Af: PinAfToken> PinModeToken for AlternateMode<Af> {}
-impl PinModeToken for DontCare {}
-
 /// Push/pull type (OTYPER=0).
 /// This is only applicabale for OutputMode and AlternateMode.
 pub struct PushPullType;
@@ -56,11 +50,6 @@ pub struct PushPullType;
 /// Output open-drain type (OTYPER=1).
 /// This is only applicabale for OutputMode and AlternateMode.
 pub struct OpenDrainType;
-
-pub trait PinTypeToken {}
-impl PinTypeToken for PushPullType {}
-impl PinTypeToken for OpenDrainType {}
-impl PinTypeToken for DontCare {}
 
 /// No pull-up nor pull-down. For inputs this means floating.
 pub struct NoPull;
@@ -70,12 +59,6 @@ pub struct PullUp;
 
 /// Pull down.
 pub struct PullDown;
-
-pub trait PinPullToken {}
-impl PinPullToken for NoPull {}
-impl PinPullToken for PullUp {}
-impl PinPullToken for PullDown {}
-impl PinPullToken for DontCare {}
 
 pub struct PinAf0;
 pub struct PinAf1;
@@ -153,12 +136,12 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     }
 }
 
-pub trait TypeableMode {}
-impl TypeableMode for InputMode {}
-impl TypeableMode for OutputMode {}
-impl<Af: PinAfToken> TypeableMode for AlternateMode<Af> {}
+pub trait TypeModes {}
+impl TypeModes for InputMode {}
+impl TypeModes for OutputMode {}
+impl<Af: PinAfToken> TypeModes for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + TypeableMode> GpioPin<Pin, Mode, DontCare, DontCare> {
+impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
     /// Let pin type be push/pull.
     pub fn into_pushpull(self) -> GpioPin<Pin, Mode, PushPullType, DontCare> {
         self.pin.gpio_otyper_ot.clear_bit();
@@ -173,12 +156,12 @@ impl<Pin: GpioPinMap, Mode: PinModeToken + TypeableMode> GpioPin<Pin, Mode, Dont
     }
 }
 
-pub trait PullableMode {}
-impl PullableMode for InputMode {}
-impl PullableMode for OutputMode {}
-impl<Af: PinAfToken> PullableMode for AlternateMode<Af> {}
+pub trait PullModes {}
+impl PullModes for InputMode {}
+impl PullModes for OutputMode {}
+impl<Af: PinAfToken> PullModes for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + PullableMode>
+impl<Pin: GpioPinMap, Mode: PullModes>
     GpioPin<Pin, Mode, PushPullType, DontCare>
 {
     /// No pull-up nor pull-down.
@@ -200,15 +183,15 @@ impl<Pin: GpioPinMap, Mode: PinModeToken + PullableMode>
     }
 }
 
-pub trait SpeedableMode {}
-impl SpeedableMode for OutputMode {}
-impl<Af: PinAfToken> SpeedableMode for AlternateMode<Af> {}
+pub trait WithSpeedModes {}
+impl WithSpeedModes for OutputMode {}
+impl<Af: PinAfToken> WithSpeedModes for AlternateMode<Af> {}
 
 impl<
         Pin: GpioPinMap,
-        Mode: PinModeToken + SpeedableMode,
-        Type: PinTypeToken,
-        Pull: PinPullToken,
+        Mode: WithSpeedModes,
+        Type,
+        Pull,
     > GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
@@ -223,12 +206,12 @@ impl<
     }
 }
 
-pub trait GetableMode {}
-impl GetableMode for InputMode {}
-impl GetableMode for OutputMode {}
-impl<Af: PinAfToken> GetableMode for AlternateMode<Af> {}
+pub trait GetModes {}
+impl GetModes for InputMode {}
+impl GetModes for OutputMode {}
+impl<Af: PinAfToken> GetModes for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinModeToken + GetableMode, Type: PinTypeToken, Pull: PinPullToken>
+impl<Pin: GpioPinMap, Mode: GetModes, Type, Pull>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Get the current pin state.
@@ -237,7 +220,7 @@ impl<Pin: GpioPinMap, Mode: PinModeToken + GetableMode, Type: PinTypeToken, Pull
     }
 }
 
-impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, OutputMode, Type, Pull> {
+impl<Pin: GpioPinMap, Type, Pull> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
     pub fn set(&self) {
         // Set output pin to high by writing BS (bit set) to the bit set/reset register.
@@ -251,7 +234,7 @@ impl<Pin: GpioPinMap, Type: PinTypeToken, Pull: PinPullToken> GpioPin<Pin, Outpu
     }
 }
 
-impl<Pin: GpioPinMap, Mode: PinModeToken, Type: PinTypeToken, Pull: PinPullToken>
+impl<Pin: GpioPinMap, Mode, Type, Pull>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Clone the pin

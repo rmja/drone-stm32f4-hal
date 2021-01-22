@@ -119,11 +119,11 @@ pub trait ExtiDrvLine<
     Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
     ExtiInt: IntToken,
     Edge: EdgeToken,
-    Mode: PinModeToken,
+    Mode,
     Pin: GpioPinMap,
 >
 {
-    fn line<Type: PinTypeToken, Pull: PinPullToken>(
+    fn line<Type, Pull>(
         &self,
         pin: GpioPin<Pin, Mode, Type, Pull>,
     ) -> ExtiLine<Exti, ExtiInt, Edge>;
@@ -142,8 +142,8 @@ macro_rules! exti_line {
             > for ExtiDrv<$exti, ExtiInt, $head, Edge>
         {
             fn line<
-                Type: drone_stm32f4_gpio_drv::PinTypeToken,
-                Pull: drone_stm32f4_gpio_drv::PinPullToken,
+                Type,
+                Pull,
             >(
                 &self,
                 _pin: drone_stm32f4_gpio_drv::GpioPin<
@@ -171,8 +171,8 @@ macro_rules! exti_line {
             > for ExtiDrv<$exti, ExtiInt, $head, Edge>
         {
             fn line<
-                Type: drone_stm32f4_gpio_drv::PinTypeToken,
-                Pull: drone_stm32f4_gpio_drv::PinPullToken,
+                Type,
+                Pull,
             >(
                 &self,
                 _pin: drone_stm32f4_gpio_drv::GpioPin<
