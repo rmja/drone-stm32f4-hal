@@ -379,13 +379,13 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3
 {
     type CTimCcr = Tim::CTimCcr3;
 
-    fn configure_output(tim: &GeneralTimDiverged<Tim>) {
+    fn configure_output(_tim: &GeneralTimDiverged<Tim>) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
         tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(_tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
         tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
@@ -432,13 +432,13 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4
 {
     type CTimCcr = Tim::CTimCcr4;
 
-    fn configure_output(tim: &GeneralTimDiverged<Tim>) {
+    fn configure_output(_tim: &GeneralTimDiverged<Tim>) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
         tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, 0b00));
     }
 
-    fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
+    fn configure_input<Sel: InputSelection>(_tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
         tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
