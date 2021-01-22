@@ -1,4 +1,4 @@
-use alloc::rc::Rc;
+use alloc::sync::Arc;
 use core::marker::PhantomData;
 use drone_cortexm::reg::prelude::*;
 use drone_stm32_map::periph::gpio::{
@@ -8,16 +8,16 @@ use drone_stm32_map::periph::gpio::{
 
 /// Pin configuration.
 pub struct GpioPin<Pin: GpioPinMap, Mode, Type, Pull> {
-    pub(crate) pin: Rc<GpioPinPeriph<Pin>>,
+    pub(crate) pin: Arc<GpioPinPeriph<Pin>>,
     mode: PhantomData<Mode>,
     type_: PhantomData<Type>,
     pull: PhantomData<Pull>,
 }
 
 impl<Pin: GpioPinMap, Mode, Type, Pull>
-    From<Rc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
+    From<Arc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
-    fn from(pin: Rc<GpioPinPeriph<Pin>>) -> Self {
+    fn from(pin: Arc<GpioPinPeriph<Pin>>) -> Self {
         Self {
             pin,
             mode: PhantomData,
@@ -77,7 +77,7 @@ pub struct PinAf13;
 pub struct PinAf14;
 pub struct PinAf15;
 
-pub trait PinAf: Send {
+pub trait PinAf: Send + Sync {
     const NUM: u32;
 }
 
@@ -136,7 +136,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     }
 }
 
-pub trait TypeModes {}
+pub trait TypeModes: Send + Sync {}
 impl TypeModes for InputMode {}
 impl TypeModes for OutputMode {}
 impl<Af: PinAf> TypeModes for AlternateMode<Af> {}
@@ -156,7 +156,7 @@ impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
     }
 }
 
-pub trait PullModes {}
+pub trait PullModes: Send + Sync {}
 impl PullModes for InputMode {}
 impl PullModes for OutputMode {}
 impl<Af: PinAf> PullModes for AlternateMode<Af> {}
@@ -183,7 +183,7 @@ impl<Pin: GpioPinMap, Mode: PullModes>
     }
 }
 
-pub trait WithSpeedModes {}
+pub trait WithSpeedModes: Send + Sync {}
 impl WithSpeedModes for OutputMode {}
 impl<Af: PinAf> WithSpeedModes for AlternateMode<Af> {}
 
@@ -206,7 +206,7 @@ impl<
     }
 }
 
-pub trait GetModes {}
+pub trait GetModes: Send + Sync {}
 impl GetModes for InputMode {}
 impl GetModes for OutputMode {}
 impl<Af: PinAf> GetModes for AlternateMode<Af> {}
@@ -277,7 +277,7 @@ macro_rules! pin_init {
                     crate::pin::DontCare,
                     crate::pin::DontCare,
                 > {
-                    crate::pin::GpioPin::from(alloc::rc::Rc::new(pin))
+                    crate::pin::GpioPin::from(alloc::sync::Arc::new(pin))
                 }
             }
         )+
