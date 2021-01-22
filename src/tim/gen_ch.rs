@@ -64,7 +64,6 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh
         let tim_dier = self.tim.tim_dier;
         let timeout_future = Box::pin(self.tim_int.add_future(fib::new_fn(move || {
             if Ch::get_ccif(tim_sr) {
-                Ch::clear_ccif(tim_sr);
                 Ch::clear_ccie(tim_dier);
                 fib::Complete(())
             } else {
@@ -75,6 +74,8 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh
         use drone_core::token::Token;
         let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };
         Ch::set_ccr(tim_ch_ccr, compare);
+        Ch::clear_ccif(tim_sr);
+        Ch::set_ccie(tim_dier);
 
         let already_passed = if soon {
             // Sample counter after interrupt is setup.
@@ -90,13 +91,11 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh
 
         if already_passed {
             // The counter has already passed the comfigured compare value - skip interrupt
+            Ch::clear_ccie(tim_dier);
             drop(timeout_future);
-            Ch::clear_ccif(tim_sr);
 
             TimerCompareNext::new(self, Box::pin(future::ready(())))
         } else {
-            Ch::set_ccie(tim_dier);
-
             TimerCompareNext::new(self, Box::pin(timeout_future))
         }
     }
