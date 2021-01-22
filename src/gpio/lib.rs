@@ -10,6 +10,8 @@ extern crate alloc;
 pub use self::head::GpioHead;
 pub use self::pin::GpioPin;
 pub use self::prelude::*;
+pub use drone_stm32_map::periph::gpio::head::GpioHeadMap;
+pub use drone_stm32_map::periph::gpio::pin::GpioPinMap;
 
 pub mod prelude {
     pub use crate::pin::{

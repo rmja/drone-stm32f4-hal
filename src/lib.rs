@@ -5,6 +5,8 @@
 #![allow(clippy::doc_markdown)]
 #![no_std]
 
+pub use drone_cortexm::thr::IntToken;
+
 #[cfg(feature = "dma")]
 pub extern crate drone_stm32f4_dma_drv as dma;
 
