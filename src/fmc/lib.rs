@@ -8,6 +8,9 @@ mod sdrampins;
 
 pub use self::drv::{config, FmcDrv};
 pub use self::periph::*;
+pub use self::{
+    sdrampins::{FmcSdRamAddressPins, FmcSdRamDataPins}
+};
 
 #[prelude_import]
 #[allow(unused_imports)]

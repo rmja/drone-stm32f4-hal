@@ -3,13 +3,19 @@ use drone_stm32_map::periph::gpio::pin::*;
 use drone_stm32f4_gpio_drv::pin_impl;
 use drone_stm32f4_gpio_drv::prelude::*;
 
-pin_impl!(SdclkPinExt  for FmcSdRamPins<...>.sdclk,  GpioG8,  AlternateMode<PinAf12>; U, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe -> D, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe);
-pin_impl!(Sdcke1PinExt for FmcSdRamPins<...>.sdcke1, GpioH7,  AlternateMode<PinAf12>; Sdclk, Sdcke0, U, Sdne0, Sdne1, Nras, Ncas, Sdnwe -> Sdclk, Sdcke0, D, Sdne0, Sdne1, Nras, Ncas, Sdnwe);
-pin_impl!(Sdne1PinExt  for FmcSdRamPins<...>.sdne1,  GpioH6,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, U, Nras, Ncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, D, Nras, Ncas, Sdnwe);
-pin_impl!(NrasPinExt   for FmcSdRamPins<...>.nras,   GpioF11, AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, U, Ncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Ncas, Sdnwe);
-pin_impl!(NcasPinExt   for FmcSdRamPins<...>.ncas,   GpioG15, AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, U, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, D, Sdnwe);
-pin_impl!(SdnwePinExt  for FmcSdRamPins<...>.sdnwe,  GpioH5,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, U -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, D);
-// TODO: Implement SDCKE0 and SDNE0
+pin_impl!(SdclkPinExt  for FmcSdRamPins<...>.sdclk,  GpioG8,  AlternateMode<PinAf12>; U, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe -> D, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdcke0PinExt for FmcSdRamPins<...>.sdcke0, GpioC3,  AlternateMode<PinAf12>; Sdclk, U, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, D, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdcke0PinExt for FmcSdRamPins<...>.sdcke0, GpioH2,  AlternateMode<PinAf12>; Sdclk, U, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, D, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdcke1PinExt for FmcSdRamPins<...>.sdcke1, GpioB5,  AlternateMode<PinAf12>; Sdclk, Sdcke0, U, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, D, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdcke1PinExt for FmcSdRamPins<...>.sdcke1, GpioH7,  AlternateMode<PinAf12>; Sdclk, Sdcke0, U, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, D, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdne0PinExt  for FmcSdRamPins<...>.sdne0,  GpioC2,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, U, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, D, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdne0PinExt  for FmcSdRamPins<...>.sdne0,  GpioH3,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, U, Sdne1, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, D, Sdne1, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdne1PinExt  for FmcSdRamPins<...>.sdne1,  GpioB6,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, U, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, D, Sdnras, Sdncas, Sdnwe);
+pin_impl!(Sdne1PinExt  for FmcSdRamPins<...>.sdne1,  GpioH6,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, U, Sdnras, Sdncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, D, Sdnras, Sdncas, Sdnwe);
+pin_impl!(SdnrasPinExt for FmcSdRamPins<...>.sdnras, GpioF11, AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, U, Sdncas, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Sdncas, Sdnwe);
+pin_impl!(SdncasPinExt for FmcSdRamPins<...>.sdncas, GpioG15, AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, U, Sdnwe -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, D, Sdnwe);
+pin_impl!(SdnwePinExt  for FmcSdRamPins<...>.sdnwe,  GpioC0,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, U -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, D);
+pin_impl!(SdnwePinExt  for FmcSdRamPins<...>.sdnwe,  GpioH5,  AlternateMode<PinAf12>; Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, U -> Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, D);
 
 pin_impl!( A0PinExt for FmcSdRamAddressPins.a0,  GpioF0,  AlternateMode<PinAf12>; U, U, U, U, U, U, U, U, U, U, U, U, U -> D, U, U, U, U, U, U, U, U, U, U, U, U);
 pin_impl!( A1PinExt for FmcSdRamAddressPins.a1,  GpioF1,  AlternateMode<PinAf12>; D, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, U, U, U, U, U, U, U, U, U, U, U);
@@ -23,7 +29,7 @@ pin_impl!( A8PinExt for FmcSdRamAddressPins.a8,  GpioF14, AlternateMode<PinAf12>
 pin_impl!( A9PinExt for FmcSdRamAddressPins.a9,  GpioF15, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, U, U, U);
 pin_impl!(A10PinExt for FmcSdRamAddressPins.a10, GpioG0,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, U, U);
 pin_impl!(A11PinExt for FmcSdRamAddressPins.a11, GpioG1,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, U);
-// TODO: Implement A12
+pin_impl!(A12PinExt for FmcSdRamAddressPins.a12, GpioG2,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D);
 
 pin_impl!( D0PinExt for FmcSdRamDataPins.d0,  GpioD14, AlternateMode<PinAf12>; U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
 pin_impl!( D1PinExt for FmcSdRamDataPins.d1,  GpioD15, AlternateMode<PinAf12>; D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
@@ -41,11 +47,27 @@ pin_impl!(D12PinExt for FmcSdRamDataPins.d12, GpioE15, AlternateMode<PinAf12>; D
 pin_impl!(D13PinExt for FmcSdRamDataPins.d13, GpioD8,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
 pin_impl!(D14PinExt for FmcSdRamDataPins.d14, GpioD9,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
 pin_impl!(D15PinExt for FmcSdRamDataPins.d15, GpioD10, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
-// TODO: Implement the rest...
+pin_impl!(D16PinExt for FmcSdRamDataPins.d16, GpioH8,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D17PinExt for FmcSdRamDataPins.d17, GpioH9,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D18PinExt for FmcSdRamDataPins.d18, GpioH10, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D19PinExt for FmcSdRamDataPins.d19, GpioH11, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D20PinExt for FmcSdRamDataPins.d20, GpioH12, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D21PinExt for FmcSdRamDataPins.d21, GpioH13, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U);
+pin_impl!(D22PinExt for FmcSdRamDataPins.d22, GpioH14, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U);
+pin_impl!(D23PinExt for FmcSdRamDataPins.d23, GpioH15, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U);
+pin_impl!(D24PinExt for FmcSdRamDataPins.d24, GpioI0,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U);
+pin_impl!(D25PinExt for FmcSdRamDataPins.d25, GpioI1,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U);
+pin_impl!(D26PinExt for FmcSdRamDataPins.d26, GpioI2,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U);
+pin_impl!(D27PinExt for FmcSdRamDataPins.d27, GpioI3,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U);
+pin_impl!(D28PinExt for FmcSdRamDataPins.d28, GpioI6,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U);
+pin_impl!(D29PinExt for FmcSdRamDataPins.d29, GpioI7,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U);
+pin_impl!(D30PinExt for FmcSdRamDataPins.d30, GpioI9,  AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U);
+pin_impl!(D31PinExt for FmcSdRamDataPins.d31, GpioI10, AlternateMode<PinAf12>; D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U -> D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D);
 
 pin_impl!(Ba0PinExt for FmcSdRamBankPins.ba0, GpioG4, AlternateMode<PinAf12>; U, U -> D, U);
 pin_impl!(Ba1PinExt for FmcSdRamBankPins.ba1, GpioG5, AlternateMode<PinAf12>; D, U -> D, D);
 
 pin_impl!(Nbl0PinExt for FmcSdRamByteMaskPins.nbl0, GpioE0, AlternateMode<PinAf12>; U, U, U, U -> D, U, U, U);
 pin_impl!(Nbl1PinExt for FmcSdRamByteMaskPins.nbl1, GpioE1, AlternateMode<PinAf12>; D, U, U, U -> D, D, U, U);
-// TODO: Implement NBL2 and NBL3
+pin_impl!(Nbl2PinExt for FmcSdRamByteMaskPins.nbl2, GpioI4, AlternateMode<PinAf12>; D, D, U, U -> D, D, D, U);
+pin_impl!(Nbl3PinExt for FmcSdRamByteMaskPins.nbl3, GpioI5, AlternateMode<PinAf12>; D, D, D, U -> D, D, D, D);

@@ -229,7 +229,7 @@ let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
   .into_output()
   .with_speed(GpioPinSpeed::HighSpeed);
 
-let mut chip = SpiChip::init(pin_cs);
+let mut chip = SpiChip::as_deselected(pin_cs);
 let selection = spi_master.select(&mut chip);
 // Do some communication...
 drop(selection); // drop() deselects chip.

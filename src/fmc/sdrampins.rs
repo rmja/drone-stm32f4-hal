@@ -25,6 +25,113 @@ impl Opt for U {
     }
 }
 
+// See table 21 in stm32f429 datasheet
+#[macro_export]
+macro_rules! sdram_pin_periph {
+    (gpio_f, a0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f0!($reg) };
+    (gpio_f, a1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f1!($reg) };
+    (gpio_f, a2, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f2!($reg) };
+    (gpio_f, a3, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f3!($reg) };
+    (gpio_f, a4, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f4!($reg) };
+    (gpio_f, a5, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f5!($reg) };
+    (gpio_f, a6, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f12!($reg) };
+    (gpio_f, a7, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f13!($reg) };
+    (gpio_f, a8, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f14!($reg) };
+    (gpio_f, a9, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f15!($reg) };
+    (gpio_g, a10, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g0!($reg) };
+    (gpio_g, a11, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g1!($reg) };
+    (gpio_g, a12, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g2!($reg) };
+
+    (gpio_g, ba0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g4!($reg) };
+    (gpio_g, ba1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g5!($reg) };
+
+    (gpio_d, d0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d14!($reg) };
+    (gpio_d, d1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d15!($reg) };
+    (gpio_d, d2, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d0!($reg) };
+    (gpio_d, d3, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d1!($reg) };
+    (gpio_e, d4, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e7!($reg) };
+    (gpio_e, d5, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e8!($reg) };
+    (gpio_e, d6, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e9!($reg) };
+    (gpio_e, d7, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e10!($reg) };
+    (gpio_e, d8, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e11!($reg) };
+    (gpio_e, d9, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e12!($reg) };
+    (gpio_e, d10, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e13!($reg) };
+    (gpio_e, d11, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e14!($reg) };
+    (gpio_e, d12, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e15!($reg) };
+    (gpio_d, d13, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d8!($reg) };
+    (gpio_d, d14, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d9!($reg) };
+    (gpio_d, d15, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_d10!($reg) };
+    (gpio_h, d16, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h8!($reg) };
+    (gpio_h, d17, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h9!($reg) };
+    (gpio_h, d18, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h10!($reg) };
+    (gpio_h, d19, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h11!($reg) };
+    (gpio_h, d20, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h12!($reg) };
+    (gpio_h, d21, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h13!($reg) };
+    (gpio_h, d22, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h14!($reg) };
+    (gpio_h, d23, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h15!($reg) };
+    (gpio_i, d24, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i0!($reg) };
+    (gpio_i, d25, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i1!($reg) };
+    (gpio_i, d26, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i2!($reg) };
+    (gpio_i, d27, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i3!($reg) };
+    (gpio_i, d28, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i6!($reg) };
+    (gpio_i, d29, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i7!($reg) };
+    (gpio_i, d30, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i9!($reg) };
+    (gpio_i, d31, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i10!($reg) };
+
+    (gpio_e, nbl0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e0!($reg) };
+    (gpio_e, nbl1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_e1!($reg) };
+    (gpio_i, nbl2, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i4!($reg) };
+    (gpio_i, nbl3, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_i5!($reg) };
+
+    (gpio_g, sdclk, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g8!($reg) };
+    (gpio_c, sdnwe, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_c0!($reg) };
+    (gpio_f, sdnras, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_f11!($reg) };
+    (gpio_g, sdncas, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_g15!($reg) };
+    (gpio_h, sdcke0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h2!($reg) };
+    (gpio_h, sdne0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h3!($reg) };
+    (gpio_h, sdne1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h6!($reg) };
+    (gpio_h, sdcke1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h7!($reg) };
+    (gpio_h, sdnwe, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_h5!($reg) };
+    (gpio_c, sdne0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_c2!($reg) };
+    (gpio_c, sdcke0, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_c3!($reg) };
+    (gpio_b, sdcke1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_b5!($reg) };
+    (gpio_b, sdne1, $reg:ident) => { ::drone_stm32_map::periph::gpio::periph_gpio_b6!($reg) };
+}
+
+#[macro_export]
+macro_rules! sdram_pins {
+    (helper, $pins:ident, $reg:ident, $gpio:ident => $pin_name:ident;) => {
+        {
+            let periph = ::drone_stm32f4_hal::fmc::sdram_pin_periph!($gpio, $pin_name, $reg);
+            let pin = ::drone_stm32f4_hal::gpio::NewPin::pin(&$gpio, periph);
+            $pins.$pin_name(pin.into_alternate().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed))
+        }
+    };
+    (helper, $pins:ident, $reg:ident, $gpio:ident => $($pin_name:ident),+;) => {
+        {
+            let pins = $pins;
+            $(
+                let periph = ::drone_stm32f4_hal::fmc::sdram_pin_periph!($gpio, $pin_name, $reg);
+                let pin = ::drone_stm32f4_hal::gpio::NewPin::pin(&$gpio, periph);
+                let pins = pins.$pin_name(pin.into_alternate().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed));
+            )+
+            pins
+        }
+    };
+    (helper, $pins:ident, $reg:ident, $gpio:ident => $($pin_name:ident),+;$($tail:tt)*) => {
+        {
+            let pins = sdram_pins!(helper, $pins, $reg, $gpio => $($pin_name),+;);
+            sdram_pins!(helper, pins, $reg, $($tail)*)
+        }
+    };
+    ($type:ident, $reg:ident, $($mappings:tt)*) => {
+        {
+            let pins = $type::default();
+            sdram_pins!(helper, pins, $reg, $($mappings)*)
+        }
+    };
+}
+
 pub struct FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe> {
     sdclk: PhantomData<Sdclk>,
     sdcke0: PhantomData<Sdcke0>,
@@ -59,14 +166,14 @@ impl Default for FmcSdRamPins<U, U, U, U, U, U, U, U> {
     }
 }
 
-pin_ext!(SdclkPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdclk -> FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>);
-pin_ext!(Sdcke0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdcke0 -> FmcSdRamPins<Sdclk, D, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>);
-pin_ext!(Sdcke1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdcke1 -> FmcSdRamPins<Sdclk, Sdcke0, D, Sdne0, Sdne1, Nras, Ncas, Sdnwe>);
-pin_ext!(Sdne0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdne0 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, D, Sdne1, Nras, Ncas, Sdnwe>);
-pin_ext!(Sdne1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdne1 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, D, Nras, Ncas, Sdnwe>);
-pin_ext!(NrasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.nras -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Ncas, Sdnwe>);
-pin_ext!(NcasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.ncas -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, D, Sdnwe>);
-pin_ext!(SdnwePinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, Sdnwe>.sdnwe -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Nras, Ncas, D>);
+pin_ext!(SdclkPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdclk -> FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+pin_ext!(Sdcke0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke0 -> FmcSdRamPins<Sdclk, D, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+pin_ext!(Sdcke1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke1 -> FmcSdRamPins<Sdclk, Sdcke0, D, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+pin_ext!(Sdne0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne0 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, D, Sdne1, Sdnras, Sdncas, Sdnwe>);
+pin_ext!(Sdne1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne1 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, D, Sdnras, Sdncas, Sdnwe>);
+pin_ext!(SdnrasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnras -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Sdncas, Sdnwe>);
+pin_ext!(SdncasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdncas -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, D, Sdnwe>);
+pin_ext!(SdnwePinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnwe -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, D>);
 
 pub struct FmcSdRamAddressPins<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> {
     a0: PhantomData<A0>,
@@ -124,6 +231,7 @@ pin_ext!( A8PinExt.a8  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, U, U, U
 pin_ext!( A9PinExt.a9  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, U, U, U>);
 pin_ext!(A10PinExt.a10 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, U, U>);
 pin_ext!(A11PinExt.a11 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, U>);
+pin_ext!(A12PinExt.a12 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, D>);
 
 pub struct FmcSdRamDataPins<
     D0,
