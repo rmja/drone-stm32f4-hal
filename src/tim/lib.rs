@@ -20,6 +20,7 @@ pub use self::gen_cnt::GeneralTimCntDrv;
 pub use self::gen_ovf::GeneralTimOvfDrv;
 pub use self::shared::TimFreq;
 pub use self::traits::*;
+pub use drone_stm32_map::periph::tim::general::GeneralTimMap;
 
 pub mod prelude {
     pub use super::{

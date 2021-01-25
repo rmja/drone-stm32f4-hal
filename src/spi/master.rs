@@ -181,11 +181,6 @@ impl<
             r.txdmaen().clear(v);
         });
     }
-
-    /// Read the current value of the miso pin.
-    pub fn miso(&self) -> bool {
-        todo!();
-    }
 }
 
 impl<Spi: SpiMap, DmaRx: DmaChMap, DmaRxInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop

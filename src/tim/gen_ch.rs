@@ -1,5 +1,6 @@
 use alloc::sync::Arc;
-use core::{marker::PhantomData, pin::Pin};
+use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, GpioPinMap, PinAf};
+use core::marker::PhantomData;
 use drone_core::{
     fib::{self, Fiber},
     reg::marker::RwReg,
@@ -20,17 +21,17 @@ pub struct GeneralTimChDrv<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> {
     pub(crate) tim: Arc<GeneralTimDiverged<Tim>>,
     pub(crate) tim_int: Int,
     ch: PhantomData<Ch>,
-    mode: PhantomData<Mode>,
+    mode: Mode,
 }
 
 impl<Tim: GeneralTimMap, Int: IntToken, Ch, Mode> GeneralTimChDrv<Tim, Int, Ch, Mode> {
     /// Create a new timer channel driver.
-    pub(crate) fn new(tim: Arc<GeneralTimDiverged<Tim>>, tim_int: Int) -> Self {
+    pub(crate) fn new(tim: Arc<GeneralTimDiverged<Tim>>, tim_int: Int, mode: Mode) -> Self {
         Self {
             tim,
             tim_int,
             ch: PhantomData,
-            mode: PhantomData,
+            mode,
         }
     }
 }
@@ -41,16 +42,17 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>>
     /// Configure the channel as Output/Compare.
     pub fn into_output_compare(self) -> GeneralTimChDrv<Tim, Int, Ch, OutputCompareMode> {
         Ch::configure_output(&self.tim);
-        GeneralTimChDrv::new(self.tim, self.tim_int)
+        GeneralTimChDrv::new(self.tim, self.tim_int, OutputCompareMode)
     }
 
     /// Configure the channel as Input/Capture.
-    pub fn into_input_capture<Sel: InputSelection>(
+    pub fn into_input_capture<Pin: GpioPinMap, Af: PinAf, PinType, PinPull, Sel: InputSelection>(
         self,
+        pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>,
         sel: Sel,
-    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>> {
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>> {
         Ch::configure_input(&self.tim, sel);
-        GeneralTimChDrv::new(self.tim, self.tim_int)
+        GeneralTimChDrv::new(self.tim, self.tim_int, InputCaptureMode { pin, sel: PhantomData })
     }
 }
 
@@ -116,8 +118,8 @@ pub trait IntoPinInputCaptureMode<
     Sel,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
     Af: drone_stm32f4_gpio_drv::PinAf,
-    Type,
-    Pull,
+    PinType,
+    PinPull,
 >
 {
     /// Configure the channel as Input/Capture from a specific GPIO pin.
@@ -126,17 +128,17 @@ pub trait IntoPinInputCaptureMode<
         pin: drone_stm32f4_gpio_drv::GpioPin<
             Pin,
             drone_stm32f4_gpio_drv::AlternateMode<Af>,
-            Type,
-            Pull,
+            PinType,
+            PinPull,
         >,
-    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>;
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>;
 }
 
 #[macro_export]
 macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
-            impl<Int: drone_cortexm::thr::IntToken, Type, Pull>
+            impl<Int: drone_cortexm::thr::IntToken, PinType, PinPull>
                 crate::IntoPinInputCaptureMode<
                     $tim,
                     Int,
@@ -144,28 +146,28 @@ macro_rules! general_tim_channel {
                     $sel,
                     $pin,
                     $pin_af,
-                    Type,
-                    Pull,
+                    PinType,
+                    PinPull,
                 > for GeneralTimChDrv<$tim, Int, $tim_ch, crate::shared::DontCare>
             {
                 fn into_input_capture_pin(
                     self,
-                    _pin: drone_stm32f4_gpio_drv::GpioPin<
+                    pin: drone_stm32f4_gpio_drv::GpioPin<
                         $pin,
                         drone_stm32f4_gpio_drv::AlternateMode<$pin_af>,
-                        Type,
-                        Pull,
+                        PinType,
+                        PinPull,
                     >,
-                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$sel>> {
-                    self.into_input_capture($sel)
+                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$pin, $pin_af, PinType, PinPull, $sel>> {
+                    self.into_input_capture(pin, $sel)
                 }
             }
         )+
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send + 'static, Sel: Send>
-    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send + 'static, Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send>
+    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn capture_stream<Item>(
         &mut self,
@@ -173,7 +175,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send + 'static, 
             Int,
             Tim::CTimSr,
             Ch::CTimCcr,
-        ) -> Pin<Box<dyn Stream<Item = Item> + Send>>,
+        ) -> core::pin::Pin<Box<dyn Stream<Item = Item> + Send>>,
     ) -> CaptureStream<'_, Self, Item> {
         let tim_sr = self.tim.tim_sr;
         use drone_core::token::Token;
@@ -204,10 +206,24 @@ impl<
         Tim: GeneralTimMap,
         Int: IntToken,
         Ch: GeneralTimCh<Tim> + Send + 'static,
+        Pin: GpioPinMap,
+        Af: PinAf,
+        PinType: Send + 'static,
+        PinPull: Send + 'static,
         Sel: Send + 'static,
-    > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
+    > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     type Stop = Self;
+
+    #[inline]
+    fn get(&self) -> bool {
+        self.mode.pin.get()
+    }
+
+    #[inline]
+    fn clear_pending(&mut self) {
+        Ch::clear_ccif(self.tim.tim_sr);
+    }
 
     fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
         self.capture_stream(|int, tim_sr, tim_ch_ccr| {
@@ -235,8 +251,8 @@ impl<
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send, Sel: Send> CaptureStop
-    for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Sel>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send, Pin: GpioPinMap + Send, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send> CaptureStop
+    for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn stop(&mut self) {
         Ch::clear_ccie(self.tim.tim_dier);
@@ -250,6 +266,7 @@ pub trait GeneralTimCh<Tim: GeneralTimMap>: Send {
     fn configure_output(tim: &GeneralTimDiverged<Tim>);
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, sel: Sel);
 
+    fn get_cce(tim_ccer: Tim::CTimCcer) -> bool;
     fn set_cce(tim_ccer: Tim::CTimCcer);
     fn clear_cce(tim_ccer: Tim::CTimCcer);
     fn set_ccie(tim_dier: Tim::CTimDier);
@@ -284,6 +301,10 @@ impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
+    }
+
+    fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
+        tim_ccer.cc1e().read_bit()
     }
 
     fn set_cce(tim_ccer: Tim::CTimCcer) {
@@ -336,6 +357,10 @@ impl<
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, _sel: Sel) {
         tim.tim_ccmr1_output
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
+    }
+
+    fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
+        tim_ccer.cc2e().read_bit()
     }
 
     fn set_cce(tim_ccer: Tim::CTimCcer) {
@@ -391,6 +416,10 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3
         tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
 
+    fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
+        tim_ccer.cc3e().read_bit()
+    }
+
     fn set_cce(tim_ccer: Tim::CTimCcer) {
         tim_ccer.cc3e().set_bit();
     }
@@ -442,6 +471,10 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4
         use drone_core::token::Token;
         let tim_ccmr2_output = unsafe { Tim::STimCcmr2Output::take() };
         tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
+    }
+
+    fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
+        tim_ccer.cc1e().read_bit()
     }
 
     fn set_cce(tim_ccer: Tim::CTimCcer) {

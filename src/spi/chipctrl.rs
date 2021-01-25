@@ -9,11 +9,13 @@ pub struct SpiChip<Pin: GpioPinMap, PinType, PinPull> {
 
 impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
     /// Select the chip by setting the CS pin low.
+    #[inline]
     pub fn select(&mut self) {
         self.cs.clear();
     }
 
     /// Deselect the chip by setting the CS pin high.
+    #[inline]
     pub fn deselect(&mut self) {
         self.cs.set();
     }
@@ -35,6 +37,7 @@ pub struct SelectGuard<'a, Pin: GpioPinMap, PinType, PinPull> {
 impl<Pin: GpioPinMap, PinType, PinPull> Drop
     for SelectGuard<'_, Pin, PinType, PinPull>
 {
+    #[inline]
     fn drop(&mut self) {
         self.chip.deselect();
     }
@@ -42,6 +45,7 @@ impl<Pin: GpioPinMap, PinType, PinPull> Drop
 
 pub trait ChipCtrl {
     /// Select a specific chip and return a guard that deselects the chip when dropped.
+    #[inline]
     fn select<'guard, Pin: GpioPinMap, PinType, PinPull>(
         &mut self,
         chip: &'guard mut SpiChip<Pin, PinType, PinPull>,

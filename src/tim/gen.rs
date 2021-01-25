@@ -204,10 +204,10 @@ impl<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken>
             link: PhantomData,
             counter: GeneralTimCntDrv::new(tim.clone(), DirCountUp),
             overflow: GeneralTimOvfDrv::new(tim.clone(), tim_int),
-            ch1: GeneralTimChDrv::new(tim.clone(), tim_int),
-            ch2: GeneralTimChDrv::new(tim.clone(), tim_int),
-            ch3: GeneralTimChDrv::new(tim.clone(), tim_int),
-            ch4: GeneralTimChDrv::new(tim.clone(), tim_int),
+            ch1: GeneralTimChDrv::new(tim.clone(), tim_int, DontCare),
+            ch2: GeneralTimChDrv::new(tim.clone(), tim_int, DontCare),
+            ch3: GeneralTimChDrv::new(tim.clone(), tim_int, DontCare),
+            ch4: GeneralTimChDrv::new(tim, tim_int, DontCare),
         }
     }
 

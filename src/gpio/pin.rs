@@ -222,12 +222,14 @@ impl<Pin: GpioPinMap, Mode: PinGetMode, Type, Pull>
 
 impl<Pin: GpioPinMap, Type, Pull> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
+    #[inline]
     pub fn set(&self) {
         // Set output pin to high by writing BS (bit set) to the bit set/reset register.
         self.pin.gpio_bsrr_bs.set_bit();
     }
 
     /// Set output pin low.
+    #[inline]
     pub fn clear(&self) {
         // Clear output pin to low by writing BR (bit reset) to the bit set/reset register.
         self.pin.gpio_bsrr_br.set_bit();
