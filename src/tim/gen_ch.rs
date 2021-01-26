@@ -46,7 +46,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>>
     }
 
     /// Configure the channel as Input/Capture.
-    pub fn into_input_capture<Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: InputSelection>(
+    pub fn into_input_capture<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>(
         self,
         pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>,
         sel: Sel,
@@ -117,9 +117,9 @@ pub trait IntoPinInputCaptureMode<
     Ch: GeneralTimCh<Tim>,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
     Af: drone_stm32f4_gpio_drv::PinAf,
-    PinType: Send,
-    PinPull: Send,
-    Sel: Send,
+    PinType: Send + Sync,
+    PinPull: Send + Sync,
+    Sel: InputSelection,
 >
 {
     /// Configure the channel as Input/Capture from a specific GPIO pin.
@@ -138,7 +138,7 @@ pub trait IntoPinInputCaptureMode<
 macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
-            impl<Int: drone_cortexm::thr::IntToken, PinType: Send, PinPull: Send>
+            impl<Int: drone_cortexm::thr::IntToken, PinType: Send + Sync, PinPull: Send + Sync>
                 crate::IntoPinInputCaptureMode<
                     $tim,
                     Int,
@@ -166,7 +166,7 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>
     GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn capture_stream<Item>(
@@ -209,9 +209,9 @@ impl<
         Ch: GeneralTimCh<Tim>,
         Pin: GpioPinMap,
         Af: PinAf,
-        PinType: Send + 'static,
-        PinPull: Send + 'static,
-        Sel: Send + 'static,
+        PinType: Send + Sync + 'static,
+        PinPull: Send + Sync + 'static,
+        Sel: InputSelection,
     > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     type Stop = Self;
@@ -248,18 +248,26 @@ impl<
         Ch: GeneralTimCh<Tim>,
         Pin: GpioPinMap,
         Af: PinAf,
-        PinType: Send + 'static,
-        PinPull: Send + 'static,
-        Sel: Send + 'static,
+        PinType: Send + Sync + 'static,
+        PinPull: Send + Sync + 'static,
+        Sel: InputSelection,
     > TimerPinCaptureCh<Pin, Af, PinType, PinPull> for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn pin(&self) -> Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>> {
-        todo!();
-        // self.mode.pin
+        self.mode.pin.clone()
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send> CaptureStop
+impl<
+        Tim: GeneralTimMap,
+        Int: IntToken,
+        Ch: GeneralTimCh<Tim>,
+        Pin: GpioPinMap,
+        Af: PinAf,
+        PinType: Send + Sync,
+        PinPull: Send + Sync,
+        Sel: InputSelection,
+    > CaptureStop
     for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn stop(&mut self) {
@@ -283,19 +291,6 @@ pub trait GeneralTimCh<Tim: GeneralTimMap>: Send + 'static {
     fn clear_ccif(tim_sr: Tim::CTimSr);
     fn get_ccr(tim_ch_ccr: Self::CTimCcr) -> u32;
     fn set_ccr(tim_ch_ccr: Self::CTimCcr, value: u32);
-}
-
-pub trait InputSelection: Send + Sync {
-    const CC_SEL: u32;
-}
-impl InputSelection for DirectSelection {
-    const CC_SEL: u32 = 0b01;
-}
-impl InputSelection for IndirectSelection {
-    const CC_SEL: u32 = 0b10;
-}
-impl InputSelection for TrcSelection {
-    const CC_SEL: u32 = 0b11;
 }
 
 impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {

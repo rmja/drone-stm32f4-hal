@@ -19,24 +19,16 @@ pub struct TimCh4;
 pub struct OutputCompareMode;
 
 /// Timer Input Capture mode.
-pub struct InputCaptureMode<Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send> {
-    // pub pin: Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>>,
-    pin: PhantomData<Pin>,
-    af: PhantomData<Af>,
-    typ: PhantomData<PinType>,
-    pull: PhantomData<PinPull>,
+pub struct InputCaptureMode<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: Send + Sync> {
+    pub pin: Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>>,
     sel: PhantomData<Sel>,
 }
 
-impl<Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send> InputCaptureMode<Pin, Af, PinType, PinPull, Sel> {
+impl<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: Send + Sync> InputCaptureMode<Pin, Af, PinType, PinPull, Sel> {
     pub fn new(pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>) -> Self {
         Self {
-            // pin: Arc::new(pin),
-            pin: PhantomData,
-            af: PhantomData,
-            typ: PhantomData,
-            pull: PhantomData,
-            sel: PhantomData
+            pin: Arc::new(pin),
+            sel: PhantomData,
         }
     }
 }
@@ -49,3 +41,16 @@ pub struct IndirectSelection;
 
 /// TRC selection
 pub struct TrcSelection;
+
+pub trait InputSelection: Send + Sync + 'static {
+    const CC_SEL: u32;
+}
+impl InputSelection for DirectSelection {
+    const CC_SEL: u32 = 0b01;
+}
+impl InputSelection for IndirectSelection {
+    const CC_SEL: u32 = 0b10;
+}
+impl InputSelection for TrcSelection {
+    const CC_SEL: u32 = 0b11;
+}
