@@ -181,6 +181,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send + 'static, 
         use drone_core::token::Token;
         let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };
         let stream = stream_factory(self.tim_int, tim_sr, tim_ch_ccr);
+        Ch::clear_ccif(tim_sr);
         Ch::set_cce(self.tim.tim_ccer);
         Ch::set_ccie(self.tim.tim_dier);
         CaptureStream::new(self, stream)
@@ -215,16 +216,6 @@ impl<
 {
     type Stop = Self;
 
-    #[inline]
-    fn get(&self) -> bool {
-        self.mode.pin.get()
-    }
-
-    #[inline]
-    fn clear_pending(&mut self) {
-        Ch::clear_ccif(self.tim.tim_sr);
-    }
-
     fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
         self.capture_stream(|int, tim_sr, tim_ch_ccr| {
             Box::pin(int.add_saturating_stream(capacity, Self::capture_fib(tim_sr, tim_ch_ccr)))
@@ -254,6 +245,11 @@ impl<
 impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim> + Send, Pin: GpioPinMap + Send, Af: PinAf, PinType: Send, PinPull: Send, Sel: Send> CaptureStop
     for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
+    #[inline]
+    fn get(&self) -> bool {
+        self.mode.pin.get()
+    }
+
     fn stop(&mut self) {
         Ch::clear_ccie(self.tim.tim_dier);
         Ch::clear_cce(self.tim.tim_ccer);

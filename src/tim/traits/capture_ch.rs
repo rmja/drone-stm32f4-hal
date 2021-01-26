@@ -11,10 +11,6 @@ pub trait TimerCaptureCh {
     /// Capture stop handler.
     type Stop: CaptureStop;
 
-    fn get(&self) -> bool;
-
-    fn clear_pending(&mut self);
-
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will be skipped.
     fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32>;
@@ -32,6 +28,8 @@ pub trait TimerCaptureCh {
 }
 
 pub trait CaptureStop: Send {
+    fn get(&self) -> bool;
+
     /// Stop the capture stream.
     fn stop(&mut self);
 }
@@ -44,6 +42,10 @@ pub struct CaptureStream<'a, Stop: CaptureStop, Item> {
 impl<'a, Stop: CaptureStop, Item> CaptureStream<'a, Stop, Item> {
     pub fn new(stop: &'a mut Stop, stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>) -> Self {
         Self { stop, stream }
+    }
+
+    pub fn get(&self) -> bool {
+        self.stop.get()
     }
 
     /// Stop the capture stream.
