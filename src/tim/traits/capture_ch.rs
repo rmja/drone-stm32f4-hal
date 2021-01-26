@@ -8,42 +8,44 @@ use futures::Stream;
 pub struct ChannelCaptureOverflow;
 
 pub trait TimerCaptureCh {
-    /// Capture stop handler.
-    type Stop: CaptureStop;
+    /// Capture control handler.
+    type Control: CaptureControl;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will be skipped.
-    fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32>;
+    fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Control, u32>;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will overwrite existing ones.
-    fn overwriting_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32>;
+    fn overwriting_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Control, u32>;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will be skipped.
     fn try_stream(
         &mut self,
         capacity: usize,
-    ) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>>;
+    ) -> CaptureStream<'_, Self::Control, Result<u32, ChannelCaptureOverflow>>;
 }
 
-pub trait CaptureStop: Send {
+pub trait CaptureControl: Send {
+    /// Get the current value of the underlying pin.
     fn get(&self) -> bool;
 
     /// Stop the capture stream.
     fn stop(&mut self);
 }
 
-pub struct CaptureStream<'a, Stop: CaptureStop, Item> {
-    stop: &'a mut Stop,
+pub struct CaptureStream<'a, Control: CaptureControl, Item> {
+    control: &'a mut Control,
     stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>,
 }
 
-impl<'a, Stop: CaptureStop, Item> CaptureStream<'a, Stop, Item> {
-    pub fn new(stop: &'a mut Stop, stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>) -> Self {
-        Self { stop, stream }
+impl<'a, Control: CaptureControl, Item> CaptureStream<'a, Control, Item> {
+    pub fn new(control: &'a mut Control, stream: Pin<Box<dyn Stream<Item = Item> + Send + 'a>>) -> Self {
+        Self { control, stream }
     }
 
+    /// Get the current value of the underlying pin.
     pub fn get(&self) -> bool {
         self.stop.get()
     }
@@ -55,7 +57,7 @@ impl<'a, Stop: CaptureStop, Item> CaptureStream<'a, Stop, Item> {
     }
 }
 
-impl<Stop: CaptureStop, Item> Stream for CaptureStream<'_, Stop, Item> {
+impl<Control: CaptureControl, Item> Stream for CaptureStream<'_, Control, Item> {
     type Item = Item;
 
     #[inline]
@@ -64,7 +66,7 @@ impl<Stop: CaptureStop, Item> Stream for CaptureStream<'_, Stop, Item> {
     }
 }
 
-impl<Stop: CaptureStop, Item> Drop for CaptureStream<'_, Stop, Item> {
+impl<Control: CaptureControl, Item> Drop for CaptureStream<'_, Control, Item> {
     #[inline]
     fn drop(&mut self) {
         self.stop.stop();
