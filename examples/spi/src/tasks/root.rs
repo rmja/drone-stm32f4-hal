@@ -95,7 +95,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let spi_drv = SpiDrv::init(setup);
     let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
 
-    let mut chip = SpiChip::as_deselected(pin_cs);
+    let mut chip = SpiChip::new_deselected(pin_cs);
 
     loop {
         let selection = spi_master.select(&mut chip);

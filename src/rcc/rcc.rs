@@ -22,7 +22,7 @@ impl<RccInt: IntToken> RccSetup<RccInt> {
 }
 
 #[derive(Clone, Copy, Bitfield)]
-#[bitfield(hclk(rw, 0_u8), pclk1(rw, 1_u8), pclk2(rw, 2_u8))]
+#[bitfield(hclk(rw, 0), pclk1(rw, 1), pclk2(rw, 2))]
 struct ConfiguredClocks(u8);
 
 /// Rcc controller.

@@ -108,8 +108,7 @@ pub mod config {
             // = (64[ms] * 90000[kHz]) / 4096[rows] - 20
             // = 5760000 / 4096 - 20
             let sdclk_khz = sdclk / 1_000;
-            let rate_cycles = (self.refresh_period_ms * sdclk_khz) / self.row_count - 20;
-            rate_cycles
+            (self.refresh_period_ms * sdclk_khz) / self.row_count - 20
         }
     }
 
@@ -153,7 +152,7 @@ pub mod config {
                     //        = ( ns * sdclk ) / 1000000000 */
                     let ns = ns as u64;
                     let sdclk = sdclk as u64;
-                    let cycles = ((ns * sdclk) + 1000_000_000_u64 - 1u64) / 1000_000_000_u64;
+                    let cycles = ((ns * sdclk) + 1_000_000_000_u64 - 1u64) / 1_000_000_000_u64;
                     cycles as u32
                 }
                 Timing::MemCycles(cycles) => cycles,

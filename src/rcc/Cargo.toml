@@ -1,5 +1,3 @@
-cargo-features = ["resolver"]
-
 [package]
 name = "drone-stm32f4-rcc-drv"
 version = "0.1.0"

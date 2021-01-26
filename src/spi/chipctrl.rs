@@ -23,7 +23,7 @@ impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
 
 impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
     /// Initialize a new `SpiChip` as deselected.
-    pub fn as_deselected(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
+    pub fn new_deselected(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
         let mut chip = Self { cs };
         chip.deselect();
         chip
