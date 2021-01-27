@@ -9,22 +9,40 @@ use futures::Stream;
 
 pub struct ChannelCaptureOverflow;
 
+pub enum TimerCapturePolarity {
+    /// Non-inverted, rising edge polarity.
+    RisingEdge,
+    /// Inverted, falling edge polarity.
+    FallingEdge,
+    /// Non-inverted, both edges polarity.
+    BothEdges,
+}
+
 pub trait TimerCaptureCh {
     type Stop: CaptureStop;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will be skipped.
-    fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32>;
+    fn saturating_stream(
+        &mut self,
+        capacity: usize,
+        polarity: TimerCapturePolarity
+    ) -> CaptureStream<'_, Self::Stop, u32>;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will overwrite existing ones.
-    fn overwriting_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32>;
+    fn overwriting_stream(
+        &mut self,
+        capacity: usize,
+        polarity: TimerCapturePolarity
+    ) -> CaptureStream<'_, Self::Stop, u32>;
 
     /// Get a stream of captured timer values that yield for each input capture on the timer channel.
     /// When the underlying ring buffer overflows, new items will be skipped.
     fn try_stream(
         &mut self,
         capacity: usize,
+        polarity: TimerCapturePolarity,
     ) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>>;
 }
 pub trait TimerPinCaptureCh<Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send>: TimerCaptureCh {

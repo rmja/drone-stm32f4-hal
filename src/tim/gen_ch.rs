@@ -53,7 +53,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>>
         self,
         pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>,
         sel: Sel,
-    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, DontCare, Sel>> {
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>> {
         Ch::configure_input(&self.tim, sel);
         GeneralTimChDrv::new(self.tim, self.tim_int, InputCaptureMode::new(pin))
     }
@@ -114,28 +114,6 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareStop
     }
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>
-    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, DontCare, Sel>>
-{
-    /// Configure the channel capture for rising edge only.
-    pub fn into_rising_edge_polarity(self) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, RisingEdge, Sel>> {
-        Ch::configure_polarity(self.tim.tim_ccer, false, false);
-        GeneralTimChDrv::new(self.tim, self.tim_int, self.mode.into())
-    }
-
-    /// Configure the channel capture for falling edge only.
-    pub fn into_falling_edge_polarity(self) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, FallingEdge, Sel>> {
-        Ch::configure_polarity(self.tim.tim_ccer, false, true);
-        GeneralTimChDrv::new(self.tim, self.tim_int, self.mode.into())
-    }
-
-    /// Configure the channel capture for both edges.
-    pub fn into_both_edges_polarity(self) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, BothEdges, Sel>> {
-        Ch::configure_polarity(self.tim.tim_ccer, true, true);
-        GeneralTimChDrv::new(self.tim, self.tim_int, self.mode.into())
-    }
-}
-
 pub trait IntoPinInputCaptureMode<
     Tim: GeneralTimMap,
     Int: IntToken,
@@ -156,7 +134,7 @@ pub trait IntoPinInputCaptureMode<
             PinType,
             PinPull,
         >,
-    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, DontCare, Sel>>;
+    ) -> GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>;
 }
 
 #[macro_export]
@@ -183,7 +161,7 @@ macro_rules! general_tim_channel {
                         PinType,
                         PinPull,
                     >,
-                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$pin, $pin_af, PinType, PinPull, crate::shared::DontCare, $sel>> {
+                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$pin, $pin_af, PinType, PinPull, $sel>> {
                     self.into_input_capture(pin, $sel)
                 }
             }
@@ -191,11 +169,12 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Pol: Send + Sync, Sel: InputSelection>
-    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Pol, Sel>>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>
+    GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn capture_stream<Item>(
         &mut self,
+        pol: TimerCapturePolarity,
         stream_factory: impl FnOnce(
             Int,
             Tim::CTimSr,
@@ -207,7 +186,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, 
         let tim_ch_ccr = unsafe { Ch::CTimCcr::take() };
         let stream = stream_factory(self.tim_int, tim_sr, tim_ch_ccr);
         Ch::clear_ccif(tim_sr);
-        Ch::set_cce(self.tim.tim_ccer);
+        Ch::set_cce(self.tim.tim_ccer, pol);
         Ch::set_ccie(self.tim.tim_dier);
         CaptureStream::new(self, stream)
     }
@@ -236,29 +215,25 @@ impl<
         Af: PinAf,
         PinType: Send + Sync + 'static,
         PinPull: Send + Sync + 'static,
-        Pol: Send + Sync + 'static,
         Sel: InputSelection,
-    > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Pol, Sel>>
+    > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     type Stop = Self;
 
-    fn saturating_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
-        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+    fn saturating_stream(&mut self, capacity: usize, polarity: TimerCapturePolarity) -> CaptureStream<'_, Self::Stop, u32> {
+        self.capture_stream(polarity, |int, tim_sr, tim_ch_ccr| {
             Box::pin(int.add_saturating_stream(capacity, Self::capture_fib(tim_sr, tim_ch_ccr)))
         })
     }
 
-    fn overwriting_stream(&mut self, capacity: usize) -> CaptureStream<'_, Self::Stop, u32> {
-        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+    fn overwriting_stream(&mut self, capacity: usize, polarity: TimerCapturePolarity) -> CaptureStream<'_, Self::Stop, u32> {
+        self.capture_stream(polarity, |int, tim_sr, tim_ch_ccr| {
             Box::pin(int.add_overwriting_stream(capacity, Self::capture_fib(tim_sr, tim_ch_ccr)))
         })
     }
 
-    fn try_stream(
-        &mut self,
-        capacity: usize,
-    ) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>> {
-        self.capture_stream(|int, tim_sr, tim_ch_ccr| {
+    fn try_stream(&mut self, capacity: usize, polarity: TimerCapturePolarity) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>> {
+        self.capture_stream(polarity, |int, tim_sr, tim_ch_ccr| {
             Box::pin(int.add_try_stream(
                 capacity,
                 |_| Err(ChannelCaptureOverflow),
@@ -276,9 +251,8 @@ impl<
         Af: PinAf,
         PinType: Send + Sync + 'static,
         PinPull: Send + Sync + 'static,
-        Pol: Send + Sync + 'static,
         Sel: InputSelection,
-    > TimerPinCaptureCh<Pin, Af, PinType, PinPull> for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Pol, Sel>>
+    > TimerPinCaptureCh<Pin, Af, PinType, PinPull> for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn pin(&self) -> Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>> {
         self.mode.pin.clone()
@@ -293,10 +267,9 @@ impl<
         Af: PinAf,
         PinType: Send + Sync,
         PinPull: Send + Sync,
-        Pol: Send + Sync,
         Sel: InputSelection,
     > CaptureStop
-    for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Pol, Sel>>
+    for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn stop(&mut self) {
         Ch::clear_ccie(self.tim.tim_dier);
@@ -309,10 +282,9 @@ pub trait GeneralTimCh<Tim: GeneralTimMap>: Send + 'static {
 
     fn configure_output(tim: &GeneralTimDiverged<Tim>);
     fn configure_input<Sel: InputSelection>(tim: &GeneralTimDiverged<Tim>, sel: Sel);
-    fn configure_polarity(tim_ccer: Tim::CTimCcer, ccnp: bool, ccp: bool);
 
     fn get_cce(tim_ccer: Tim::CTimCcer) -> bool;
-    fn set_cce(tim_ccer: Tim::CTimCcer);
+    fn set_cce(tim_ccer: Tim::CTimCcer, pol: TimerCapturePolarity);
     fn clear_cce(tim_ccer: Tim::CTimCcer);
     fn set_ccie(tim_dier: Tim::CTimDier);
     fn clear_ccie(tim_dier: Tim::CTimDier);
@@ -335,30 +307,29 @@ impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {
             .modify_reg(|r, v| r.cc1s().write(v, Sel::CC_SEL));
     }
 
-    fn configure_polarity(tim_ccer: Tim::CTimCcer, ccnp: bool, ccp: bool) {
-        tim_ccer
-            .modify_reg(|r, v| {
-                if ccnp {
-                    r.cc1np().set(v);
-                }
-                else {
-                    r.cc1np().clear(v);
-                }
-                if ccp {
-                    r.cc1p().set(v);
-                }
-                else {
-                    r.cc1p().clear(v);
-                }
-            });
-    }
-
     fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
         tim_ccer.cc1e().read_bit()
     }
 
-    fn set_cce(tim_ccer: Tim::CTimCcer) {
-        tim_ccer.cc1e().set_bit();
+    fn set_cce(tim_ccer: Tim::CTimCcer, pol: TimerCapturePolarity) {
+        tim_ccer
+            .modify_reg(|r, v| {
+                match pol {
+                    TimerCapturePolarity::RisingEdge => {
+                        r.cc1np().clear(v);
+                        r.cc1p().clear(v);
+                    },
+                    TimerCapturePolarity::FallingEdge => {
+                        r.cc1np().clear(v);
+                        r.cc1p().set(v);
+                    },
+                    TimerCapturePolarity::BothEdges => {
+                        r.cc1np().set(v);
+                        r.cc1p().set(v);
+                    },
+                }
+                tim_ccer.cc1e().set(v);
+            });
     }
 
     fn clear_cce(tim_ccer: Tim::CTimCcer) {
@@ -409,30 +380,29 @@ impl<
             .modify_reg(|r, v| r.cc2s().write(v, Sel::CC_SEL));
     }
 
-    fn configure_polarity(tim_ccer: Tim::CTimCcer, ccnp: bool, ccp: bool) {
-        tim_ccer
-            .modify_reg(|r, v| {
-                if ccnp {
-                    r.cc2np().set(v);
-                }
-                else {
-                    r.cc2np().clear(v);
-                }
-                if ccp {
-                    r.cc2p().set(v);
-                }
-                else {
-                    r.cc2p().clear(v);
-                }
-            });
-    }
-
     fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
         tim_ccer.cc2e().read_bit()
     }
 
-    fn set_cce(tim_ccer: Tim::CTimCcer) {
-        tim_ccer.cc2e().set_bit();
+    fn set_cce(tim_ccer: Tim::CTimCcer, pol: TimerCapturePolarity) {
+        tim_ccer
+            .modify_reg(|r, v| {
+                match pol {
+                    TimerCapturePolarity::RisingEdge => {
+                        r.cc2np().clear(v);
+                        r.cc2p().clear(v);
+                    },
+                    TimerCapturePolarity::FallingEdge => {
+                        r.cc2np().clear(v);
+                        r.cc2p().set(v);
+                    },
+                    TimerCapturePolarity::BothEdges => {
+                        r.cc2np().set(v);
+                        r.cc2p().set(v);
+                    },
+                }
+                tim_ccer.cc2e().set(v);
+            });
     }
 
     fn clear_cce(tim_ccer: Tim::CTimCcer) {
@@ -484,30 +454,29 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc3Ie + TimCcerCc3E + TimSrCc3
         tim_ccmr2_output.modify_reg(|r, v| r.cc3s().write(v, Sel::CC_SEL));
     }
 
-    fn configure_polarity(tim_ccer: Tim::CTimCcer, ccnp: bool, ccp: bool) {
-        tim_ccer
-            .modify_reg(|r, v| {
-                if ccnp {
-                    r.cc3np().set(v);
-                }
-                else {
-                    r.cc3np().clear(v);
-                }
-                if ccp {
-                    r.cc3p().set(v);
-                }
-                else {
-                    r.cc3p().clear(v);
-                }
-            });
-    }
-
     fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
         tim_ccer.cc3e().read_bit()
     }
 
-    fn set_cce(tim_ccer: Tim::CTimCcer) {
-        tim_ccer.cc3e().set_bit();
+    fn set_cce(tim_ccer: Tim::CTimCcer, pol: TimerCapturePolarity) {
+        tim_ccer
+            .modify_reg(|r, v| {
+                match pol {
+                    TimerCapturePolarity::RisingEdge => {
+                        r.cc3np().clear(v);
+                        r.cc3p().clear(v);
+                    },
+                    TimerCapturePolarity::FallingEdge => {
+                        r.cc3np().clear(v);
+                        r.cc3p().set(v);
+                    },
+                    TimerCapturePolarity::BothEdges => {
+                        r.cc3np().set(v);
+                        r.cc3p().set(v);
+                    },
+                }
+                tim_ccer.cc3e().set(v);
+            });
     }
 
     fn clear_cce(tim_ccer: Tim::CTimCcer) {
@@ -559,30 +528,29 @@ impl<Tim: GeneralTimMap + TimCcmr2Output + TimDierCc4Ie + TimCcerCc4E + TimSrCc4
         tim_ccmr2_output.modify_reg(|r, v| r.cc4s().write(v, Sel::CC_SEL));
     }
 
-    fn configure_polarity(tim_ccer: Tim::CTimCcer, ccnp: bool, ccp: bool) {
-        tim_ccer
-            .modify_reg(|r, v| {
-                if ccnp {
-                    r.cc4np().set(v);
-                }
-                else {
-                    r.cc4np().clear(v);
-                }
-                if ccp {
-                    r.cc4p().set(v);
-                }
-                else {
-                    r.cc4p().clear(v);
-                }
-            });
-    }
-
     fn get_cce(tim_ccer: Tim::CTimCcer) -> bool {
         tim_ccer.cc4e().read_bit()
     }
 
-    fn set_cce(tim_ccer: Tim::CTimCcer) {
-        tim_ccer.cc4e().set_bit();
+    fn set_cce(tim_ccer: Tim::CTimCcer, pol: TimerCapturePolarity) {
+        tim_ccer
+            .modify_reg(|r, v| {
+                match pol {
+                    TimerCapturePolarity::RisingEdge => {
+                        r.cc4np().clear(v);
+                        r.cc4p().clear(v);
+                    },
+                    TimerCapturePolarity::FallingEdge => {
+                        r.cc4np().clear(v);
+                        r.cc4p().set(v);
+                    },
+                    TimerCapturePolarity::BothEdges => {
+                        r.cc4np().set(v);
+                        r.cc4p().set(v);
+                    },
+                }
+                tim_ccer.cc4e().set(v);
+            });
     }
 
     fn clear_cce(tim_ccer: Tim::CTimCcer) {
