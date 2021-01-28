@@ -15,17 +15,15 @@ pub struct DmaStCh5;
 pub struct DmaStCh6;
 pub struct DmaStCh7;
 
-pub trait DmaStChToken {
-    /// Get the stream channel number.
-    fn num() -> u32;
+pub trait DmaStChToken: Send + Sync + 'static {
+    /// The stream channel number.
+    const NUM: u32;
 }
 
 macro_rules! stch_token {
     ($stch:ident, $num:expr) => {
         impl DmaStChToken for $stch {
-            fn num() -> u32 {
-                $num
-            }
+            const NUM: u32 = $num;
         }
     };
 }

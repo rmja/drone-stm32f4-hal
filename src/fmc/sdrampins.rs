@@ -9,19 +9,15 @@ pub struct D;
 pub struct U;
 
 pub trait Opt {
-    fn num() -> u32;
+    const NUM: u32;
 }
 
 impl Opt for D {
-    fn num() -> u32 {
-        1
-    }
+    const NUM: u32 = 1;
 }
 
 impl Opt for U {
-    fn num() -> u32 {
-        0
-    }
+    const NUM: u32 = 0;
 }
 
 // See table 21 in stm32f429 datasheet

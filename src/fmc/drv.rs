@@ -114,25 +114,25 @@ impl FmcDrv {
         if bank1.is_some() {
             assert_eq!(
                 1,
-                Sdcke0::num(),
+                Sdcke0::NUM,
                 "The SDCKE pin is not configured for bank 1"
             );
-            assert_eq!(1, Sdne0::num(), "The SDNE pin is not configured for bank 1");
+            assert_eq!(1, Sdne0::NUM, "The SDNE pin is not configured for bank 1");
         }
         if bank2.is_some() {
             assert_eq!(
                 1,
-                Sdcke1::num(),
+                Sdcke1::NUM,
                 "The SDCKE pin is not configured for bank 2"
             );
-            assert_eq!(1, Sdne1::num(), "The SDNE pin is not configured for bank 2");
+            assert_eq!(1, Sdne1::NUM, "The SDNE pin is not configured for bank 2");
         }
 
         let max_row_bits = max(
             bank1.map(|b| b.row_bits).unwrap_or_default(),
             bank2.map(|b| b.row_bits).unwrap_or_default(),
         );
-        let defined_address_pins = 11 + A11::num() + A12::num();
+        let defined_address_pins = 11 + A11::NUM + A12::NUM;
         assert_eq!(
             defined_address_pins, max_row_bits,
             "The number of sdram row bits does not match the number of A pins"
@@ -143,30 +143,30 @@ impl FmcDrv {
             bank2.map(|b| b.mem_width).unwrap_or_default(),
         );
         let defined_data_pins = 8
-            + D8::num()
-            + D9::num()
-            + D10::num()
-            + D11::num()
-            + D12::num()
-            + D13::num()
-            + D14::num()
-            + D15::num()
-            + D16::num()
-            + D17::num()
-            + D18::num()
-            + D19::num()
-            + D20::num()
-            + D21::num()
-            + D22::num()
-            + D23::num()
-            + D24::num()
-            + D25::num()
-            + D26::num()
-            + D27::num()
-            + D28::num()
-            + D29::num()
-            + D30::num()
-            + D31::num();
+            + D8::NUM
+            + D9::NUM
+            + D10::NUM
+            + D11::NUM
+            + D12::NUM
+            + D13::NUM
+            + D14::NUM
+            + D15::NUM
+            + D16::NUM
+            + D17::NUM
+            + D18::NUM
+            + D19::NUM
+            + D20::NUM
+            + D21::NUM
+            + D22::NUM
+            + D23::NUM
+            + D24::NUM
+            + D25::NUM
+            + D26::NUM
+            + D27::NUM
+            + D28::NUM
+            + D29::NUM
+            + D30::NUM
+            + D31::NUM;
         assert_eq!(
             defined_data_pins, max_mem_width,
             "The number memory width of the sdram does not match the number of D pins"
@@ -176,7 +176,7 @@ impl FmcDrv {
             bank1.map(|b| b.bank_count).unwrap_or_default(),
             bank2.map(|b| b.bank_count).unwrap_or_default(),
         );
-        let defined_bank_pins = 1 + BA1::num();
+        let defined_bank_pins = 1 + BA1::NUM;
         assert_eq!(
             2 * defined_bank_pins,
             max_bank_count,

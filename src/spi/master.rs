@@ -70,12 +70,12 @@ impl<
 
         master
             .dma_rx
-            .init_dma_rx(master.spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
+            .init_dma_rx(master.spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::NUM, dma_rx_pl);
         master.dma_rx.panic_on_err(master.dma_rx_int);
 
         master
             .dma_tx
-            .init_dma_tx(master.spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
+            .init_dma_tx(master.spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::NUM, dma_tx_pl);
         master.dma_tx.panic_on_err(master.dma_tx_int);
 
         master

@@ -45,7 +45,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
             dma: dma_ch.into(),
         };
         rx.dma
-            .init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_pl);
+            .init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::NUM, dma_pl);
         rx.dma.panic_on_err(dma_int);
         rx
     }
