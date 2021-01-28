@@ -71,7 +71,7 @@ impl<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
     }
 }
 
-pub trait SpiDrvInit<
+pub trait IntoMaster<
     Spi: SpiMap,
     DmaRxCh: DmaChMap,
     DmaRxStCh: DmaStChToken,
@@ -79,8 +79,8 @@ pub trait SpiDrvInit<
     DmaTxStCh: DmaStChToken,
 >
 {
-    fn init_master<DmaRxInt: IntToken, DmaTxInt: IntToken>(
-        &self,
+    fn into_master<DmaRxInt: IntToken, DmaTxInt: IntToken>(
+        self,
         miso_cfg: DmaChCfg<DmaRxCh, DmaRxStCh, DmaRxInt>,
         mosi_cfg: DmaChCfg<DmaTxCh, DmaTxStCh, DmaTxInt>,
     ) -> SpiMasterDrv<Spi, DmaRxCh, DmaRxInt, DmaTxCh, DmaTxInt>;
@@ -93,7 +93,7 @@ macro_rules! master_drv_init {
                 SpiInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::SpiDrvInit<
+            crate::drv::IntoMaster<
                 $spi,
                 $miso_ch,
                 $miso_stch,
@@ -101,11 +101,11 @@ macro_rules! master_drv_init {
                 $mosi_stch,
             > for crate::drv::SpiDrv<$spi, SpiInt, Clk>
         {
-            fn init_master<
+            fn into_master<
                 DmaRxInt: drone_cortexm::thr::IntToken,
                 DmaTxInt: drone_cortexm::thr::IntToken,
             >(
-                &self,
+                self,
                 miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     $miso_ch,
                     $miso_stch,
@@ -123,7 +123,7 @@ macro_rules! master_drv_init {
                 $mosi_ch,
                 DmaTxInt,
             > {
-                crate::master::SpiMasterDrv::init(&self.spi, miso_cfg, mosi_cfg)
+                crate::master::SpiMasterDrv::init(self.spi, miso_cfg, mosi_cfg)
             }
         }
     };

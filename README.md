@@ -209,8 +209,7 @@ let setup = SpiSetup::new(
     pclk2,
     BaudRate::Max(7_700_000),
 );
-let spi_drv = SpiDrv::init(setup);
-let mut spi_master = spi_drv.init_master(miso_dma, mosi_dma);
+let spi = SpiDrv::init(setup).into_master(miso_dma, mosi_dma);
 ```
 
 The spi interrupt is first enabled in the nvic before the spi pins are configured.

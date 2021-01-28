@@ -18,7 +18,7 @@ pub use self::prelude::*;
 pub use self::pins::SpiPins;
 
 pub mod prelude {
-    pub use crate::drv::SpiDrvInit;
+    pub use crate::drv::IntoMaster;
     pub use super::setup::{
         NewSpiSetup,
         BaudRate,

@@ -56,12 +56,11 @@ pub trait ChipCtrl {
 }
 
 impl<
-        'drv,
         Spi: SpiMap,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
         DmaTx: DmaChMap,
         DmaTxInt: IntToken,
-    > ChipCtrl for SpiMasterDrv<'drv, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+    > ChipCtrl for SpiMasterDrv<Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
 }

@@ -7,14 +7,13 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
 pub struct SpiMasterDrv<
-    'drv,
     Spi: SpiMap,
     DmaRx: DmaChMap,
     DmaRxInt: IntToken,
     DmaTx: DmaChMap,
     DmaTxInt: IntToken,
 > {
-    pub(crate) spi: &'drv SpiDiverged<Spi>,
+    pub(crate) spi: SpiDiverged<Spi>,
     pub(crate) dma_rx: DmaChDiverged<DmaRx>,
     pub(crate) dma_rx_int: DmaRxInt,
     pub(crate) dma_tx: DmaChDiverged<DmaTx>,
@@ -22,16 +21,15 @@ pub struct SpiMasterDrv<
 }
 
 impl<
-        'drv,
         Spi: SpiMap,
         DmaRx: DmaChMap,
         DmaRxInt: IntToken,
         DmaTx: DmaChMap,
         DmaTxInt: IntToken,
-    > SpiMasterDrv<'drv, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+    > SpiMasterDrv<Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
     pub(crate) fn init<DmaRxStCh: DmaStChToken, DmaTxStCh: DmaStChToken>(
-        spi: &'drv SpiDiverged<Spi>,
+        spi: SpiDiverged<Spi>,
         miso_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
         mosi_cfg: DmaChCfg<DmaTx, DmaTxStCh, DmaTxInt>,
     ) -> Self {
@@ -55,7 +53,7 @@ impl<
             dma_tx_int,
         };
 
-        spi.spi_cr1.modify_reg(|r, v| {
+        master.spi.spi_cr1.modify_reg(|r, v| {
             // Master configuration.
             r.mstr().set(v);
 
@@ -72,12 +70,12 @@ impl<
 
         master
             .dma_rx
-            .init_dma_rx(spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
+            .init_dma_rx(master.spi.spi_dr.as_mut_ptr() as u32, DmaRxStCh::num(), dma_rx_pl);
         master.dma_rx.panic_on_err(master.dma_rx_int);
 
         master
             .dma_tx
-            .init_dma_tx(spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
+            .init_dma_tx(master.spi.spi_dr.as_mut_ptr() as u32, DmaTxStCh::num(), dma_tx_pl);
         master.dma_tx.panic_on_err(master.dma_tx_int);
 
         master
@@ -184,7 +182,7 @@ impl<
 }
 
 impl<Spi: SpiMap, DmaRx: DmaChMap, DmaRxInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> Drop
-    for SpiMasterDrv<'_, Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
+    for SpiMasterDrv<Spi, DmaRx, DmaRxInt, DmaTx, DmaTxInt>
 {
     fn drop(&mut self) {
         self.wait_for_idle();
