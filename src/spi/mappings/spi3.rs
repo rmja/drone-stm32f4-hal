@@ -1,4 +1,4 @@
-use crate::{spi_setup, master_drv_init, pins::{*, traits::*}};
+use crate::{spi_setup, master_drv_init};
 use drone_stm32_map::periph::spi::Spi3;
 use drone_stm32_map::periph::dma::ch::{Dma1Ch0, Dma1Ch2, Dma1Ch5, Dma1Ch7};
 use drone_stm32f4_dma_drv::DmaStCh0;
