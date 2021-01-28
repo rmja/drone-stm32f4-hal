@@ -1,10 +1,9 @@
-use crate::{diverged::ExtiDiverged, ExtiLine, Syscfg};
+use crate::{diverged::ExtiDiverged, ExtiLine, Syscfg, ExtiMap};
 use core::marker::PhantomData;
+use alloc::sync::Arc;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
-    exti::{
-        ExtiFtsrFt, ExtiMap, ExtiPeriph, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
-    },
+    exti::ExtiPeriph,
     gpio::{head::GpioHeadMap, pin::GpioPinMap},
 };
 use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, InputMode, PinAf};
@@ -16,19 +15,19 @@ pub struct NoEdge;
 
 /// EXTI driver.
 pub struct ExtiDrv<
-    Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+    Exti: ExtiMap,
     ExtiInt: IntToken,
     Head: GpioHeadMap,
     Edge,
 > {
-    pub(crate) exti: ExtiDiverged<Exti>,
+    pub(crate) exti: Arc<ExtiDiverged<Exti>>,
     pub(crate) exti_int: ExtiInt,
     head: PhantomData<Head>,
     edge: PhantomData<Edge>,
 }
 
 impl<
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+        Exti: ExtiMap,
         ExtiInt: IntToken,
         Head: GpioHeadMap,
     > ExtiDrv<Exti, ExtiInt, Head, NoEdge>
@@ -37,7 +36,7 @@ impl<
     /// Syscfg is required as its clock must be enabled prior to initialization.
     pub fn new(exti: ExtiPeriph<Exti>, exti_int: ExtiInt, _syscfg: &Syscfg) -> Self {
         Self {
-            exti: exti.into(),
+            exti: Arc::new(exti.into()),
             exti_int,
             head: PhantomData,
             edge: PhantomData,
@@ -46,7 +45,7 @@ impl<
 }
 
 impl<
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+        Exti: ExtiMap,
         ExtiInt: IntToken,
         Head: GpioHeadMap,
     > ExtiDrv<Exti, ExtiInt, Head, NoEdge>
@@ -84,7 +83,7 @@ impl<
 }
 
 pub trait ExtiDrvLine<
-    Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+    Exti: ExtiMap,
     ExtiInt: IntToken,
     Pin: GpioPinMap,
     PinMode: 'static,

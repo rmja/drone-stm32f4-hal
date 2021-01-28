@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 use drone_stm32_map::periph::uart::UartMap;
-use drone_stm32f4_gpio_drv::pin_ext;
 
 pub struct Defined;
 pub struct Undefined;
@@ -27,5 +26,10 @@ impl<Uart: UartMap> Default for UartPins<Uart, Undefined, Undefined> {
     }
 }
 
-pin_ext!(RxPinExt<Uart: UartMap, ..., Rx, Tx>.rx -> UartPins<Uart, Defined, Tx>);
-pin_ext!(TxPinExt<Uart: UartMap, ..., Rx, Tx>.tx -> UartPins<Uart, Rx, Defined>);
+pub mod traits {
+    use super::*;
+    use drone_stm32f4_gpio_drv::pin_ext;
+
+    pin_ext!(RxPinExt<Uart: UartMap, ..., Rx, Tx>.rx -> UartPins<Uart, Defined, Tx>);
+    pin_ext!(TxPinExt<Uart: UartMap, ..., Rx, Tx>.tx -> UartPins<Uart, Rx, Defined>);
+}

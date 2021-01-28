@@ -1,5 +1,4 @@
-use self::traits::*;
-use crate::periph::PwrPeriph;
+use crate::{traits::*, periph::PwrPeriph};
 use drone_cortexm::reg::prelude::*;
 
 pub struct Pwr {
@@ -7,19 +6,11 @@ pub struct Pwr {
 }
 
 impl Pwr {
-    #[must_use]
-    pub fn init(pwr: PwrPeriph) -> Pwr {
+    pub fn with_enabled_clock(pwr: PwrPeriph) -> Pwr {
         // Enable pwr clock.
         pwr.rcc_apb1enr_pwren.set_bit();
 
         Pwr { pwr }
-    }
-}
-
-pub mod traits {
-    pub trait Overdriveable {
-        /// Enable over-drive.
-        fn enable_overdrive(&self);
     }
 }
 

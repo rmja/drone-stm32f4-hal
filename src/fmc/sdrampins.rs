@@ -1,7 +1,6 @@
 // For signal names, see Table 296 in PM0090.
 
 use core::marker::PhantomData;
-use drone_stm32f4_gpio_drv::pin_ext;
 
 /// Defined marker type.
 pub struct D;
@@ -166,15 +165,6 @@ impl Default for FmcSdRamPins<U, U, U, U, U, U, U, U> {
     }
 }
 
-pin_ext!(SdclkPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdclk -> FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
-pin_ext!(Sdcke0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke0 -> FmcSdRamPins<Sdclk, D, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
-pin_ext!(Sdcke1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke1 -> FmcSdRamPins<Sdclk, Sdcke0, D, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
-pin_ext!(Sdne0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne0 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, D, Sdne1, Sdnras, Sdncas, Sdnwe>);
-pin_ext!(Sdne1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne1 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, D, Sdnras, Sdncas, Sdnwe>);
-pin_ext!(SdnrasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnras -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Sdncas, Sdnwe>);
-pin_ext!(SdncasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdncas -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, D, Sdnwe>);
-pin_ext!(SdnwePinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnwe -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, D>);
-
 pub struct FmcSdRamAddressPins<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> {
     a0: PhantomData<A0>,
     a1: PhantomData<A1>,
@@ -218,20 +208,6 @@ impl Default for FmcSdRamAddressPins<U, U, U, U, U, U, U, U, U, U, U, U, U> {
         Self::new()
     }
 }
-
-pin_ext!( A0PinExt.a0  -> FmcSdRamAddressPins<D, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( A1PinExt.a1  -> FmcSdRamAddressPins<D, D, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( A2PinExt.a2  -> FmcSdRamAddressPins<D, D, D, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( A3PinExt.a3  -> FmcSdRamAddressPins<D, D, D, D, U, U, U, U, U, U, U, U, U>);
-pin_ext!( A4PinExt.a4  -> FmcSdRamAddressPins<D, D, D, D, D, U, U, U, U, U, U, U, U>);
-pin_ext!( A5PinExt.a5  -> FmcSdRamAddressPins<D, D, D, D, D, D, U, U, U, U, U, U, U>);
-pin_ext!( A6PinExt.a6  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, U, U, U, U, U, U>);
-pin_ext!( A7PinExt.a7  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, U, U, U, U, U>);
-pin_ext!( A8PinExt.a8  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, U, U, U, U>);
-pin_ext!( A9PinExt.a9  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, U, U, U>);
-pin_ext!(A10PinExt.a10 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, U, U>);
-pin_ext!(A11PinExt.a11 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, U>);
-pin_ext!(A12PinExt.a12 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, D>);
 
 pub struct FmcSdRamDataPins<
     D0,
@@ -449,39 +425,6 @@ impl Default
     }
 }
 
-pin_ext!( D0PinExt.d0  -> FmcSdRamDataPins<D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D1PinExt.d1  -> FmcSdRamDataPins<D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D2PinExt.d2  -> FmcSdRamDataPins<D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D3PinExt.d3  -> FmcSdRamDataPins<D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D4PinExt.d4  -> FmcSdRamDataPins<D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D5PinExt.d5  -> FmcSdRamDataPins<D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D6PinExt.d6  -> FmcSdRamDataPins<D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D7PinExt.d7  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D8PinExt.d8  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!( D9PinExt.d9  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D10PinExt.d10 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D11PinExt.d11 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D12PinExt.d12 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D13PinExt.d13 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D14PinExt.d14 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D15PinExt.d15 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D16PinExt.d16 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D17PinExt.d17 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D18PinExt.d18 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D19PinExt.d19 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D20PinExt.d20 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D21PinExt.d21 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D22PinExt.d22 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U>);
-pin_ext!(D23PinExt.d23 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U>);
-pin_ext!(D24PinExt.d24 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U>);
-pin_ext!(D25PinExt.d25 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U>);
-pin_ext!(D26PinExt.d26 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U>);
-pin_ext!(D27PinExt.d27 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U>);
-pin_ext!(D28PinExt.d28 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U>);
-pin_ext!(D29PinExt.d29 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U>);
-pin_ext!(D30PinExt.d30 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U>);
-pin_ext!(D31PinExt.d31 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D ,D>);
-
 pub struct FmcSdRamBankPins<BA0, BA1> {
     ba0: PhantomData<BA0>,
     ba1: PhantomData<BA1>,
@@ -501,9 +444,6 @@ impl Default for FmcSdRamBankPins<U, U> {
         Self::new()
     }
 }
-
-pin_ext!(Ba0PinExt.ba0 -> FmcSdRamBankPins<D, U>);
-pin_ext!(Ba1PinExt.ba1 -> FmcSdRamBankPins<D, D>);
 
 pub struct FmcSdRamByteMaskPins<NBL0, NBL1, NBL2, NBL3> {
     nbl0: PhantomData<NBL0>,
@@ -529,7 +469,71 @@ impl Default for FmcSdRamByteMaskPins<U, U, U, U> {
     }
 }
 
-pin_ext!(Nbl0PinExt.nbl0 -> FmcSdRamByteMaskPins<D, U, U, U>);
-pin_ext!(Nbl1PinExt.nbl1 -> FmcSdRamByteMaskPins<D, D, U, U>);
-pin_ext!(Nbl2PinExt.nbl2 -> FmcSdRamByteMaskPins<D, D, D, U>);
-pin_ext!(Nbl3PinExt.nbl3 -> FmcSdRamByteMaskPins<D, D, D, D>);
+pub mod traits {
+    use super::*;
+    use drone_stm32f4_gpio_drv::pin_ext;
+
+    pin_ext!(SdclkPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdclk -> FmcSdRamPins<D, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+    pin_ext!(Sdcke0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke0 -> FmcSdRamPins<Sdclk, D, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+    pin_ext!(Sdcke1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdcke1 -> FmcSdRamPins<Sdclk, Sdcke0, D, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>);
+    pin_ext!(Sdne0PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne0 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, D, Sdne1, Sdnras, Sdncas, Sdnwe>);
+    pin_ext!(Sdne1PinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdne1 -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, D, Sdnras, Sdncas, Sdnwe>);
+    pin_ext!(SdnrasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnras -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, D, Sdncas, Sdnwe>);
+    pin_ext!(SdncasPinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdncas -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, D, Sdnwe>);
+    pin_ext!(SdnwePinExt<..., Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, Sdnwe>.sdnwe -> FmcSdRamPins<Sdclk, Sdcke0, Sdcke1, Sdne0, Sdne1, Sdnras, Sdncas, D>);
+
+    pin_ext!( A0PinExt.a0  -> FmcSdRamAddressPins<D, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( A1PinExt.a1  -> FmcSdRamAddressPins<D, D, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( A2PinExt.a2  -> FmcSdRamAddressPins<D, D, D, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( A3PinExt.a3  -> FmcSdRamAddressPins<D, D, D, D, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( A4PinExt.a4  -> FmcSdRamAddressPins<D, D, D, D, D, U, U, U, U, U, U, U, U>);
+    pin_ext!( A5PinExt.a5  -> FmcSdRamAddressPins<D, D, D, D, D, D, U, U, U, U, U, U, U>);
+    pin_ext!( A6PinExt.a6  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, U, U, U, U, U, U>);
+    pin_ext!( A7PinExt.a7  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, U, U, U, U, U>);
+    pin_ext!( A8PinExt.a8  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, U, U, U, U>);
+    pin_ext!( A9PinExt.a9  -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, U, U, U>);
+    pin_ext!(A10PinExt.a10 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, U, U>);
+    pin_ext!(A11PinExt.a11 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, U>);
+    pin_ext!(A12PinExt.a12 -> FmcSdRamAddressPins<D, D, D, D, D, D, D, D, D, D, D, D, D>);
+
+    pin_ext!( D0PinExt.d0  -> FmcSdRamDataPins<D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D1PinExt.d1  -> FmcSdRamDataPins<D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D2PinExt.d2  -> FmcSdRamDataPins<D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D3PinExt.d3  -> FmcSdRamDataPins<D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D4PinExt.d4  -> FmcSdRamDataPins<D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D5PinExt.d5  -> FmcSdRamDataPins<D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D6PinExt.d6  -> FmcSdRamDataPins<D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D7PinExt.d7  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D8PinExt.d8  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!( D9PinExt.d9  -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D10PinExt.d10 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D11PinExt.d11 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D12PinExt.d12 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D13PinExt.d13 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D14PinExt.d14 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D15PinExt.d15 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D16PinExt.d16 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D17PinExt.d17 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D18PinExt.d18 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D19PinExt.d19 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D20PinExt.d20 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D21PinExt.d21 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D22PinExt.d22 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U, U>);
+    pin_ext!(D23PinExt.d23 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U, U>);
+    pin_ext!(D24PinExt.d24 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U, U>);
+    pin_ext!(D25PinExt.d25 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U, U>);
+    pin_ext!(D26PinExt.d26 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U, U>);
+    pin_ext!(D27PinExt.d27 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U, U>);
+    pin_ext!(D28PinExt.d28 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U, U>);
+    pin_ext!(D29PinExt.d29 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U, U>);
+    pin_ext!(D30PinExt.d30 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, U>);
+    pin_ext!(D31PinExt.d31 -> FmcSdRamDataPins<D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D, D ,D>);
+
+    pin_ext!(Ba0PinExt.ba0 -> FmcSdRamBankPins<D, U>);
+    pin_ext!(Ba1PinExt.ba1 -> FmcSdRamBankPins<D, D>);
+
+    pin_ext!(Nbl0PinExt.nbl0 -> FmcSdRamByteMaskPins<D, U, U, U>);
+    pin_ext!(Nbl1PinExt.nbl1 -> FmcSdRamByteMaskPins<D, D, U, U>);
+    pin_ext!(Nbl2PinExt.nbl2 -> FmcSdRamByteMaskPins<D, D, D, U>);
+    pin_ext!(Nbl3PinExt.nbl3 -> FmcSdRamByteMaskPins<D, D, D, D>);
+}

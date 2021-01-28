@@ -4,7 +4,7 @@ use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
     traits::*, GeneralTimMap, GeneralTimPeriph, TimCr1Cms, TimCr1Dir, TimCr2, TimSmcr,
 };
-use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
+use drone_stm32f4_rcc_drv::{clktree::*, ConfiguredClk};
 
 use crate::{
     shared::DontCare, traits::*, GeneralTimChDrv, GeneralTimCntDrv, GeneralTimOvfDrv, TimFreq,
@@ -44,7 +44,7 @@ macro_rules! general_tim_setup {
             fn new(
                 tim: drone_stm32_map::periph::tim::general::GeneralTimPeriph<$tim>,
                 tim_int: Int,
-                clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
+                clk: drone_stm32f4_rcc_drv::ConfiguredClk<$pclk>,
                 freq: crate::TimFreq,
             ) -> Self {
                 Self {

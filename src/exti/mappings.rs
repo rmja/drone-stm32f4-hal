@@ -35,6 +35,7 @@ head_num!(
     GpioKHead, 10;
 );
 
+impl crate::ExtiMap for Exti0 {}
 exti_line!(
     Exti0, GpioAHead, GpioA0;
     Exti0, GpioBHead, GpioB0;
@@ -57,6 +58,8 @@ exti_line!(
     Exti0, GpioJHead, GpioJ0;
     Exti0, GpioKHead, GpioK0;
 );
+
+impl crate::ExtiMap for Exti1 {}
 exti_line!(
     Exti1, GpioAHead, GpioA1;
     Exti1, GpioBHead, GpioB1;
@@ -80,6 +83,7 @@ exti_line!(
     Exti1, GpioKHead, GpioK1;
 );
 
+impl crate::ExtiMap for Exti2 {}
 exti_line!(
     Exti2, GpioAHead, GpioA2;
     Exti2, GpioBHead, GpioB2;
@@ -103,6 +107,7 @@ exti_line!(
     Exti2, GpioKHead, GpioK2;
 );
 
+impl crate::ExtiMap for Exti3 {}
 exti_line!(
     Exti3, GpioAHead, GpioA3;
     Exti3, GpioBHead, GpioB3;
@@ -126,6 +131,7 @@ exti_line!(
     Exti3, GpioKHead, GpioK3;
 );
 
+impl crate::ExtiMap for Exti4 {}
 exti_line!(
     Exti4, GpioAHead, GpioA4;
     Exti4, GpioBHead, GpioB4;
@@ -149,6 +155,7 @@ exti_line!(
     Exti4, GpioKHead, GpioK4;
 );
 
+impl crate::ExtiMap for Exti5 {}
 exti_line!(
     Exti5, GpioAHead, GpioA5;
     Exti5, GpioBHead, GpioB5;
@@ -172,6 +179,7 @@ exti_line!(
     Exti5, GpioKHead, GpioK5;
 );
 
+impl crate::ExtiMap for Exti6 {}
 exti_line!(
     Exti6, GpioAHead, GpioA6;
     Exti6, GpioBHead, GpioB6;
@@ -195,6 +203,7 @@ exti_line!(
     Exti6, GpioKHead, GpioK6;
 );
 
+impl crate::ExtiMap for Exti7 {}
 exti_line!(
     Exti7, GpioAHead, GpioA7;
     Exti7, GpioBHead, GpioB7;
@@ -218,6 +227,7 @@ exti_line!(
     Exti7, GpioKHead, GpioK7;
 );
 
+impl crate::ExtiMap for Exti8 {}
 exti_line!(
     Exti8, GpioAHead, GpioA8;
     Exti8, GpioBHead, GpioB8;
@@ -241,6 +251,7 @@ exti_line!(
     Exti8, GpioKHead, GpioK8;
 );
 
+impl crate::ExtiMap for Exti9 {}
 exti_line!(
     Exti9, GpioAHead, GpioA9;
     Exti9, GpioBHead, GpioB9;
@@ -264,6 +275,7 @@ exti_line!(
     Exti9, GpioKHead, GpioK9;
 );
 
+impl crate::ExtiMap for Exti10 {}
 exti_line!(
     Exti10, GpioAHead, GpioA10;
     Exti10, GpioBHead, GpioB10;
@@ -287,6 +299,7 @@ exti_line!(
     Exti10, GpioKHead, GpioK10;
 );
 
+impl crate::ExtiMap for Exti11 {}
 exti_line!(
     Exti11, GpioAHead, GpioA11;
     Exti11, GpioBHead, GpioB11;
@@ -310,6 +323,7 @@ exti_line!(
     Exti11, GpioKHead, GpioK11;
 );
 
+impl crate::ExtiMap for Exti12 {}
 exti_line!(
     Exti12, GpioAHead, GpioA12;
     Exti12, GpioBHead, GpioB12;
@@ -333,6 +347,7 @@ exti_line!(
     Exti12, GpioKHead, GpioK12;
 );
 
+impl crate::ExtiMap for Exti13 {}
 exti_line!(
     Exti13, GpioAHead, GpioA13;
     Exti13, GpioBHead, GpioB13;
@@ -356,6 +371,7 @@ exti_line!(
     Exti13, GpioKHead, GpioK13;
 );
 
+impl crate::ExtiMap for Exti14 {}
 exti_line!(
     Exti14, GpioAHead, GpioA14;
     Exti14, GpioBHead, GpioB14;
@@ -379,6 +395,7 @@ exti_line!(
     Exti14, GpioKHead, GpioK14;
 );
 
+impl crate::ExtiMap for Exti15 {}
 exti_line!(
     Exti15, GpioAHead, GpioA15;
     Exti15, GpioBHead, GpioB15;

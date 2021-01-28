@@ -1,165 +1,7 @@
-use crate::periph::FmcPeriph;
+use crate::{setup::*, periph::FmcPeriph};
 use core::cmp::max;
 use drone_cortexm::reg::prelude::*;
-
-use self::config::*;
-
-pub mod config {
-    use crate::periph::FmcPeriph;
-    use drone_core::bitfield::Bitfield;
-    use drone_stm32f4_rcc_drv::{clktree::HClk, traits::ConfiguredClk};
-
-    pub use crate::sdrampins::*;
-    pub struct SdRamCfg {
-        /// The capacity in bytes.
-        pub capacity: usize,
-        /// The number of column bits.
-        pub col_bits: u32,
-        /// The number of row bits, 11: A0-A10, 12: A0-A11, 13: A0-A12.
-        pub row_bits: u32,
-        /// The memory width, 8: D0-D7, 16: D0-D15, 32: D0-D31.
-        pub mem_width: u32,
-        /// The number of banks inside the sdram, must be 2 or 4.
-        pub bank_count: u32,
-        /// The number of rows.
-        pub row_count: u32,
-        /// The number of cas latency sdram clock cycles.
-        pub cas_latency: u32,
-        /// The refresh period in milliseconds.
-        pub refresh_period_ms: u32,
-        /// Row address to column address delay.
-        pub t_rcd: Timing,
-        /// Row precharge delay.
-        pub t_rp: Timing,
-        /// Min row active time.
-        pub t_ras_min: Timing,
-        /// Write recovery delay.
-        pub t_wr: Timing,
-        /// Row cycle delay.
-        pub t_rc: Timing,
-        /// Exit self refresh to active delay.
-        pub t_xsr: Timing,
-        /// Load Mode Register to active delay.
-        pub t_mrd: Timing,
-        /// The power up delay in microseconds, see the initialization section in the datasheet. It is typically 100us.
-        pub power_up_delay_us: u32,
-        /// The number of auto refresh commands that must be sent during initialization, see the initialization section in the datasheet. It is typically 8.
-        pub auto_refresh_commands: u32,
-    }
-
-    #[derive(Clone, Copy, Bitfield)]
-    #[bitfield(
-        burst_length(rw, 0, 3),
-        burst_type(rw, 3, 1),
-        latency_mode(rw, 4, 3),
-        operating_mode(rw, 7, 2),
-        write_burst_mode(rw, 9, 1)
-    )]
-    pub(crate) struct SdRamModeRegister(pub u32);
-
-    impl SdRamCfg {
-        pub(crate) fn sdcr_nc(&self) -> u32 {
-            match self.col_bits {
-                8 => 0b00,
-                9 => 0b01,
-                10 => 0b10,
-                11 => 0b11,
-                _ => panic!("Unsupported number of column bits."),
-            }
-        }
-
-        pub(crate) fn sdcr_nr(&self) -> u32 {
-            match self.row_bits {
-                11 => 0b00,
-                12 => 0b01,
-                13 => 0b10,
-                _ => panic!("Unsupported number of row bits."),
-            }
-        }
-
-        pub(crate) fn sdcr_mwid(&self) -> u32 {
-            match self.mem_width {
-                8 => 0b00,
-                16 => 0b01,
-                32 => 0b10,
-                _ => panic!("Unsupported memory width."),
-            }
-        }
-
-        pub(crate) fn sdcr_nb(&self) -> bool {
-            match self.bank_count {
-                2 => false,
-                4 => true,
-                _ => panic!("Unsupported number of banks."),
-            }
-        }
-
-        pub(crate) fn sdtrt_count(&self, sdclk: u32) -> u32 {
-            // From PM0090:
-            // Refresh rate = (SDRAM refresh rate * SDRAM clock frequency) - 20
-            // where: SDRAM refresh rate = SDRAM refresh period / Number of rows
-            // Example:
-            // (64[ms]/4096[rows]) * 90[MHz] - 20
-            // = 0.0015625[ms] * 90[MHz] - 20
-            // = 15.625[us] * 90[MHz] - 20
-            // = 1406.25 - 20 ~= 1386
-            // Or equivalently for better precision:
-            // = (64[ms] * 90[MHz]) / 4096[rows] - 20
-            // = (64[ms] * 90000[kHz]) / 4096[rows] - 20
-            // = 5760000 / 4096 - 20
-            let sdclk_khz = sdclk / 1_000;
-            (self.refresh_period_ms * sdclk_khz) / self.row_count - 20
-        }
-    }
-
-    pub struct SdRamSetup {
-        /// The fmc peripheral.
-        pub fmc: FmcPeriph,
-        /// Sd-ram module configuration for bank 1, mapped to memory address 0xC0000000....
-        pub bank1: Option<SdRamCfg>,
-        /// Sd-ram module configuration for bank 2, mapped to memory address 0xD0000000....
-        pub bank2: Option<SdRamCfg>,
-        pub clk: ConfiguredClk<HClk>,
-        /// The sdram clock hclk prescaler, i.e. sdclk = hclk / sdclk_hclk_presc.
-        /// Valid values are 2 and 3.
-        pub sdclk_hclk_presc: u32,
-    }
-
-    impl SdRamSetup {
-        pub fn for_bank2(fmc: FmcPeriph, sdram: SdRamCfg, clk: ConfiguredClk<HClk>) -> Self {
-            Self {
-                fmc,
-                bank1: None,
-                bank2: Some(sdram),
-                clk,
-                sdclk_hclk_presc: 2,
-            }
-        }
-    }
-
-    #[derive(Clone, Copy)]
-    pub enum Timing {
-        Ns(u32),
-        MemCycles(u32),
-    }
-
-    impl Timing {
-        pub(crate) fn to_max_cycles(self, sdclk: u32) -> u32 {
-            match self {
-                Timing::Ns(ns) => {
-                    // Round up the division:
-                    // cycles = ( ns / 1000000000 ) * sdclk
-                    //        = ( ns * sdclk ) / 1000000000 */
-                    let ns = ns as u64;
-                    let sdclk = sdclk as u64;
-                    let cycles = ((ns * sdclk) + 1_000_000_000_u64 - 1u64) / 1_000_000_000_u64;
-                    cycles as u32
-                }
-                Timing::MemCycles(cycles) => cycles,
-            }
-        }
-    }
-}
+use drone_core::bitfield::Bitfield;
 
 pub struct FmcDrv {
     fmc: FmcPeriph,
@@ -177,6 +19,16 @@ enum SdRamCommand {
     SelfRefresh,
     PowerDown,
 }
+
+#[derive(Clone, Copy, Bitfield)]
+#[bitfield(
+    burst_length(rw, 0, 3),
+    burst_type(rw, 3, 1),
+    latency_mode(rw, 4, 3),
+    operating_mode(rw, 7, 2),
+    write_burst_mode(rw, 9, 1)
+)]
+struct SdRamModeRegister(u32);
 
 impl FmcDrv {
     pub fn init_sdram<
@@ -586,5 +438,77 @@ impl FmcSdcrExt for drone_stm32_map::reg::fmc::sdcr2::Hold<'_, drone_cortexm::re
         } else {
             self.clear_nb()
         }
+    }
+}
+
+impl Timing {
+    pub(crate) fn to_max_cycles(self, sdclk: u32) -> u32 {
+        match self {
+            Timing::Ns(ns) => {
+                // Round up the division:
+                // cycles = ( ns / 1000000000 ) * sdclk
+                //        = ( ns * sdclk ) / 1000000000 */
+                let ns = ns as u64;
+                let sdclk = sdclk as u64;
+                let cycles = ((ns * sdclk) + 1_000_000_000_u64 - 1u64) / 1_000_000_000_u64;
+                cycles as u32
+            }
+            Timing::MemCycles(cycles) => cycles,
+        }
+    }
+}
+
+impl SdRamCfg {
+    pub(crate) fn sdcr_nc(&self) -> u32 {
+        match self.col_bits {
+            8 => 0b00,
+            9 => 0b01,
+            10 => 0b10,
+            11 => 0b11,
+            _ => panic!("Unsupported number of column bits."),
+        }
+    }
+
+    pub(crate) fn sdcr_nr(&self) -> u32 {
+        match self.row_bits {
+            11 => 0b00,
+            12 => 0b01,
+            13 => 0b10,
+            _ => panic!("Unsupported number of row bits."),
+        }
+    }
+
+    pub(crate) fn sdcr_mwid(&self) -> u32 {
+        match self.mem_width {
+            8 => 0b00,
+            16 => 0b01,
+            32 => 0b10,
+            _ => panic!("Unsupported memory width."),
+        }
+    }
+
+    pub(crate) fn sdcr_nb(&self) -> bool {
+        match self.bank_count {
+            2 => false,
+            4 => true,
+            _ => panic!("Unsupported number of banks."),
+        }
+    }
+
+    pub(crate) fn sdtrt_count(&self, sdclk: u32) -> u32 {
+        // From PM0090:
+        // Refresh rate = (SDRAM refresh rate * SDRAM clock frequency) - 20
+        // where: SDRAM refresh rate = SDRAM refresh period / Number of rows
+        // Example:
+        // (64[ms]/4096[rows]) * 90[MHz] - 20
+        // = 0.0015625[ms] * 90[MHz] - 20
+        // = 15.625[us] * 90[MHz] - 20
+        // = 1406.25 - 20 ~= 1386
+        // Or equivalently for better precision:
+        // = (64[ms] * 90[MHz]) / 4096[rows] - 20
+        // = (64[ms] * 90000[kHz]) / 4096[rows] - 20
+        // = 5760000 / 4096 - 20
+        let sdclk_khz = sdclk / 1_000;
+        (self.refresh_period_ms * sdclk_khz) / self.row_count - 20
     }
 }

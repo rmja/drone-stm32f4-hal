@@ -14,8 +14,8 @@ use drone_stm32_map::periph::{
 use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
     gpio::{GpioHead, GpioPinSpeed, prelude::*},
-    rcc::{periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup},
-    uart::{config::*, prelude::*, UartDrv},
+    rcc::{prelude::*, periph_flash, periph_pwr, periph_rcc, Flash, Pwr, Rcc, RccSetup},
+    uart::{prelude::*, UartDrv, UartPins, UartSetup},
 };
 
 /// The root task handler.
@@ -60,8 +60,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Initialize clocks.
     let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
-    let pwr = Pwr::init(periph_pwr!(reg));
-    let flash = Flash::init(periph_flash!(reg));
+    let pwr = Pwr::with_enabled_clock(periph_pwr!(reg));
+    let flash = Flash::new(periph_flash!(reg));
 
     let hseclk = rcc.stabilize(consts::HSECLK).root_wait();
     let pll = rcc

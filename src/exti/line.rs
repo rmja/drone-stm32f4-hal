@@ -1,14 +1,10 @@
-use crate::{ExtiDrv, FallingEdge, diverged::ExtiDiverged};
+use crate::{ExtiDrv, ExtiMap, FallingEdge, diverged::ExtiDiverged};
 use core::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
+use alloc::sync::Arc;
 use displaydoc::Display;
 use drone_core::fib::{FiberStreamPulse, TryFiberStreamPulse};
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::{
-    exti::{ExtiFtsrFt, ExtiMap, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti},
-    gpio::head::GpioHeadMap,
-};
-use drone_stm32_map::periph::gpio::pin::GpioPinMap;
-use drone_stm32f4_gpio_drv::{GpioPin, prelude::*};
+use drone_stm32f4_gpio_drv::{GpioPin, prelude::*, GpioHeadMap, GpioPinMap};
 use futures::{future, prelude::*};
 
 /// EXTI stream overflow
@@ -20,33 +16,31 @@ pub trait HeadNum {
 }
 
 pub struct ExtiLine<
-    'drv,
-    Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+    Exti: ExtiMap,
     ExtiInt: IntToken,
     Pin: GpioPinMap, PinMode, PinType, PinPull,
     Edge: 'static,
 > {
-    exti: &'drv ExtiDiverged<Exti>,
+    exti: Arc<ExtiDiverged<Exti>>,
     exti_int: ExtiInt,
     pub pin: GpioPin<Pin, PinMode, PinType, PinPull>,
     edge: PhantomData<Edge>,
 }
 
 impl<
-        'drv,
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+        Exti: ExtiMap,
         ExtiInt: IntToken,
         Pin: GpioPinMap, PinMode: 'static, PinType: 'static, PinPull: 'static,
         Edge,
-    > ExtiLine<'drv, Exti, ExtiInt, Pin, PinMode, PinType, PinPull, Edge>
+    > ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, Edge>
 {
     pub(crate) fn init<Head: GpioHeadMap + HeadNum>(
-        exti: &'drv ExtiDrv<Exti, ExtiInt, Head, Edge>,
+        exti: &ExtiDrv<Exti, ExtiInt, Head, Edge>,
         pin: GpioPin<Pin, PinMode, PinType, PinPull>,
     ) -> Self {
         exti.exti.syscfg_exticr_exti.write_bits(Head::NUM);
         Self {
-            exti: &exti.exti,
+            exti: exti.exti.clone(),
             exti_int: exti.exti_int,
             pin,
             edge: PhantomData,
@@ -81,11 +75,10 @@ impl<
 }
 
 impl<
-        'drv,
-        Exti: ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif,
+        Exti: ExtiMap,
         ExtiInt: IntToken,
         Pin: GpioPinMap, PinMode: PinGetMode + 'static, PinType: 'static, PinPull: 'static,
-    > ExtiLine<'drv, Exti, ExtiInt, Pin, PinMode, PinType, PinPull, FallingEdge>
+    > ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, FallingEdge>
 {
     /// Wait for the line to become low. Return immediately if this is already the case.
     pub fn wait_low(&self) -> WaitFuture {

@@ -1,105 +1,12 @@
-use self::config::*;
-use crate::{diverged::SpiDiverged, master::SpiMasterDrv};
+use crate::{setup::*, diverged::SpiDiverged, master::SpiMasterDrv, SpiMap};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
-    spi::{traits::*, SpiMap, SpiPeriph},
+    spi::traits::*,
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
-use drone_stm32f4_rcc_drv::{clktree::*, traits::ConfiguredClk};
-
-pub mod config {
-    use super::*;
-    pub use crate::pins::*;
-
-    pub struct SpiSetup<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
-        /// Spi peripheral.
-        pub spi: SpiPeriph<Spi>,
-        /// Spi global interrupt.
-        pub spi_int: SpiInt,
-        /// Spi clock.
-        pub clk: ConfiguredClk<Clk>,
-        /// The baud rate.
-        pub baud_rate: BaudRate,
-        /// The clock polarity.
-        pub clk_pol: ClkPol,
-        /// The bit transmission order.
-        pub first_bit: FirstBit,
-    }
-
-    pub trait NewSpiSetup<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
-        /// Create a new spi setup with sensible defaults.
-        fn new(
-            spi: SpiPeriph<Spi>,
-            spi_int: SpiInt,
-            pins: SpiPins<Spi, Defined, Defined, Defined>,
-            clk: ConfiguredClk<Clk>,
-            baud_rate: BaudRate,
-        ) -> Self;
-    }
-
-    pub enum BaudRate {
-        Max(u32),
-        Prescaler(Prescaler),
-    }
-
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum Prescaler {
-        Div2,
-        Div4,
-        Div8,
-        Div16,
-        Div32,
-        Div64,
-        Div128,
-        Div256,
-    }
-
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum ClkPol {
-        Low,
-        High,
-    }
-
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum FirstBit {
-        Msb,
-        Lsb,
-    }
-}
-
-#[macro_export]
-macro_rules! spi_setup {
-    ($spi:ident, $pclk:ident) => {
-        impl<SpiInt: drone_cortexm::thr::IntToken>
-            crate::drv::config::NewSpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
-            for crate::drv::config::SpiSetup<drone_stm32_map::periph::spi::$spi, SpiInt, $pclk>
-        {
-            fn new(
-                spi: drone_stm32_map::periph::spi::SpiPeriph<drone_stm32_map::periph::spi::$spi>,
-                spi_int: SpiInt,
-                _pins: crate::pins::SpiPins<
-                    drone_stm32_map::periph::spi::$spi,
-                    crate::pins::Defined,
-                    crate::pins::Defined,
-                    crate::pins::Defined,
-                >,
-                clk: drone_stm32f4_rcc_drv::traits::ConfiguredClk<$pclk>,
-                baud_rate: crate::drv::config::BaudRate,
-            ) -> Self {
-                Self {
-                    spi,
-                    spi_int,
-                    clk,
-                    baud_rate,
-                    clk_pol: crate::drv::config::ClkPol::Low,
-                    first_bit: crate::drv::config::FirstBit::Msb,
-                }
-            }
-        }
-    };
-}
+use drone_stm32f4_rcc_drv::{clktree::*, ConfiguredClk};
 
 pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
     pub(crate) spi: SpiDiverged<Spi>,
@@ -108,8 +15,7 @@ pub struct SpiDrv<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
 }
 
 impl<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
-    #[must_use]
-    pub fn init(setup: config::SpiSetup<Spi, SpiInt, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
+    pub fn init(setup: SpiSetup<Spi, SpiInt, Clk>) -> SpiDrv<Spi, SpiInt, Clk> {
         let mut drv = Self {
             spi: setup.spi.into(),
             spi_int: setup.spi_int,
@@ -126,8 +32,6 @@ impl<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> SpiDrv<Spi, SpiInt, Clk> {
         clk_pol: ClkPol,
         first_bit: FirstBit,
     ) {
-        use self::config::*;
-
         // Enable spi clock.
         self.spi.rcc_busenr_spien.set_bit();
 
@@ -190,12 +94,12 @@ macro_rules! master_drv_init {
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
             crate::drv::SpiDrvInit<
-                drone_stm32_map::periph::spi::$spi,
-                drone_stm32_map::periph::dma::ch::$miso_ch,
+                $spi,
+                $miso_ch,
                 $miso_stch,
-                drone_stm32_map::periph::dma::ch::$mosi_ch,
+                $mosi_ch,
                 $mosi_stch,
-            > for crate::drv::SpiDrv<drone_stm32_map::periph::spi::$spi, SpiInt, Clk>
+            > for crate::drv::SpiDrv<$spi, SpiInt, Clk>
         {
             fn init_master<
                 DmaRxInt: drone_cortexm::thr::IntToken,
@@ -203,20 +107,20 @@ macro_rules! master_drv_init {
             >(
                 &self,
                 miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<
-                    drone_stm32_map::periph::dma::ch::$miso_ch,
+                    $miso_ch,
                     $miso_stch,
                     DmaRxInt,
                 >,
                 mosi_cfg: drone_stm32f4_dma_drv::DmaChCfg<
-                    drone_stm32_map::periph::dma::ch::$mosi_ch,
+                    $mosi_ch,
                     $mosi_stch,
                     DmaTxInt,
                 >,
             ) -> crate::master::SpiMasterDrv<
-                drone_stm32_map::periph::spi::$spi,
-                drone_stm32_map::periph::dma::ch::$miso_ch,
+                $spi,
+                $miso_ch,
                 DmaRxInt,
-                drone_stm32_map::periph::dma::ch::$mosi_ch,
+                $mosi_ch,
                 DmaTxInt,
             > {
                 crate::master::SpiMasterDrv::init(&self.spi, miso_cfg, mosi_cfg)
@@ -226,7 +130,6 @@ macro_rules! master_drv_init {
 }
 
 fn spi_br<Clk: PClkToken>(clk: &ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 {
-    use config::*;
     let f_pclk = clk.freq();
     let presc = match baud_rate {
         BaudRate::Max(baud_rate) => match f_pclk / baud_rate {

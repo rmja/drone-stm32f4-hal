@@ -8,14 +8,14 @@ mod flash;
 mod periph;
 mod pwr;
 mod rcc;
+mod traits;
 
 pub use self::flash::Flash;
 pub use self::periph::*;
 pub use self::pwr::Pwr;
 pub use self::rcc::{Rcc, RccSetup};
+pub use self::prelude::*;
 
-pub mod traits {
-    pub use crate::flash::traits::*;
-    pub use crate::pwr::traits::*;
-    pub use crate::rcc::traits::*;
+pub mod prelude {
+    pub use crate::traits::*;
 }

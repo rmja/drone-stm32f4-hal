@@ -1,6 +1,5 @@
+use crate::SpiMap;
 use core::marker::PhantomData;
-use drone_stm32_map::periph::spi::SpiMap;
-use drone_stm32f4_gpio_drv::pin_ext;
 
 pub struct Defined;
 pub struct Undefined;
@@ -29,6 +28,11 @@ impl<Spi: SpiMap> Default for SpiPins<Spi, Undefined, Undefined, Undefined> {
     }
 }
 
-pin_ext!(SckPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.sck -> SpiPins<Spi, Defined, Miso, Mosi>);
-pin_ext!(MisoPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.miso -> SpiPins<Spi, Sck, Defined, Mosi>);
-pin_ext!(MosiPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.mosi -> SpiPins<Spi, Sck, Miso, Defined>);
+pub mod traits {
+    use super::*;
+    use drone_stm32f4_gpio_drv::pin_ext;
+    
+    pin_ext!(SckPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.sck -> SpiPins<Spi, Defined, Miso, Mosi>);
+    pin_ext!(MisoPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.miso -> SpiPins<Spi, Sck, Defined, Mosi>);
+    pin_ext!(MosiPinExt<Spi: SpiMap, ..., Sck, Miso, Mosi>.mosi -> SpiPins<Spi, Sck, Miso, Defined>);
+}

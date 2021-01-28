@@ -5,11 +5,9 @@ use drone_core::log;
 use drone_cortexm::{reg::prelude::*, swo, thr::prelude::*};
 use drone_stm32_map::periph::gpio::*;
 use drone_stm32f4_hal::{
-    fmc::{sdram_pins, config::*, periph_fmc, FmcDrv},
+    fmc::{prelude::*, sdram_pins, periph_fmc, SdRamSetup, FmcDrv, FmcSdRamPins, FmcSdRamAddressPins, FmcSdRamDataPins, FmcSdRamBankPins, FmcSdRamByteMaskPins},
     gpio::{prelude::*, GpioHead},
-    rcc::{
-        clktree::HClk, periph_flash, periph_pwr, periph_rcc, traits::*, Flash, Pwr, Rcc, RccSetup,
-    },
+    rcc::{prelude::*, clktree::*, periph_flash, periph_pwr, periph_rcc, Flash, Pwr, Rcc, RccSetup},
 };
 
 /// The root task handler.
@@ -26,8 +24,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Initialize clocks.
     let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
-    let pwr = Pwr::init(periph_pwr!(reg));
-    let flash = Flash::init(periph_flash!(reg));
+    let pwr = Pwr::with_enabled_clock(periph_pwr!(reg));
+    let flash = Flash::new(periph_flash!(reg));
     let hclk = setup_clktree(&rcc, &pwr, &flash).root_wait();
 
     // Configure pins.
@@ -63,7 +61,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     );
 
     let fmc = FmcDrv::init_sdram(
-        SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk),
+        SdRamSetup::new_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk),
         sdram_pins,
         address_pins,
         data_pins,

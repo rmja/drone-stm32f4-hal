@@ -1,5 +1,4 @@
-use self::traits::*;
-use crate::{clktree::*, diverged::RccDiverged, periph::RccPeriph};
+use crate::{traits::*, clktree::*, diverged::RccDiverged, periph::RccPeriph};
 use core::cell::RefCell;
 use core::marker::PhantomData;
 use drone_core::bitfield::Bitfield;
@@ -44,59 +43,6 @@ impl<RccInt: IntToken> Rcc<RccInt> {
     }
 }
 
-pub mod traits {
-    use core::ops::Deref;
-
-    use super::*;
-
-    #[derive(Copy, Clone)]
-    pub struct ConfiguredClk<Clk> {
-        pub(crate) clk: Clk,
-    }
-
-    impl<Clk> Deref for ConfiguredClk<Clk> {
-        type Target = Clk;
-
-        fn deref(&self) -> &Self::Target {
-            &self.clk
-        }
-    }
-
-    impl ConfiguredClk<Pll> {
-        pub fn p(self) -> ConfiguredClk<PllClk<PllP>> {
-            ConfiguredClk { clk: self.clk.p }
-        }
-
-        pub fn q(self) -> ConfiguredClk<PllClk<PllQ>> {
-            ConfiguredClk { clk: self.clk.q }
-        }
-    }
-
-    pub struct ConfiguredClkBuilder<'a, RccInt: IntToken, Clk> {
-        pub(crate) rcc: &'a Rcc<RccInt>,
-        pub(crate) clk: PhantomData<Clk>,
-    }
-
-    pub trait ClkCtrl<Clk> {
-        /// Configures the clock `clk`.
-        fn configure(&self, clk: Clk) -> ConfiguredClk<Clk>;
-    }
-
-    pub trait StabilizingClkCtrl<Clk> {
-        /// Configures the clock `clk` and completes the future when the clock has stabilized.
-        fn stabilize(&self, clk: Clk) -> FiberFuture<ConfiguredClk<Clk>>;
-    }
-
-    pub trait MuxCtrl<RccInt: IntToken, MuxSignal, Clk> {
-        /// Select the source clock signal of a mux.
-        fn select(
-            &self,
-            signal: MuxSignal,
-            clk: ConfiguredClk<Clk>,
-        ) -> ConfiguredClkBuilder<RccInt, Clk>;
-    }
-}
-
 impl<RccInt: IntToken> StabilizingClkCtrl<HseClk> for Rcc<RccInt> {
     fn stabilize(&self, clk: HseClk) -> FiberFuture<ConfiguredClk<HseClk>> {
         assert!(self.rcc_int.is_int_enabled());
@@ -124,6 +70,11 @@ impl<RccInt: IntToken> StabilizingClkCtrl<HseClk> for Rcc<RccInt> {
         // Wait for the clock to stabilize.
         hserdy
     }
+}
+
+pub struct ConfiguredClkBuilder<'a, RccInt: IntToken, Clk> {
+    pub(crate) rcc: &'a Rcc<RccInt>,
+    pub(crate) clk: PhantomData<Clk>,
 }
 
 impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll>
@@ -170,6 +121,16 @@ impl<RccInt: IntToken, SrcClk> StabilizingClkCtrl<Pll>
 
         // Wait for the clock to stabilize.
         pllrdy
+    }
+}
+
+impl ConfiguredClk<Pll> {
+    pub fn p(self) -> ConfiguredClk<PllClk<PllP>> {
+        ConfiguredClk { clk: self.clk.p }
+    }
+
+    pub fn q(self) -> ConfiguredClk<PllClk<PllQ>> {
+        ConfiguredClk { clk: self.clk.q }
     }
 }
 
@@ -231,12 +192,14 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> {
+impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> {
+    type Builder = ConfiguredClkBuilder<'a, RccInt, HsiClk>;
+
     fn select(
-        &self,
+        &'a self,
         signal: PllSrcMuxSignal,
         _clk: ConfiguredClk<HsiClk>,
-    ) -> ConfiguredClkBuilder<RccInt, HsiClk> {
+    ) -> Self::Builder {
         assert!(matches!(signal, PllSrcMuxSignal::Hsi { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc());
         ConfiguredClkBuilder {
@@ -246,12 +209,14 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> 
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> {
+impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> {
+    type Builder = ConfiguredClkBuilder<'a, RccInt, HseClk>;
+
     fn select(
-        &self,
+        &'a self,
         signal: PllSrcMuxSignal,
         _clk: ConfiguredClk<HseClk>,
-    ) -> ConfiguredClkBuilder<RccInt, HseClk> {
+    ) -> Self::Builder {
         assert!(matches!(signal, PllSrcMuxSignal::Hse { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc());
         ConfiguredClkBuilder {
@@ -261,12 +226,14 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> 
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> {
+impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> {
+    type Builder = ConfiguredClkBuilder<'a, RccInt, HsiClk>;
+
     fn select(
-        &self,
+        &'a self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<HsiClk>,
-    ) -> ConfiguredClkBuilder<RccInt, HsiClk> {
+    ) -> Self::Builder {
         assert!(matches!(signal, SysClkMuxSignal::Hsi { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b00));
         ConfiguredClkBuilder {
@@ -276,12 +243,14 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> 
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> {
+impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> {
+    type Builder = ConfiguredClkBuilder<'a, RccInt, HseClk>;
+
     fn select(
-        &self,
+        &'a self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<HseClk>,
-    ) -> ConfiguredClkBuilder<RccInt, HseClk> {
+    ) -> Self::Builder {
         assert!(matches!(signal, SysClkMuxSignal::Hse { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b01));
         ConfiguredClkBuilder {
@@ -291,12 +260,14 @@ impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> 
     }
 }
 
-impl<RccInt: IntToken> MuxCtrl<RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<RccInt> {
+impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, PllClk<PllP>> for Rcc<RccInt> {
+    type Builder = ConfiguredClkBuilder<'a, RccInt, PllClk<PllP>>;
+
     fn select(
-        &self,
+        &'a self,
         signal: SysClkMuxSignal,
         _clk: ConfiguredClk<PllClk<PllP>>,
-    ) -> ConfiguredClkBuilder<RccInt, PllClk<PllP>> {
+    ) -> Self::Builder {
         assert!(matches!(signal, SysClkMuxSignal::Pll { .. }));
         // We need to make sure that HCLK, PCLK1, and PCLK2 are configured
         // to avoid overclocking of their max bus frequencies when setting the PLL as source.

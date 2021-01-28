@@ -76,8 +76,8 @@ let rcc_setup = RccSetup {
   rcc_int: thr.rcc,
 };
 let rcc = Rcc::init(rcc_setup);
-let pwr = Pwr::init(periph_pwr!(reg));
-let flash = Flash::init(periph_flash!(reg));
+let pwr = Pwr::with_enabled_clock(periph_pwr!(reg));
+let flash = Flash::new(periph_flash!(reg));
 
 let hseclk = rcc.stabilize(consts::HSECLK).await;
 let pll = rcc.select(consts::PLLSRC_HSECLK, hseclk).stabilize(consts::PLL).await;
@@ -379,7 +379,7 @@ let mask_pins = FmcSdRamByteMaskPins::default()
   .nbl0(gpio_e.pin(periph_gpio_e0!(reg)).into_alternate().with_speed(GpioPinSpeed::HighSpeed))
   ...;
 
-let fmc = FmcDrv::init_sdram(SdRamSetup::for_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
+let fmc = FmcDrv::init_sdram(SdRamSetup::new_bank2(periph_fmc!(reg), consts::SDRAM_CFG, hclk), sdram_pins, address_pins, data_pins, bank_pins, mask_pins);
 let ram = fmc.bank2_slice::<usize>();
 
 for i in 0..ram.len() {

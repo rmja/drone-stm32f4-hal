@@ -1,34 +1,13 @@
-use crate::{clktree::Freq, clktree::HClk, periph::FlashPeriph};
+use crate::{traits::*, clktree::Freq, clktree::HClk, periph::FlashPeriph};
 use drone_cortexm::reg::prelude::*;
-
-use self::traits::*;
 
 pub struct Flash {
     flash: FlashPeriph,
 }
 
-pub mod traits {
-    pub trait HClkExt {
-        fn get_wait_states(&self, voltage: VoltageRange) -> u32;
-    }
-
-    #[derive(Copy, Clone)]
-    pub enum VoltageRange {
-        #[doc = "2.7V-3.6V"]
-        HighVoltage,
-        #[doc = "2.4V-2.7V"]
-        MediumVoltage,
-        #[doc = "2.1V-2.4V"]
-        LowVoltage,
-        #[doc = "1.8V-2.1V"]
-        UltraLowVoltage,
-    }
-}
-
 impl Flash {
-    #[must_use]
-    pub fn init(periph: FlashPeriph) -> Flash {
-        Flash { flash: periph }
+    pub fn new(flash: FlashPeriph) -> Self {
+        Self { flash }
     }
 
     pub fn set_latency(&self, wait_states: u32) {

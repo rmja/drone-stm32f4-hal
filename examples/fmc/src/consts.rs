@@ -1,4 +1,4 @@
-use drone_stm32f4_hal::{fmc::config::*, rcc::clktree::*};
+use drone_stm32f4_hal::{fmc::{SdRamCfg, Timing}, rcc::clktree::*};
 
 pub const HSECLK: HseClk = HseClk::new(8_000_000);
 pub const PLLSRC_HSECLK: PllSrcMuxSignal = PllSrcMuxSignal::Hse(HSECLK);
