@@ -1,5 +1,5 @@
 use alloc::sync::Arc;
-use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, GpioPinMap, PinAf};
+use drone_stm32f4_gpio_drv::{GpioPin, GpioPinMap, prelude::*};
 use core::marker::PhantomData;
 use drone_core::{
     fib::{self, Fiber},
@@ -49,7 +49,7 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>>
     }
 
     /// Configure the channel as Input/Capture.
-    pub fn into_input_capture<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>(
+    pub fn into_input_capture<Pin: GpioPinMap, Af: PinAf, PinType: PinTypeMap, PinPull: PinPullMap, Sel: InputSelection>(
         self,
         pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>,
         sel: Sel,
@@ -119,9 +119,9 @@ pub trait IntoPinInputCaptureMode<
     Int: IntToken,
     Ch: GeneralTimCh<Tim>,
     Pin: drone_stm32_map::periph::gpio::pin::GpioPinMap,
-    Af: drone_stm32f4_gpio_drv::PinAf,
-    PinType: Send + Sync,
-    PinPull: Send + Sync,
+    Af: PinAf,
+    PinType: PinTypeMap,
+    PinPull: PinPullMap,
     Sel: InputSelection,
 >
 {
@@ -141,7 +141,7 @@ pub trait IntoPinInputCaptureMode<
 macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
-            impl<Int: drone_cortexm::thr::IntToken, PinType: Send + Sync, PinPull: Send + Sync>
+            impl<Int: drone_cortexm::thr::IntToken, PinType: drone_stm32f4_gpio_drv::PinTypeMap, PinPull: drone_stm32f4_gpio_drv::PinPullMap>
                 crate::IntoPinInputCaptureMode<
                     $tim,
                     Int,
@@ -169,7 +169,7 @@ macro_rules! general_tim_channel {
     };
 }
 
-impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: InputSelection>
+impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>, Pin: GpioPinMap, Af: PinAf, PinType: PinTypeMap, PinPull: PinPullMap, Sel: InputSelection>
     GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
     fn capture_stream<Item>(
@@ -213,8 +213,8 @@ impl<
         Ch: GeneralTimCh<Tim>,
         Pin: GpioPinMap,
         Af: PinAf,
-        PinType: Send + Sync + 'static,
-        PinPull: Send + Sync + 'static,
+        PinType: PinTypeMap,
+        PinPull: PinPullMap,
         Sel: InputSelection,
     > TimerCaptureCh for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
@@ -249,8 +249,8 @@ impl<
         Ch: GeneralTimCh<Tim>,
         Pin: GpioPinMap,
         Af: PinAf,
-        PinType: Send + Sync + 'static,
-        PinPull: Send + Sync + 'static,
+        PinType: PinTypeMap,
+        PinPull: PinPullMap,
         Sel: InputSelection,
     > TimerPinCaptureCh<Pin, Af, PinType, PinPull> for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>
 {
@@ -265,8 +265,8 @@ impl<
         Ch: GeneralTimCh<Tim>,
         Pin: GpioPinMap,
         Af: PinAf,
-        PinType: Send + Sync,
-        PinPull: Send + Sync,
+        PinType: PinTypeMap,
+        PinPull: PinPullMap,
         Sel: InputSelection,
     > CaptureStop
     for GeneralTimChDrv<Tim, Int, Ch, InputCaptureMode<Pin, Af, PinType, PinPull, Sel>>

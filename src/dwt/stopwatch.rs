@@ -11,6 +11,7 @@ pub struct Stopwatch
 
 impl Stopwatch {
     /// Start a new stopwatch.
+    #[must_use]
     #[inline]
     pub fn start_new() -> Self {
         Self {
@@ -35,6 +36,7 @@ impl Stopwatch {
     }
 
     /// Get the total elapsed time in cpu cycles
+    #[must_use]
     #[inline]
     pub fn elapsed(&self) -> u32 {
         let now = cyccnt();

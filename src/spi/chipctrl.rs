@@ -1,13 +1,13 @@
 use crate::master::SpiMasterDrv;
 use drone_cortexm::thr::prelude::*;
 use drone_stm32_map::periph::{dma::ch::DmaChMap, gpio::pin::GpioPinMap, spi::SpiMap};
-use drone_stm32f4_gpio_drv::{GpioPin, OutputMode};
+use drone_stm32f4_gpio_drv::{GpioPin, prelude::*};
 
-pub struct SpiChip<Pin: GpioPinMap, PinType, PinPull> {
+pub struct SpiChip<Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap> {
     cs: GpioPin<Pin, OutputMode, PinType, PinPull>,
 }
 
-impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
+impl<Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap> SpiChip<Pin, PinType, PinPull> {
     /// Select the chip by setting the CS pin low.
     #[inline]
     pub fn select(&mut self) {
@@ -21,7 +21,7 @@ impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
     }
 }
 
-impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
+impl<Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap> SpiChip<Pin, PinType, PinPull> {
     /// Initialize a new `SpiChip` as deselected.
     pub fn new_deselected(cs: GpioPin<Pin, OutputMode, PinType, PinPull>) -> Self {
         let mut chip = Self { cs };
@@ -30,11 +30,11 @@ impl<Pin: GpioPinMap, PinType, PinPull> SpiChip<Pin, PinType, PinPull> {
     }
 }
 
-pub struct SelectGuard<'a, Pin: GpioPinMap, PinType, PinPull> {
+pub struct SelectGuard<'a, Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap> {
     chip: &'a mut SpiChip<Pin, PinType, PinPull>,
 }
 
-impl<Pin: GpioPinMap, PinType, PinPull> Drop
+impl<Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap> Drop
     for SelectGuard<'_, Pin, PinType, PinPull>
 {
     #[inline]
@@ -46,7 +46,7 @@ impl<Pin: GpioPinMap, PinType, PinPull> Drop
 pub trait ChipCtrl {
     /// Select a specific chip and return a guard that deselects the chip when dropped.
     #[inline]
-    fn select<'guard, Pin: GpioPinMap, PinType, PinPull>(
+    fn select<'guard, Pin: GpioPinMap, PinType: PinTypeMap, PinPull: PinPullMap>(
         &mut self,
         chip: &'guard mut SpiChip<Pin, PinType, PinPull>,
     ) -> SelectGuard<'guard, Pin, PinType, PinPull> {

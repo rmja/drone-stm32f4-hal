@@ -25,7 +25,7 @@ pub trait ExtiMap: drone_stm32_map::periph::exti::ExtiMap + SyscfgExticrExti + E
 
 pub mod prelude {
     pub use crate::drv::ExtiDrvLine;
-    pub use crate::drv::{BothEdges, FallingEdge, RisingEdge};
+    pub use crate::drv::{BothEdges, FallingEdge, RisingEdge, NoEdge, EdgeMap};
 }
 
 #[prelude_import]

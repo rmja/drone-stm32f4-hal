@@ -1,4 +1,4 @@
-use crate::{ExtiDrv, ExtiMap, FallingEdge, diverged::ExtiDiverged};
+use crate::{EdgeMap, ExtiDrv, ExtiMap, FallingEdge, diverged::ExtiDiverged};
 use core::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
 use alloc::sync::Arc;
 use displaydoc::Display;
@@ -18,8 +18,11 @@ pub trait HeadNum {
 pub struct ExtiLine<
     Exti: ExtiMap,
     ExtiInt: IntToken,
-    Pin: GpioPinMap, PinMode, PinType, PinPull,
-    Edge: 'static,
+    Pin: GpioPinMap,
+    PinMode: PinModeMap,
+    PinType: PinTypeMap,
+    PinPull: PinPullMap,
+    Edge: EdgeMap,
 > {
     exti: Arc<ExtiDiverged<Exti>>,
     exti_int: ExtiInt,
@@ -30,8 +33,11 @@ pub struct ExtiLine<
 impl<
         Exti: ExtiMap,
         ExtiInt: IntToken,
-        Pin: GpioPinMap, PinMode: 'static, PinType: 'static, PinPull: 'static,
-        Edge,
+        Pin: GpioPinMap,
+        PinMode: PinModeMap,
+        PinType: PinTypeMap,
+        PinPull: PinPullMap,
+        Edge: EdgeMap,
     > ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, Edge>
 {
     pub(crate) fn init<Head: GpioHeadMap + HeadNum>(
@@ -77,7 +83,10 @@ impl<
 impl<
         Exti: ExtiMap,
         ExtiInt: IntToken,
-        Pin: GpioPinMap, PinMode: PinGetMode + 'static, PinType: 'static, PinPull: 'static,
+        Pin: GpioPinMap,
+        PinMode: PinGetMode,
+        PinType: PinTypeMap,
+        PinPull: PinPullMap,
     > ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, FallingEdge>
 {
     /// Wait for the line to become low. Return immediately if this is already the case.

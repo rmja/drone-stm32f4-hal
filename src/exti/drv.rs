@@ -4,14 +4,23 @@ use alloc::sync::Arc;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     exti::ExtiPeriph,
-    gpio::{head::GpioHeadMap, pin::GpioPinMap},
 };
-use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, InputMode, PinAf};
+use drone_stm32f4_gpio_drv::{GpioHeadMap, GpioPinMap, GpioPin, prelude::*};
+
+pub trait EdgeMap: Send + Sync + 'static {}
 
 pub struct RisingEdge;
+impl EdgeMap for RisingEdge {}
+
 pub struct FallingEdge;
+impl EdgeMap for FallingEdge {}
+
 pub struct BothEdges;
+impl EdgeMap for BothEdges {}
+
 pub struct NoEdge;
+impl EdgeMap for NoEdge {}
+
 
 /// EXTI driver.
 pub struct ExtiDrv<
@@ -86,17 +95,17 @@ pub trait ExtiDrvLine<
     Exti: ExtiMap,
     ExtiInt: IntToken,
     Pin: GpioPinMap,
-    PinMode: 'static,
-    Edge,
+    PinMode: PinModeMap,
+    Edge: EdgeMap,
 >
 {
-    fn line<PinType: 'static, PinPull: 'static>(
+    fn line<PinType: PinTypeMap, PinPull: PinPullMap>(
         &self,
         pin: GpioPin<Pin, PinMode, PinType, PinPull>,
     ) -> ExtiLine<Exti, ExtiInt, Pin, PinMode, PinType, PinPull, Edge>;
 }
 
-pub trait ExtiPinModes: Send + Sync + 'static {}
+pub trait ExtiPinModes: PinModeMap {}
 impl ExtiPinModes for InputMode {}
 impl<Af: PinAf> ExtiPinModes for AlternateMode<Af> {}
 
@@ -104,7 +113,11 @@ impl<Af: PinAf> ExtiPinModes for AlternateMode<Af> {}
 macro_rules! exti_line {
     ($($exti:ident, $head:ident, $pin:ident;)+) => {
         $(
-            impl<ExtiInt: drone_cortexm::thr::IntToken, PinMode: crate::drv::ExtiPinModes, Edge>
+            impl<
+                ExtiInt: drone_cortexm::thr::IntToken,
+                PinMode: crate::drv::ExtiPinModes,
+                Edge: crate::EdgeMap,
+            >
                 crate::drv::ExtiDrvLine<
                     $exti,
                     ExtiInt,
@@ -114,8 +127,8 @@ macro_rules! exti_line {
                 > for crate::drv::ExtiDrv<$exti, ExtiInt, $head, Edge>
             {
                 fn line<
-                    PinType: 'static,
-                    PinPull: 'static,
+                    PinType: drone_stm32f4_gpio_drv::PinTypeMap,
+                    PinPull: drone_stm32f4_gpio_drv::PinPullMap,
                 >(
                     &self,
                     pin: drone_stm32f4_gpio_drv::GpioPin<

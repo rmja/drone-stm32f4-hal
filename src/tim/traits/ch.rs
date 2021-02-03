@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 use alloc::sync::Arc;
-use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, GpioPinMap, PinAf};
+use drone_stm32f4_gpio_drv::{GpioPin, GpioPinMap, prelude::*};
 
 /// Capture/Compare channel 1.
 pub struct TimCh1;
@@ -19,12 +19,12 @@ pub struct TimCh4;
 pub struct OutputCompareMode;
 
 /// Timer Input Capture mode.
-pub struct InputCaptureMode<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: Send + Sync> {
+pub struct InputCaptureMode<Pin: GpioPinMap, Af: PinAf, PinType: PinTypeMap, PinPull: PinPullMap, Sel: Send + Sync + 'static> {
     pub pin: Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>>,
     sel: PhantomData<Sel>,
 }
 
-impl<Pin: GpioPinMap, Af: PinAf, PinType: Send + Sync, PinPull: Send + Sync, Sel: Send + Sync> InputCaptureMode<Pin, Af, PinType, PinPull, Sel> {
+impl<Pin: GpioPinMap, Af: PinAf, PinType: PinTypeMap, PinPull: PinPullMap, Sel: Send + Sync + 'static> InputCaptureMode<Pin, Af, PinType, PinPull, Sel> {
     pub fn new(pin: GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>) -> Self {
         Self {
             pin: Arc::new(pin),

@@ -6,15 +6,38 @@ use drone_stm32_map::periph::gpio::{
     pin::{GpioPinMap, GpioPinPeriph},
 };
 
+pub trait PinModeOrDontCare: Send + Sync + 'static {}
+pub trait PinModeMap: PinModeOrDontCare {}
+
+pub trait PinTypeOrDontCare: Send + Sync + 'static {}
+pub trait PinTypeMap: PinTypeOrDontCare {}
+
+pub trait PinPullOrDontCare: Send + Sync + 'static {}
+pub trait PinPullMap: PinPullOrDontCare {}
+
+pub trait PinAf: Send + Sync + 'static {
+    const NUM: u32;
+}
+
 /// Pin configuration.
-pub struct GpioPin<Pin: GpioPinMap, Mode, Type, Pull> {
+pub struct GpioPin<
+    Pin: GpioPinMap,
+    Mode: PinModeOrDontCare,
+    Type: PinTypeOrDontCare,
+    Pull: PinPullOrDontCare,
+> {
     pub(crate) pin: Arc<GpioPinPeriph<Pin>>,
     mode: PhantomData<Mode>,
     type_: PhantomData<Type>,
     pull: PhantomData<Pull>,
 }
 
-impl<Pin: GpioPinMap, Mode, Type, Pull>
+impl<
+    Pin: GpioPinMap,
+    Mode: PinModeOrDontCare,
+    Type: PinTypeOrDontCare,
+    Pull: PinPullOrDontCare,
+>
     From<Arc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
     fn from(pin: Arc<GpioPinPeriph<Pin>>) -> Self {
@@ -29,36 +52,55 @@ impl<Pin: GpioPinMap, Mode, Type, Pull>
 
 /// Generic dont-care mode for undefined state.
 pub struct DontCare;
+impl PinModeOrDontCare for DontCare {}
+impl PinTypeOrDontCare for DontCare {}
+impl PinPullOrDontCare for DontCare {}
 
 /// General purpose input mode (MODER=0b00).
 pub struct InputMode;
+impl PinModeMap for InputMode {}
+impl PinModeOrDontCare for InputMode {}
 
 /// General purpose output mode  (MODER=0b01).
 pub struct OutputMode;
+impl PinModeMap for OutputMode {}
+impl PinModeOrDontCare for OutputMode {}
 
 /// Alternate function mode  (MODER=0b10).
 pub struct AlternateMode<Af: PinAf> {
     af: PhantomData<Af>,
 }
+impl<Af: PinAf> PinModeMap for AlternateMode<Af> {}
+impl<Af: PinAf> PinModeOrDontCare for AlternateMode<Af> {}
 
 // TODO: Analog mode
 
 /// Push/pull type (OTYPER=0).
 /// This is only applicabale for OutputMode and AlternateMode.
 pub struct PushPullType;
+impl PinTypeMap for PushPullType {}
+impl PinTypeOrDontCare for PushPullType {}
 
 /// Output open-drain type (OTYPER=1).
 /// This is only applicabale for OutputMode and AlternateMode.
 pub struct OpenDrainType;
+impl PinTypeMap for OpenDrainType {}
+impl PinTypeOrDontCare for OpenDrainType {}
 
 /// No pull-up nor pull-down. For inputs this means floating.
 pub struct NoPull;
+impl PinPullMap for NoPull {}
+impl PinPullOrDontCare for NoPull {}
 
 /// Pull up.
 pub struct PullUp;
+impl PinPullMap for PullUp {}
+impl PinPullOrDontCare for PullUp {}
 
 /// Pull down.
 pub struct PullDown;
+impl PinPullMap for PullDown {}
+impl PinPullOrDontCare for PullDown {}
 
 pub struct PinAf0;
 pub struct PinAf1;
@@ -76,10 +118,6 @@ pub struct PinAf12;
 pub struct PinAf13;
 pub struct PinAf14;
 pub struct PinAf15;
-
-pub trait PinAf: Send + Sync + 'static {
-    const NUM: u32;
-}
 
 macro_rules! af_token {
     ($af:ident, $num:expr) => {
@@ -136,7 +174,7 @@ impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
     }
 }
 
-pub trait TypeModes: Send + Sync {}
+pub trait TypeModes: PinModeMap {}
 impl TypeModes for InputMode {}
 impl TypeModes for OutputMode {}
 impl<Af: PinAf> TypeModes for AlternateMode<Af> {}
@@ -156,7 +194,7 @@ impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
     }
 }
 
-pub trait PullModes: Send + Sync {}
+pub trait PullModes: PinModeMap {}
 impl PullModes for InputMode {}
 impl PullModes for OutputMode {}
 impl<Af: PinAf> PullModes for AlternateMode<Af> {}
@@ -183,15 +221,15 @@ impl<Pin: GpioPinMap, Mode: PullModes>
     }
 }
 
-pub trait WithSpeedModes: Send + Sync {}
+pub trait WithSpeedModes: PinModeMap {}
 impl WithSpeedModes for OutputMode {}
 impl<Af: PinAf> WithSpeedModes for AlternateMode<Af> {}
 
 impl<
         Pin: GpioPinMap,
         Mode: WithSpeedModes,
-        Type,
-        Pull,
+        Type: PinTypeOrDontCare,
+        Pull: PinPullOrDontCare,
     > GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
@@ -206,12 +244,17 @@ impl<
     }
 }
 
-pub trait PinGetMode: Send + Sync {}
+pub trait PinGetMode: PinModeMap {}
 impl PinGetMode for InputMode {}
 impl PinGetMode for OutputMode {}
 impl<Af: PinAf> PinGetMode for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PinGetMode, Type, Pull>
+impl<
+    Pin: GpioPinMap,
+    Mode: PinGetMode,
+    Type: PinTypeMap,
+    Pull: PinPullMap,
+>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Get the current pin state.
@@ -220,7 +263,11 @@ impl<Pin: GpioPinMap, Mode: PinGetMode, Type, Pull>
     }
 }
 
-impl<Pin: GpioPinMap, Type, Pull> GpioPin<Pin, OutputMode, Type, Pull> {
+impl<
+    Pin: GpioPinMap,
+    Type: PinTypeMap,
+    Pull: PinPullMap,
+> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
     #[inline]
     pub fn set(&self) {
@@ -236,7 +283,12 @@ impl<Pin: GpioPinMap, Type, Pull> GpioPin<Pin, OutputMode, Type, Pull> {
     }
 }
 
-impl<Pin: GpioPinMap, Mode, Type, Pull>
+impl<
+    Pin: GpioPinMap,
+    Mode: PinModeMap,
+    Type: PinTypeMap,
+    Pull: PinPullMap,
+>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Clone the pin

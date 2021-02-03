@@ -4,7 +4,7 @@ use core::{
 };
 
 use alloc::sync::Arc;
-use drone_stm32f4_gpio_drv::{AlternateMode, GpioPin, GpioPinMap, PinAf};
+use drone_stm32f4_gpio_drv::{GpioPin, GpioPinMap, prelude::*};
 use futures::Stream;
 
 pub struct ChannelCaptureOverflow;
@@ -45,7 +45,7 @@ pub trait TimerCaptureCh {
         polarity: TimerCapturePolarity,
     ) -> CaptureStream<'_, Self::Stop, Result<u32, ChannelCaptureOverflow>>;
 }
-pub trait TimerPinCaptureCh<Pin: GpioPinMap, Af: PinAf, PinType: Send, PinPull: Send>: TimerCaptureCh {
+pub trait TimerPinCaptureCh<Pin: GpioPinMap, Af: PinAf, PinType: PinTypeMap, PinPull: PinPullMap>: TimerCaptureCh {
     /// Get a handle for the underlying capture pin.
     fn pin(&self) -> Arc<GpioPin<Pin, AlternateMode<Af>, PinType, PinPull>>;
 }
