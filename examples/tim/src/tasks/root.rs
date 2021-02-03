@@ -9,6 +9,7 @@ use drone_stm32_map::periph::{
     tim::periph_tim4,
 };
 use drone_stm32f4_hal::{
+    dwt::Stopwatch,
     gpio::{prelude::*, GpioHead, GpioPinSpeed},
     rcc::{prelude::*, periph_flash, periph_pwr, periph_rcc, Flash, Pwr, Rcc, RccSetup},
     tim::{prelude::*, GeneralTimCfg, GeneralTimSetup},
@@ -48,6 +49,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     swo::update_prescaler(consts::HCLK.f() / log::baud_rate!() - 1);
     rcc.select(consts::SYSCLK_PLL, pll.p());
 
+    let sw = Stopwatch::start_new();
+
     // Configure timer.
     let tim2_setup = GeneralTimSetup::new(
         periph_tim2!(reg),
@@ -83,6 +86,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .into_trigger_slave_of(tim2.link);
 
     tim2.start(); // Also starts tim4
+
+
+    let elapsed = sw.elapsed();
+    println!("Setup took {} cycles", elapsed);
 
     // let mut overflow_stream = tim4.ovf.saturating_pulse_stream();
     let mut capture_stream = tim4.ch1.saturating_stream(10, TimerCapturePolarity::RisingEdge);

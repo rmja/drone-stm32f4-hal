@@ -7,6 +7,8 @@
 
 pub use drone_cortexm::thr::IntToken;
 
+pub mod dwt;
+
 #[cfg(feature = "dma")]
 pub extern crate drone_stm32f4_dma_drv as dma;
 
