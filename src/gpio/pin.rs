@@ -12,8 +12,7 @@ pub trait PinModeMap: PinModeOrDontCare {}
 pub trait PinTypeOrDontCare: Send + Sync + 'static {}
 pub trait PinTypeMap: PinTypeOrDontCare {}
 
-pub trait PinPullOrDontCare: Send + Sync + 'static {}
-pub trait PinPullMap: PinPullOrDontCare {}
+pub trait PinPullMap: Send + Sync + 'static {}
 
 pub trait PinAf: Send + Sync + 'static {
     const NUM: u32;
@@ -24,7 +23,7 @@ pub struct GpioPin<
     Pin: GpioPinMap,
     Mode: PinModeOrDontCare,
     Type: PinTypeOrDontCare,
-    Pull: PinPullOrDontCare,
+    Pull: PinPullMap,
 > {
     pub(crate) pin: Arc<GpioPinPeriph<Pin>>,
     mode: PhantomData<Mode>,
@@ -36,7 +35,7 @@ impl<
     Pin: GpioPinMap,
     Mode: PinModeOrDontCare,
     Type: PinTypeOrDontCare,
-    Pull: PinPullOrDontCare,
+    Pull: PinPullMap,
 >
     From<Arc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
@@ -54,7 +53,6 @@ impl<
 pub struct DontCare;
 impl PinModeOrDontCare for DontCare {}
 impl PinTypeOrDontCare for DontCare {}
-impl PinPullOrDontCare for DontCare {}
 
 /// General purpose input mode (MODER=0b00).
 pub struct InputMode;
@@ -90,17 +88,14 @@ impl PinTypeOrDontCare for OpenDrainType {}
 /// No pull-up nor pull-down. For inputs this means floating.
 pub struct NoPull;
 impl PinPullMap for NoPull {}
-impl PinPullOrDontCare for NoPull {}
 
 /// Pull up.
 pub struct PullUp;
 impl PinPullMap for PullUp {}
-impl PinPullOrDontCare for PullUp {}
 
 /// Pull down.
 pub struct PullDown;
 impl PinPullMap for PullDown {}
-impl PinPullOrDontCare for PullDown {}
 
 pub struct PinAf0;
 pub struct PinAf1;
@@ -153,21 +148,21 @@ pub enum GpioPinSpeed {
     VeryHighSpeed,
 }
 
-impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, DontCare> {
+impl<Pin: GpioPinMap> GpioPin<Pin, DontCare, DontCare, NoPull> {
     /// Set pin into general purpose input mode.
-    pub fn into_input(self) -> GpioPin<Pin, InputMode, DontCare, DontCare> {
+    pub fn into_input(self) -> GpioPin<Pin, InputMode, DontCare, NoPull> {
         self.pin.gpio_moder_moder.write_bits(0b00);
         self.pin.into()
     }
 
     /// Set pin into general purpose output mode.
-    pub fn into_output(self) -> GpioPin<Pin, OutputMode, DontCare, DontCare> {
+    pub fn into_output(self) -> GpioPin<Pin, OutputMode, DontCare, NoPull> {
         self.pin.gpio_moder_moder.write_bits(0b01);
         self.pin.into()
     }
 
     /// Set the pin into alternate function mode.
-    pub fn into_alternate<Af: PinAf>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, DontCare> {
+    pub fn into_alternate<Af: PinAf>(self) -> GpioPin<Pin, AlternateMode<Af>, DontCare, NoPull> {
         self.pin.gpio_afr_afr.write_bits(Af::NUM);
         self.pin.gpio_moder_moder.write_bits(0b10);
         self.pin.into()
@@ -179,16 +174,16 @@ impl TypeModes for InputMode {}
 impl TypeModes for OutputMode {}
 impl<Af: PinAf> TypeModes for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, DontCare> {
+impl<Pin: GpioPinMap, Mode: TypeModes> GpioPin<Pin, Mode, DontCare, NoPull> {
     /// Let pin type be push/pull.
-    pub fn into_pushpull(self) -> GpioPin<Pin, Mode, PushPullType, DontCare> {
+    pub fn into_pushpull(self) -> GpioPin<Pin, Mode, PushPullType, NoPull> {
         self.pin.gpio_otyper_ot.clear_bit();
         self.pin.gpio_pupdr_pupdr.write_bits(0b00); // No pull-up nor pull-down.
         self.pin.into()
     }
 
     /// Let pin type be open-drain.
-    pub fn into_opendrain(self) -> GpioPin<Pin, Mode, OpenDrainType, DontCare> {
+    pub fn into_opendrain(self) -> GpioPin<Pin, Mode, OpenDrainType, NoPull> {
         self.pin.gpio_otyper_ot.set_bit();
         self.pin.into()
     }
@@ -200,9 +195,9 @@ impl PullModes for OutputMode {}
 impl<Af: PinAf> PullModes for AlternateMode<Af> {}
 
 impl<Pin: GpioPinMap, Mode: PullModes>
-    GpioPin<Pin, Mode, PushPullType, DontCare>
+    GpioPin<Pin, Mode, PushPullType, NoPull>
 {
-    /// No pull-up nor pull-down.
+    /// No pull-up nor pull-down (this is the default).
     pub fn into_nopull(self) -> GpioPin<Pin, Mode, PushPullType, NoPull> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b00);
         self.pin.into()
@@ -229,7 +224,7 @@ impl<
         Pin: GpioPinMap,
         Mode: WithSpeedModes,
         Type: PinTypeOrDontCare,
-        Pull: PinPullOrDontCare,
+        Pull: PinPullMap,
     > GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
@@ -307,7 +302,7 @@ impl<
 
 pub trait NewPin<Head: GpioHeadMap, Pin: GpioPinMap> {
     /// Create a new pin configuration from a pin peripheral.
-    fn pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, DontCare>;
+    fn pin(&self, pin: GpioPinPeriph<Pin>) -> GpioPin<Pin, DontCare, DontCare, NoPull>;
 }
 
 #[macro_export]
@@ -329,7 +324,7 @@ macro_rules! pin_init {
                     $pin,
                     crate::pin::DontCare,
                     crate::pin::DontCare,
-                    crate::pin::DontCare,
+                    crate::NoPull,
                 > {
                     crate::pin::GpioPin::from(alloc::sync::Arc::new(pin))
                 }

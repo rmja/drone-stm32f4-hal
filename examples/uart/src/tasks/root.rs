@@ -40,12 +40,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let pin_tx = port_a.pin(periph_gpio_a2!(reg))
         .into_alternate()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
     let pin_rx = port_a.pin(periph_gpio_a3!(reg))
         .into_alternate()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
 
     unsafe {
@@ -58,7 +56,6 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let mut dbg1 = gpio_b.pin(periph_gpio_b2!(reg))
         .into_output()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
 
     // Initialize clocks.

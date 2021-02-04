@@ -41,22 +41,18 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
         .into_alternate()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
     let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
         .into_alternate()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
     let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
         .into_alternate()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
     let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
         .into_output()
         .into_pushpull()
-        .into_nopull()
         .with_speed(GpioPinSpeed::HighSpeed);
 
     // Disable IO port clock.

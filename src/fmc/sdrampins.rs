@@ -99,7 +99,7 @@ macro_rules! sdram_pins {
         {
             let periph = ::drone_stm32f4_hal::fmc::sdram_pin_periph!($gpio, $pin_name, $reg);
             let pin = ::drone_stm32f4_hal::gpio::NewPin::pin(&$gpio, periph);
-            $pins.$pin_name(pin.into_alternate().into_pushpull().into_nopull().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed))
+            $pins.$pin_name(pin.into_alternate().into_pushpull().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed))
         }
     };
     (helper, $pins:ident, $reg:ident, $gpio:ident => $($pin_name:ident),+;) => {
@@ -108,7 +108,7 @@ macro_rules! sdram_pins {
             $(
                 let periph = ::drone_stm32f4_hal::fmc::sdram_pin_periph!($gpio, $pin_name, $reg);
                 let pin = ::drone_stm32f4_hal::gpio::NewPin::pin(&$gpio, periph);
-                let pins = pins.$pin_name(pin.into_alternate().into_pushpull().into_nopull().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed));
+                let pins = pins.$pin_name(pin.into_alternate().into_pushpull().with_speed(::drone_stm32f4_hal::gpio::GpioPinSpeed::HighSpeed));
             )+
             pins
         }
