@@ -22,7 +22,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     println!("Hello, world!");
 
     // Enable interrupts.
-    thr.exti_2.enable_int();
+    thr.exti2.enable_int();
 
     let gpio = GpioHead::with_enabled_clock(periph_gpio_i_head!(reg));
     let pin = gpio.pin(periph_gpio_i2!(reg)).into_input().into_pushpull().into_pulldown();
@@ -32,7 +32,7 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // }
 
     let syscfg = Syscfg::with_enabled_clock(periph_syscfg!(reg));
-    let exti = ExtiDrv::new(periph_exti2!(reg), thr.exti_2, &syscfg).into_rising_edge();
+    let exti = ExtiDrv::new(periph_exti2!(reg), thr.exti2, &syscfg).into_rising_edge();
 
     pin.get();
 

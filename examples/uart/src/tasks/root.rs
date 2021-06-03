@@ -29,9 +29,9 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Enable interrupts.
     thr.rcc.enable_int();
-    thr.usart_2.enable_int();
-    thr.dma_1_ch_5.enable_int();
-    thr.dma_1_ch_6.enable_int();
+    thr.usart2.enable_int();
+    thr.dma1_ch5.enable_int();
+    thr.dma1_ch6.enable_int();
 
     // Enable IO port clock.
     let port_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
@@ -79,14 +79,14 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Initialize dma.
     let dma1 = DmaCfg::with_enabled_clock(periph_dma1!(reg));
-    let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma_1_ch_5));
-    let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma_1_ch_6));
+    let rx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch5!(reg), thr.dma1_ch5));
+    let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma1_ch6));
 
     // Initialize uart.
     let uart_pins = UartPins::default()
         .tx(pin_tx)
         .rx(pin_rx);
-    let setup = UartSetup::init(periph_usart2!(reg), thr.usart_2, pclk1);
+    let setup = UartSetup::init(periph_usart2!(reg), thr.usart2, pclk1);
     let uart_drv = UartDrv::init(setup);
     let mut rx_drv = uart_drv.init_rx(rx_dma, &uart_pins);
     let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);

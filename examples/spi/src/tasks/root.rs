@@ -29,9 +29,9 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Enable interrupts.
     thr.rcc.enable_int();
-    thr.spi_1.enable_int();
-    thr.dma_2_ch_2.enable_int();
-    thr.dma_2_ch_3.enable_int();
+    thr.spi1.enable_int();
+    thr.dma2_ch2.enable_int();
+    thr.dma2_ch3.enable_int();
 
     // Enable IO port clock.
     let gpio_a = GpioHead::with_enabled_clock(periph_gpio_a_head!(reg));
@@ -41,19 +41,20 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let pin_sck = gpio_a.pin(periph_gpio_a5!(reg))
         .into_alternate()
         .into_pushpull()
-        .with_speed(GpioPinSpeed::HighSpeed);
+        .with_speed(GpioPinSpeed::MediumSpeed);
     let pin_miso = gpio_a.pin(periph_gpio_a6!(reg))
         .into_alternate()
         .into_pushpull()
-        .with_speed(GpioPinSpeed::HighSpeed);
+        .with_speed(GpioPinSpeed::MediumSpeed);
     let pin_mosi = gpio_a.pin(periph_gpio_a7!(reg))
         .into_alternate()
         .into_pushpull()
-        .with_speed(GpioPinSpeed::HighSpeed);
+        .with_speed(GpioPinSpeed::MediumSpeed);
     let pin_cs = gpio_b.pin(periph_gpio_b7!(reg))
         .into_output()
         .into_pushpull()
-        .with_speed(GpioPinSpeed::HighSpeed);
+        .into_pullup()
+        .with_speed(GpioPinSpeed::MediumSpeed);
 
     // Disable IO port clock.
     unsafe {
@@ -81,14 +82,14 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Initialize dma.
     let dma2 = DmaCfg::with_enabled_clock(periph_dma2!(reg));
-    let miso_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch2!(reg), thr.dma_2_ch_2));
-    let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma_2_ch_3));
+    let miso_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch2!(reg), thr.dma2_ch2));
+    let mosi_dma = dma2.ch(DmaChSetup::new(periph_dma2_ch3!(reg), thr.dma2_ch3));
 
     // Initialize spi.
     let pins = SpiPins::default().sck(pin_sck).miso(pin_miso).mosi(pin_mosi);
     let setup = SpiSetup::new(
         periph_spi1!(reg),
-        thr.spi_1,
+        thr.spi1,
         pins,
         pclk2,
         BaudRate::Max(7_700_000),

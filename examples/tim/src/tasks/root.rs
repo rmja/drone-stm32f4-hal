@@ -27,8 +27,8 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
 
     // Enable interrupts.
     thr.rcc.enable_int();
-    thr.tim_2.enable_int();
-    thr.tim_4.enable_int();
+    thr.tim2.enable_int();
+    thr.tim4.enable_int();
 
     // Initialize clocks.
     let rcc = Rcc::init(RccSetup::new(periph_rcc!(reg), thr.rcc));
@@ -54,13 +54,13 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     // Configure timer.
     let tim2_setup = GeneralTimSetup::new(
         periph_tim2!(reg),
-        thr.tim_2,
+        thr.tim2,
         pclk1,
         TimFreq::Nominal(consts::TIM2_FREQ),
     );
     let tim4_setup = GeneralTimSetup::new(
         periph_tim4!(reg),
-        thr.tim_4,
+        thr.tim4,
         pclk1,
         TimFreq::Nominal(consts::TIM2_FREQ),
     );
