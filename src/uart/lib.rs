@@ -12,13 +12,13 @@ mod setup;
 
 pub use self::drv::UartDrv;
 pub use self::prelude::*;
-pub use self::setup::UartSetup;
+pub use self::setup::{UartSetup, BaudRate, Parity, StopBits};
 pub use drone_stm32_map::periph::uart::UartMap;
 pub use self::pins::UartPins;
 
 pub mod prelude {
     pub use crate::drv::{UartRxDrvInit, UartTxDrvInit};
-    pub use crate::setup::{UartSetupInit, BaudRate, Parity, StopBits};
+    pub use crate::setup::UartSetupInit;
     pub use crate::pins::traits::*;
 }
 

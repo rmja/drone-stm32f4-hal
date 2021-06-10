@@ -15,7 +15,7 @@ use drone_stm32f4_hal::{
     dma::{config::*, DmaCfg},
     gpio::{GpioHead, GpioPinSpeed, prelude::*},
     rcc::{prelude::*, periph_flash, periph_pwr, periph_rcc, Flash, Pwr, Rcc, RccSetup},
-    uart::{prelude::*, UartDrv, UartPins, UartSetup},
+    uart::{self, prelude::*},
 };
 
 /// The root task handler.
@@ -83,11 +83,11 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
     let tx_dma = dma1.ch(DmaChSetup::new(periph_dma1_ch6!(reg), thr.dma1_ch6));
 
     // Initialize uart.
-    let uart_pins = UartPins::default()
+    let uart_pins = uart::UartPins::default()
         .tx(pin_tx)
         .rx(pin_rx);
-    let setup = UartSetup::init(periph_usart2!(reg), thr.usart2, pclk1);
-    let uart_drv = UartDrv::init(setup);
+    let setup = uart::UartSetup::init(periph_usart2!(reg), thr.usart2, pclk1);
+    let uart_drv = uart::UartDrv::init(setup);
     let mut rx_drv = uart_drv.init_rx(rx_dma, &uart_pins);
     let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);
 
