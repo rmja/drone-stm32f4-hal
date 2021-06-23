@@ -1,4 +1,5 @@
 use crate::diverged::{DmaChDiverged, UartDiverged};
+use alloc::sync::Arc;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
@@ -6,24 +7,24 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
-pub struct UartTxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
-    pub(crate) uart: &'drv UartDiverged<Uart>,
-    pub(crate) uart_int: &'drv UartInt,
+pub struct UartTxDrv<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
+    pub(crate) uart: Arc<UartDiverged<Uart>>,
+    pub(crate) uart_int: UartInt,
     pub(crate) dma: DmaChDiverged<DmaTx>,
     pub(crate) dma_int: DmaTxInt,
 }
 
 pub struct TxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken> {
-    drv: &'sess UartTxDrv<'sess, Uart, UartInt, DmaTx, DmaTxInt>,
+    drv: &'sess UartTxDrv<Uart, UartInt, DmaTx, DmaTxInt>,
     busy: bool,
 }
 
-impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
-    UartTxDrv<'drv, Uart, UartInt, DmaTx, DmaTxInt>
+impl<Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken>
+    UartTxDrv<Uart, UartInt, DmaTx, DmaTxInt>
 {
     pub(crate) fn init<DmaTxStCh: DmaStChToken>(
-        uart: &'drv UartDiverged<Uart>,
-        uart_int: &'drv UartInt,
+        uart: Arc<UartDiverged<Uart>>,
+        uart_int: UartInt,
         tx_cfg: DmaChCfg<DmaTx, DmaTxStCh, DmaTxInt>,
     ) -> Self {
         let DmaChCfg {
@@ -39,7 +40,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaTx: DmaChMap, DmaTxInt: IntToken
             dma_int,
         };
         tx.dma
-            .init_dma_tx(uart.uart_dr.as_mut_ptr() as u32, DmaTxStCh::NUM, dma_pl);
+            .init_dma_tx(tx.uart.uart_dr.as_mut_ptr() as u32, DmaTxStCh::NUM, dma_pl);
         tx.dma.panic_on_err(dma_int);
         tx
     }

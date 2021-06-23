@@ -1,5 +1,6 @@
 use crate::{UartMap, setup::*, diverged::UartDiverged, pins::*, rx::UartRxDrv, tx::UartTxDrv};
 use core::marker::PhantomData;
+use alloc::sync::Arc;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
     dma::ch::DmaChMap,
@@ -10,7 +11,7 @@ use drone_stm32f4_rcc_drv::{clktree::*, ConfiguredClk};
 
 /// Uart driver.
 pub struct UartDrv<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
-    pub(crate) uart: UartDiverged<Uart>,
+    pub(crate) uart: Arc<UartDiverged<Uart>>,
     pub(crate) uart_int: UartInt,
     clk: PhantomData<Clk>,
 }
@@ -32,7 +33,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
         assert!(data_bits == 8 || data_bits == 9);
         assert!(oversampling == 8 || oversampling == 16);
         let mut drv = Self {
-            uart: uart.into(),
+            uart: Arc::new(uart.into()),
             uart_int,
             clk: PhantomData,
         };
@@ -114,7 +115,7 @@ impl<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> UartDrv<Uart, UartInt, Cl
     }
 }
 
-pub trait UartRxDrvInit<
+pub trait IntoRxDrv<
     Uart: UartMap,
     UartInt: IntToken,
     DmaCh: DmaChMap,
@@ -122,15 +123,15 @@ pub trait UartRxDrvInit<
     Clk: PClkToken,
 >
 {
-    /// Initialize a [`UartRxDrv`] from a configured dma channel.
-    fn init_rx<DmaInt: IntToken, Tx>(
-        &self,
+    /// Let the driver run in RX only for a configured dma channel.
+    fn into_rx<DmaInt: IntToken, Tx>(
+        self,
         rx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
         rx_pins: &UartPins<Uart, Defined, Tx>,
     ) -> UartRxDrv<Uart, UartInt, DmaCh>;
 }
 
-pub trait UartTxDrvInit<
+pub trait IntoTxDrv<
     Uart: UartMap,
     UartInt: IntToken,
     DmaCh: DmaChMap,
@@ -138,22 +139,43 @@ pub trait UartTxDrvInit<
     Clk: PClkToken,
 >
 {
-    /// Initialize a [`UartTxDrv`] from a configured dma channel.
-    fn init_tx<DmaInt: IntToken, Rx>(
-        &self,
+    /// Let the driver run in TX only for a configured dma channel.
+    fn into_tx<DmaInt: IntToken, Rx>(
+        self,
         tx_cfg: DmaChCfg<DmaCh, DmaStCh, DmaInt>,
         tx_pins: &UartPins<Uart, Rx, Defined>,
     ) -> UartTxDrv<Uart, UartInt, DmaCh, DmaInt>;
 }
 
+pub trait IntoTrxDrv<
+    Uart: UartMap,
+    UartInt: IntToken,
+    TxDmaCh: DmaChMap,
+    TxDmaStCh: DmaStChToken,
+    RxDmaCh: DmaChMap,
+    RxDmaStCh: DmaStChToken,
+    Clk: PClkToken,
+>
+{
+    /// Let the driver run in TX and RX for configured dma channels.
+    fn into_trx<TxDmaInt: IntToken, RxDmaInt: IntToken>(
+        self,
+        tx_cfg: DmaChCfg<TxDmaCh, TxDmaStCh, TxDmaInt>,
+        rx_cfg: DmaChCfg<RxDmaCh, RxDmaStCh, RxDmaInt>,
+        pins: &UartPins<Uart, Defined, Defined>,
+    ) -> (
+        UartTxDrv<Uart, UartInt, TxDmaCh, TxDmaInt>,
+        UartRxDrv<Uart, UartInt, RxDmaCh>);
+}
+
 #[macro_export]
 macro_rules! rx_drv_init {
-    ($uart:ident, $ch:ident, $stch:ident) => {
+    ($uart:ident; $ch:ident, $stch:ident) => {
         impl<
                 UartInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::UartRxDrvInit<
+            crate::drv::IntoRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
@@ -161,8 +183,8 @@ macro_rules! rx_drv_init {
                 Clk,
             > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
-            fn init_rx<DmaRxInt: drone_cortexm::thr::IntToken, Tx>(
-                &self,
+            fn into_rx<DmaRxInt: drone_cortexm::thr::IntToken, Tx>(
+                self,
                 rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     drone_stm32_map::periph::dma::ch::$ch,
                     $stch,
@@ -174,7 +196,7 @@ macro_rules! rx_drv_init {
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
             > {
-                crate::rx::UartRxDrv::init(&self.uart, &self.uart_int, rx_cfg)
+                crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg)
             }
         }
     };
@@ -182,12 +204,12 @@ macro_rules! rx_drv_init {
 
 #[macro_export]
 macro_rules! tx_drv_init {
-    ($uart:ident, $ch:ident, $stch:ident) => {
+    ($uart:ident; $ch:ident, $stch:ident) => {
         impl<
                 UartInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::UartTxDrvInit<
+            crate::drv::IntoTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
@@ -195,8 +217,8 @@ macro_rules! tx_drv_init {
                 Clk,
             > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
-            fn init_tx<DmaInt: drone_cortexm::thr::IntToken, Rx>(
-                &self,
+            fn into_tx<DmaInt: drone_cortexm::thr::IntToken, Rx>(
+                self,
                 tx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
                     drone_stm32_map::periph::dma::ch::$ch,
                     $stch,
@@ -209,7 +231,56 @@ macro_rules! tx_drv_init {
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                crate::tx::UartTxDrv::init(&self.uart, &self.uart_int, tx_cfg)
+                crate::tx::UartTxDrv::init(self.uart, self.uart_int, tx_cfg)
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! trx_drv_init {
+    ($uart:ident; $tx_ch:ident, $tx_stch:ident; $rx_ch:ident, $rx_stch:ident) => {
+        impl<
+                UartInt: drone_cortexm::thr::IntToken,
+                Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
+            >
+            crate::drv::IntoTrxDrv<
+                drone_stm32_map::periph::uart::$uart,
+                UartInt,
+                drone_stm32_map::periph::dma::ch::$tx_ch,
+                $tx_stch,
+                drone_stm32_map::periph::dma::ch::$rx_ch,
+                $rx_stch,
+                Clk,
+            > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
+        {
+            fn into_trx<TxDmaInt: drone_cortexm::thr::IntToken, RxDmaInt: drone_cortexm::thr::IntToken>(
+                self,
+                tx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
+                    drone_stm32_map::periph::dma::ch::$tx_ch,
+                    $tx_stch,
+                    TxDmaInt,
+                >,
+                rx_cfg: drone_stm32f4_dma_drv::DmaChCfg<
+                    drone_stm32_map::periph::dma::ch::$rx_ch,
+                    $rx_stch,
+                    RxDmaInt,
+                >,
+                _pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Defined, Defined>,
+            ) -> (crate::tx::UartTxDrv<
+                drone_stm32_map::periph::uart::$uart,
+                UartInt,
+                drone_stm32_map::periph::dma::ch::$tx_ch,
+                TxDmaInt,
+            >, crate::rx::UartRxDrv<
+                drone_stm32_map::periph::uart::$uart,
+                UartInt,
+                drone_stm32_map::periph::dma::ch::$rx_ch,
+            >) {
+                let tx = crate::tx::UartTxDrv::init(self.uart.clone(), self.uart_int, tx_cfg);
+                let rx = crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg);
+
+                (tx, rx)
             }
         }
     };

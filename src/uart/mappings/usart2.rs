@@ -1,4 +1,4 @@
-use crate::{uart_setup_init, rx_drv_init, tx_drv_init, pins::{*, traits::*}};
+use crate::{uart_setup_init, rx_drv_init, tx_drv_init, trx_drv_init, pins::{*, traits::*}};
 use drone_stm32_map::periph::gpio::pin::*;
 use drone_stm32_map::periph::uart::Usart2;
 use drone_stm32f4_dma_drv::DmaStCh4;
@@ -8,9 +8,11 @@ use drone_stm32f4_rcc_drv::clktree::PClk1;
 
 uart_setup_init!(Usart2, PClk1);
 
-rx_drv_init!(Usart2, Dma1Ch5, DmaStCh4);
+rx_drv_init!(Usart2; Dma1Ch5, DmaStCh4);
 
-tx_drv_init!(Usart2, Dma1Ch6, DmaStCh4);
+tx_drv_init!(Usart2; Dma1Ch6, DmaStCh4);
+
+trx_drv_init!(Usart2; Dma1Ch6, DmaStCh4; Dma1Ch5, DmaStCh4);
 
 pin_impl!(RxPinExt for UartPins<Usart2, ...>.rx, GpioA3, AlternateMode<PinAf7>; Undefined, Tx -> Defined, Tx);
 #[cfg(any(

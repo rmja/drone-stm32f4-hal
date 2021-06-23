@@ -300,7 +300,7 @@ The rx and tx operation of the driver are completely separated, and each of them
 Completing the setup for tx operation looks like this:
 ```rust
 let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
-let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);
+let mut tx_drv = uart_drv.into_tx(tx_dma, &uart_pins);
 ```
 
 With `tx_drv` we are now finally able to do some communication.
@@ -327,7 +327,7 @@ The rx part of the driver is initialized like the following:
 
 ```rust
 let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
-let mut rx_drv = uart_drv.init_rx(rx_setup, &uart_pins);
+let mut rx_drv = uart_drv.into_rx(rx_setup, &uart_pins);
 ```
 
 Again, as for the tx part, the driver is not yet ready to receive. For this we need to start the receiver:
@@ -355,6 +355,15 @@ The driver is started with the ring buffer `rx_ring_buf`. This buffer is interna
 This is not using busy waiting on data to become available, but is achieved internally by registering a [Drone OS] [fiber](https://book.drone-os.com/fibers.html) that completes when any data becomes available in the dma controller and therefore the ring buffer.
 
 The `read()` method may return an error if `read()` is not called fast enough, in which case it can happen that the ring buffer has overflowed since the last call to `read()`.
+
+### TX and RX Operation
+The two previous examples have shown tx-only and rx-only operation. One can split the driver into both a tx and rx driver as follows:
+
+```rust
+let tx_setup = DmaChSetup::init(periph_dma1_ch6!(reg), thr.dma_1_ch_6);
+let rx_setup = DmaChSetup::init(periph_dma1_ch5!(reg), thr.dma_1_ch_5);
+let (mut tx_drv, mut rx_drv) = uart_drv.into_trx(tx_setup, rx_setup, &uart_pins);
+```
 
 ## FMC
 The `fmc` feature provides an sdram driver. The driver ensures that all required pins are configured correctly, after which one can obtain a `&mut [T]` slice of the address mapped memory.

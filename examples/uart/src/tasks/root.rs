@@ -88,8 +88,9 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         .rx(pin_rx);
     let setup = uart::UartSetup::init(periph_usart2!(reg), thr.usart2, pclk1);
     let uart_drv = uart::UartDrv::init(setup);
-    let mut rx_drv = uart_drv.init_rx(rx_dma, &uart_pins);
-    let mut tx_drv = uart_drv.init_tx(tx_dma, &uart_pins);
+    // let mut tx_drv = uart_drv.into_tx(tx_dma, &uart_pins);
+    // let mut rx_drv = uart_drv.into_rx(rx_dma, &uart_pins);
+    let (mut tx_drv, mut rx_drv) = uart_drv.into_trx(tx_dma, rx_dma, &uart_pins);
 
     // Enable receiver.
     let rx_ring_buf = vec![0; 10].into_boxed_slice();

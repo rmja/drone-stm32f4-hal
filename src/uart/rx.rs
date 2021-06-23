@@ -1,4 +1,5 @@
 use crate::diverged::{DmaChDiverged, UartDiverged};
+use alloc::sync::Arc;
 use core::ops::Range;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::{
@@ -7,14 +8,14 @@ use drone_stm32_map::periph::{
 };
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 
-pub struct UartRxDrv<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> {
-    pub(crate) uart: &'drv UartDiverged<Uart>,
-    pub(crate) uart_int: &'drv UartInt,
+pub struct UartRxDrv<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> {
+    pub(crate) uart: Arc<UartDiverged<Uart>>,
+    pub(crate) uart_int: UartInt,
     pub(crate) dma: DmaChDiverged<DmaRx>,
 }
 
 pub struct RxGuard<'sess, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> {
-    drv: &'sess UartRxDrv<'sess, Uart, UartInt, DmaRx>,
+    drv: &'sess UartRxDrv<Uart, UartInt, DmaRx>,
     ring_buf: Box<[u8]>,
     first: usize,
     last_read_wrapped: bool,
@@ -25,12 +26,12 @@ pub enum RxError {
     Overflow,
 }
 
-impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
-    UartRxDrv<'drv, Uart, UartInt, DmaRx>
+impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
+    UartRxDrv<Uart, UartInt, DmaRx>
 {
     pub(crate) fn init<DmaRxStCh: DmaStChToken, DmaRxInt: IntToken>(
-        uart: &'drv UartDiverged<Uart>,
-        uart_int: &'drv UartInt,
+        uart: Arc<UartDiverged<Uart>>,
+        uart_int: UartInt,
         rx_cfg: DmaChCfg<DmaRx, DmaRxStCh, DmaRxInt>,
     ) -> Self {
         let DmaChCfg {
@@ -45,7 +46,7 @@ impl<'drv, Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
             dma: dma_ch.into(),
         };
         rx.dma
-            .init_dma_rx(uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::NUM, dma_pl);
+            .init_dma_rx(rx.uart.uart_dr.as_mut_ptr() as u32, DmaRxStCh::NUM, dma_pl);
         rx.dma.panic_on_err(dma_int);
         rx
     }
