@@ -1,5 +1,4 @@
 use crate::periph::FmcPeriph;
-use drone_core::bitfield::Bitfield;
 use drone_stm32f4_rcc_drv::{clktree::HClk, ConfiguredClk};
 
 pub use crate::sdrampins::*;

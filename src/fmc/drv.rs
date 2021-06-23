@@ -212,10 +212,10 @@ impl FmcDrv {
         fmc.send_command(SdRamCommand::ClockConfigurationEnable, to_bank1, to_bank2);
 
         // Wait the prescribed power-up delay.
-        let power_up_delay_us_max = max(
-            bank1.map(|b| b.power_up_delay_us).unwrap_or_default(),
-            bank2.map(|b| b.power_up_delay_us).unwrap_or_default(),
-        );
+        // let power_up_delay_us_max = max(
+        //     bank1.map(|b| b.power_up_delay_us).unwrap_or_default(),
+        //     bank2.map(|b| b.power_up_delay_us).unwrap_or_default(),
+        // );
         // TODO: Delay power_up_delay_us_max
 
         // Issue Precharge-All command to banks.

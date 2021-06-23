@@ -32,3 +32,29 @@ pub extern crate drone_stm32f4_tim_drv as tim;
 
 #[cfg(feature = "uart")]
 pub extern crate drone_stm32f4_uart_drv as uart;
+
+pub mod prelude {
+    #[cfg(feature = "dma")]
+    pub use crate::dma::prelude::*;
+
+    #[cfg(feature = "exti")]
+    pub use crate::exti::prelude::*;
+
+    #[cfg(feature = "fmc")]
+    pub use crate::fmc::prelude::*;
+
+    #[cfg(feature = "gpio")]
+    pub use crate::gpio::prelude::*;
+
+    #[cfg(feature = "rcc")]
+    pub use crate::rcc::prelude::*;
+
+    #[cfg(feature = "spi")]
+    pub use crate::spi::prelude::*;
+
+    #[cfg(feature = "tim")]
+    pub use crate::tim::prelude::*;
+
+    #[cfg(feature = "uart")]
+    pub use crate::uart::prelude::*;
+}
