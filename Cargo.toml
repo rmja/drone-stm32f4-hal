@@ -13,7 +13,7 @@ repository = "https://github.com/rmja/drone-stm32f4-hal"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 description = """
-Drone OS peripheral drivers for STM32F4 micro-controllers.
+STM32F4 peripheral drivers for Drone, an Embedded Operating System.
 """
 
 [badges]
@@ -21,9 +21,9 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = []
-std = [
-    "drone-core/std",
-    "drone-cortexm/std",
+host = [
+    "drone-core/host",
+    "drone-cortexm/host",
 ]
 dma = ["drone-stm32f4-dma-drv"]
 exti = ["drone-stm32f4-exti-drv"]
@@ -35,8 +35,8 @@ uart = ["drone-stm32f4-uart-drv"]
 spi = ["drone-stm32f4-spi-drv"]
 
 [dependencies]
-drone-core = { version = "0.14.0", path = "../drone-core" }
-drone-cortexm = { version = "0.14.0", path = "../drone-cortexm" }
+drone-core = { version = "0.15.0", path = "../drone-core" }
+drone-cortexm = { version = "0.15.0", path = "../drone-cortexm" }
 
 [dependencies.drone-stm32f4-dma-drv]
 version = "=0.1.0"

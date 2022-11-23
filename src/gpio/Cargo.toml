@@ -18,6 +18,6 @@ maintenance = { status = "actively-developed" }
 path = "lib.rs"
 
 [dependencies]
-drone-core = { version = "0.14.0", path = "../../../drone-core" }
-drone-cortexm = { version = "0.14.0", path = "../../../drone-cortexm" }
-drone-stm32-map = { version = "0.14.0", features = ["gpio"], path = "../../../drone-stm32-map"  }
+drone-core = { version = "0.15.0", path = "../../../drone-core" }
+drone-cortexm = { version = "0.15.0", path = "../../../drone-cortexm" }
+drone-stm32-map = { version = "0.15.0", features = ["gpio"], path = "../../../drone-stm32-map"  }
