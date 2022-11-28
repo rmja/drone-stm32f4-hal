@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "src/dma",
-    "src/dwt",
     "src/exti",
     "src/fmc",
     "src/gpio",

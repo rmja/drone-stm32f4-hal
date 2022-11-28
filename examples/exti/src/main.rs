@@ -4,7 +4,7 @@
 
 use drone_core::token::Token;
 use drone_cortexm::platform;
-use drone_template_stm32::{tasks, thr, CoreRegs, Heap, Regs, Stream};
+use exti_example::{tasks, thr, CoreRegs, Heap, Regs, Stream};
 
 /// Exception vectors.
 #[no_mangle]

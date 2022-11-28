@@ -1,12 +1,14 @@
+[workspace]
+
 [package]
-name = "exti"
+name = "exti_example"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "exti"
+name = "exti_example"
 test = false
 doc = false
 
@@ -25,12 +27,12 @@ host = [
 futures = { version = "0.3.24", default-features = false }
 ### Versions of these Drone crates must be kept in sync with the `drone` crate
 ### in flake.nix
-drone-core = { version = "0.15.0" }
+drone-core = { version = "0.15.0", path = "../../../drone-core" }
 ### Add additional Drone crates specific to your microcontroller here. Some
 ### crates may require setting additional Rust flags in flake.nix. Refer to
 ### crates documentations for details.
-drone-cortexm = { version = "0.15.0", features = ["atomics", "bit-band"] }
-drone-stm32-map = { version = "0.15.0", features = ["exti", "gpio"] }
+drone-cortexm = { version = "0.15.0", features = ["atomics", "bit-band"], path = "../../../drone-cortexm" }
+drone-stm32-map = { version = "0.15.0", features = ["exti", "gpio"], path = "../../../drone-stm32-map" }
 drone-stm32f4-hal = { version = "0.1.0", features = ["exti", "gpio"], path="../../" }
 
 [profile.release]
