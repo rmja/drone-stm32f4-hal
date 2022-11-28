@@ -33,6 +33,7 @@ rcc = ["drone-stm32f4-rcc-drv"]
 tim = ["drone-stm32f4-tim-drv"]
 uart = ["drone-stm32f4-uart-drv"]
 spi = ["drone-stm32f4-spi-drv"]
+all = ["dma", "exti", "fmc", "gpio", "rcc", "tim", "uart", "spi"]
 
 [dependencies]
 drone-core = { version = "0.15.0", path = "../drone-core" }

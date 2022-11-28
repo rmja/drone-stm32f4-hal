@@ -16,9 +16,9 @@ impl Pwr {
 
 // STM32F42xxx and STM32F43xxx
 #[cfg(any(
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f437",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f437",
 ))]
 impl Overdriveable for Pwr {
     fn enable_overdrive(&self) {

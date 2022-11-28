@@ -24,11 +24,11 @@ head_num!(
 );
 
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 head_num!(
     GpioJHead, 9;
@@ -48,11 +48,11 @@ exti_line!(
     Exti0, GpioIHead, GpioI0;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti0, GpioJHead, GpioJ0;
@@ -72,11 +72,11 @@ exti_line!(
     Exti1, GpioIHead, GpioI1;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti1, GpioJHead, GpioJ1;
@@ -96,11 +96,11 @@ exti_line!(
     Exti2, GpioIHead, GpioI2;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti2, GpioJHead, GpioJ2;
@@ -120,11 +120,11 @@ exti_line!(
     Exti3, GpioIHead, GpioI3;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti3, GpioJHead, GpioJ3;
@@ -144,11 +144,11 @@ exti_line!(
     Exti4, GpioIHead, GpioI4;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti4, GpioJHead, GpioJ4;
@@ -168,11 +168,11 @@ exti_line!(
     Exti5, GpioIHead, GpioI5;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti5, GpioJHead, GpioJ5;
@@ -192,11 +192,11 @@ exti_line!(
     Exti6, GpioIHead, GpioI6;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti6, GpioJHead, GpioJ6;
@@ -216,11 +216,11 @@ exti_line!(
     Exti7, GpioIHead, GpioI7;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti7, GpioJHead, GpioJ7;
@@ -240,11 +240,11 @@ exti_line!(
     Exti8, GpioIHead, GpioI8;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti8, GpioJHead, GpioJ8;
@@ -264,11 +264,11 @@ exti_line!(
     Exti9, GpioIHead, GpioI9;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti9, GpioJHead, GpioJ9;
@@ -288,11 +288,11 @@ exti_line!(
     Exti10, GpioIHead, GpioI10;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti10, GpioJHead, GpioJ10;
@@ -312,11 +312,11 @@ exti_line!(
     Exti11, GpioIHead, GpioI11;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti11, GpioJHead, GpioJ11;
@@ -336,11 +336,11 @@ exti_line!(
     Exti12, GpioIHead, GpioI12;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti12, GpioJHead, GpioJ12;
@@ -360,11 +360,11 @@ exti_line!(
     Exti13, GpioIHead, GpioI13;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti13, GpioJHead, GpioJ13;
@@ -384,11 +384,11 @@ exti_line!(
     Exti14, GpioIHead, GpioI14;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti14, GpioJHead, GpioJ14;
@@ -408,11 +408,11 @@ exti_line!(
     Exti15, GpioIHead, GpioI15;
 );
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f469",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f469",
 ))]
 exti_line!(
     Exti15, GpioJHead, GpioJ15;

@@ -403,7 +403,7 @@ and that they are set into alternate function mode.
 
 ## Supported Devices
 
-| stm32_mcu |
+| drone_stm32_map |
 |-----------|
 | stm32f401 |
 | stm32f405 |

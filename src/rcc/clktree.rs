@@ -1,88 +1,88 @@
 use core::marker::PhantomData;
 
 #[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f415",
-    stm32_mcu = "stm32f417",
-    stm32_mcu = "stm32f423",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f437",
-    stm32_mcu = "stm32f439",
-    stm32_mcu = "stm32f469",
-    stm32_mcu = "stm32f479",
+    drone_stm32_map = "stm32f401",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f410",
+    drone_stm32_map = "stm32f411",
+    drone_stm32_map = "stm32f412",
+    drone_stm32_map = "stm32f413",
+    drone_stm32_map = "stm32f415",
+    drone_stm32_map = "stm32f417",
+    drone_stm32_map = "stm32f423",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f437",
+    drone_stm32_map = "stm32f439",
+    drone_stm32_map = "stm32f469",
+    drone_stm32_map = "stm32f479",
 ))]
 /// Minimum CPU clock frequency.
 pub const SYSCLK_MIN: u32 = 24_000_000;
 
-#[cfg(any(stm32_mcu = "stm32f446",))]
+#[cfg(any(drone_stm32_map = "stm32f446",))]
 /// Minimum CPU clock frequency.
 pub const SYSCLK_MIN: u32 = 12_500_000;
 
-#[cfg(any(stm32_mcu = "stm32f401",))]
+#[cfg(any(drone_stm32_map = "stm32f401",))]
 /// Maximum CPU clock frequency.
 pub const SYSCLK_MAX: u32 = 84_000_000;
 
 #[cfg(any(
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f423",
+    drone_stm32_map = "stm32f410",
+    drone_stm32_map = "stm32f411",
+    drone_stm32_map = "stm32f412",
+    drone_stm32_map = "stm32f413",
+    drone_stm32_map = "stm32f423",
 ))]
 /// Maximum CPU clock frequency.
 pub const SYSCLK_MAX: u32 = 100_000_000;
 
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f415",
-    stm32_mcu = "stm32f417",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f415",
+    drone_stm32_map = "stm32f417",
 ))]
 /// Maximum CPU clock frequency.
 pub const SYSCLK_MAX: u32 = 168_000_000;
 
 #[cfg(any(
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f437",
-    stm32_mcu = "stm32f439",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-    stm32_mcu = "stm32f479",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f437",
+    drone_stm32_map = "stm32f439",
+    drone_stm32_map = "stm32f446",
+    drone_stm32_map = "stm32f469",
+    drone_stm32_map = "stm32f479",
 ))]
 /// Maximum CPU clock frequency.
 pub const SYSCLK_MAX: u32 = 180_000_000;
 
 #[cfg(any(
-    stm32_mcu = "stm32f401",
-    stm32_mcu = "stm32f410",
-    stm32_mcu = "stm32f411",
-    stm32_mcu = "stm32f412",
-    stm32_mcu = "stm32f413",
-    stm32_mcu = "stm32f423",
+    drone_stm32_map = "stm32f401",
+    drone_stm32_map = "stm32f410",
+    drone_stm32_map = "stm32f411",
+    drone_stm32_map = "stm32f412",
+    drone_stm32_map = "stm32f413",
+    drone_stm32_map = "stm32f423",
 ))]
 /// Maximum APB2 peripheral clock frequency.
 pub const PCLK2_MAX: u32 = SYSCLK_MAX;
 
 #[cfg(any(
-    stm32_mcu = "stm32f405",
-    stm32_mcu = "stm32f407",
-    stm32_mcu = "stm32f415",
-    stm32_mcu = "stm32f417",
-    stm32_mcu = "stm32f427",
-    stm32_mcu = "stm32f429",
-    stm32_mcu = "stm32f437",
-    stm32_mcu = "stm32f439",
-    stm32_mcu = "stm32f446",
-    stm32_mcu = "stm32f469",
-    stm32_mcu = "stm32f479",
+    drone_stm32_map = "stm32f405",
+    drone_stm32_map = "stm32f407",
+    drone_stm32_map = "stm32f415",
+    drone_stm32_map = "stm32f417",
+    drone_stm32_map = "stm32f427",
+    drone_stm32_map = "stm32f429",
+    drone_stm32_map = "stm32f437",
+    drone_stm32_map = "stm32f439",
+    drone_stm32_map = "stm32f446",
+    drone_stm32_map = "stm32f469",
+    drone_stm32_map = "stm32f479",
 ))]
 /// Maximum APB2, high speed peripheral clock frequency.
 pub const PCLK2_MAX: u32 = SYSCLK_MAX / 2;
