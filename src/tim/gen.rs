@@ -32,20 +32,20 @@ pub trait NewGeneralTimSetup<Tim: GeneralTimMap, Int: IntToken, Clk: PClkToken> 
         tim_int: Int,
         clk: ConfiguredClk<Clk>,
         freq: TimFreq,
-    ) -> GeneralTimSetup<Tim, Int, Clk>;
+    ) -> Self;
 }
 
 #[macro_export]
 macro_rules! general_tim_setup {
     ($tim:ident, $pclk:ident) => {
-        impl<Int: drone_cortexm::thr::IntToken> crate::gen::NewGeneralTimSetup<$tim, Int, $pclk>
-            for crate::gen::GeneralTimSetup<$tim, Int, $pclk>
+        impl<Int: drone_cortexm::thr::IntToken> $crate::gen::NewGeneralTimSetup<$tim, Int, $pclk>
+            for $crate::gen::GeneralTimSetup<$tim, Int, $pclk>
         {
             fn new(
                 tim: drone_stm32_map::periph::tim::general::GeneralTimPeriph<$tim>,
                 tim_int: Int,
                 clk: drone_stm32f4_rcc_drv::ConfiguredClk<$pclk>,
-                freq: crate::TimFreq,
+                freq: $crate::TimFreq,
             ) -> Self {
                 Self {
                     tim,
@@ -427,16 +427,16 @@ macro_rules! general_tim_ch {
             Dir: Send + Sync,
             Link,
             $($modes),+>
-            $trait_name<$tim, Int, Clk, Dir, Link, $($modes),+> for crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($for_modes),+>
+            $trait_name<$tim, Int, Clk, Dir, Link, $($modes),+> for $crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($for_modes),+>
         {
             fn $fn_name<F, ChMode>(
                 self,
                 configure: F,
-            ) -> crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($out_modes),+>
+            ) -> $crate::GeneralTimCfg<$tim, Int, Clk, Dir, Link, $($out_modes),+>
             where
-                F: FnOnce(GeneralTimChDrv<$tim, Int, $tim_ch, crate::shared::DontCare>) -> GeneralTimChDrv<$tim, Int, $tim_ch, ChMode>,
+                F: FnOnce(GeneralTimChDrv<$tim, Int, $tim_ch, $crate::shared::DontCare>) -> GeneralTimChDrv<$tim, Int, $tim_ch, ChMode>,
             {
-                let crate::GeneralTimCfg {
+                let $crate::GeneralTimCfg {
                     tim,
                     tim_int,
                     clk,
@@ -447,7 +447,7 @@ macro_rules! general_tim_ch {
                     $($ch_fields),+
                 } = self;
                 let $fn_name = configure($fn_name);
-                crate::GeneralTimCfg {
+                $crate::GeneralTimCfg {
                     tim, tim_int, clk, link, counter, overflow, $fn_name, $($ch_fields),+
                 }
             }

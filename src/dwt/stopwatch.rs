@@ -20,6 +20,10 @@ impl Stopwatch {
     }
 
     /// Start a previously stopped stopwatch.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the stopwatch is already started.
     #[inline]
     pub fn start(&mut self) {
         assert!(self.last_started.is_none(), "Not stopped");
@@ -27,6 +31,10 @@ impl Stopwatch {
     }
 
     /// Stop an already running stopwatch.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the stopwatch is not running.
     #[inline]
     pub fn stop(&mut self) {
         let now = cyccnt();

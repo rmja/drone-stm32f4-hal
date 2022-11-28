@@ -89,8 +89,8 @@ macro_rules! master_drv_init {
         impl<
                 SpiInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
-            > crate::drv::IntoMaster<$spi, $miso_ch, $miso_stch, $mosi_ch, $mosi_stch>
-            for crate::drv::SpiDrv<$spi, SpiInt, Clk>
+            > $crate::drv::IntoMaster<$spi, $miso_ch, $miso_stch, $mosi_ch, $mosi_stch>
+            for $crate::drv::SpiDrv<$spi, SpiInt, Clk>
         {
             fn into_master<
                 DmaRxInt: drone_cortexm::thr::IntToken,
@@ -99,8 +99,8 @@ macro_rules! master_drv_init {
                 self,
                 miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<$miso_ch, $miso_stch, DmaRxInt>,
                 mosi_cfg: drone_stm32f4_dma_drv::DmaChCfg<$mosi_ch, $mosi_stch, DmaTxInt>,
-            ) -> crate::master::SpiMasterDrv<$spi, $miso_ch, DmaRxInt, $mosi_ch, DmaTxInt> {
-                crate::master::SpiMasterDrv::init(self.spi, miso_cfg, mosi_cfg)
+            ) -> $crate::master::SpiMasterDrv<$spi, $miso_ch, DmaRxInt, $mosi_ch, DmaTxInt> {
+                $crate::master::SpiMasterDrv::init(self.spi, miso_cfg, mosi_cfg)
             }
         }
     };
@@ -136,19 +136,19 @@ fn spi_br<Clk: PClkToken>(clk: &ConfiguredClk<Clk>, baud_rate: BaudRate) -> u32 
 }
 
 fn handle_spi_err<Spi: SpiMap>(val: &Spi::SpiSrVal, sr: Spi::CSpiSr) {
-    if sr.fre().read(&val) {
+    if sr.fre().read(val) {
         panic!("Frame format error");
     }
-    if sr.ovr().read(&val) {
+    if sr.ovr().read(val) {
         panic!("Overrun error");
     }
-    if sr.modf().read(&val) {
+    if sr.modf().read(val) {
         panic!("Mode fault");
     }
-    if sr.crcerr().read(&val) {
+    if sr.crcerr().read(val) {
         panic!("CRC error");
     }
-    if sr.udr().read(&val) {
+    if sr.udr().read(val) {
         panic!("Underrun error");
     }
 }

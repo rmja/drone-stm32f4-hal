@@ -6,10 +6,10 @@ use drone_core::{
 };
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::tim::general::{
-    traits::*, GeneralTimMap, TimCcerCc2E, TimCcerCc2Np, TimCcerCc2P, TimCcerCc3E, TimCcerCc3Np,
-    TimCcerCc3P, TimCcerCc4E, TimCcerCc4Np, TimCcerCc4P, TimCcmr1OutputCc2S, TimCcmr2Output,
-    TimCcr2, TimCcr3, TimCcr4, TimDierCc2Ie, TimDierCc3Ie, TimDierCc4Ie, TimSrCc2If, TimSrCc3If,
-    TimSrCc4If,
+    traits::*, GeneralTimMap, TimCcerCc2e, TimCcerCc2np, TimCcerCc2p, TimCcerCc3e, TimCcerCc3np,
+    TimCcerCc3p, TimCcerCc4e, TimCcerCc4np, TimCcerCc4p, TimCcmr1OutputCc2s, TimCcmr2Output,
+    TimCcr2, TimCcr3, TimCcr4, TimDierCc2ie, TimDierCc3ie, TimDierCc4ie, TimSrCc2if, TimSrCc3if,
+    TimSrCc4if,
 };
 use drone_stm32f4_gpio_drv::{prelude::*, GpioPin, GpioPinMap};
 use futures::{future, Stream};
@@ -88,10 +88,10 @@ impl<Tim: GeneralTimMap, Int: IntToken, Ch: GeneralTimCh<Tim>> TimerCompareCh
 
         let already_passed = if soon {
             // Sample counter after interrupt is setup.
-            let counter = self.tim.tim_cnt.cnt().read_bits() as u32;
+            let counter = self.tim.tim_cnt.cnt().read_bits();
 
             // Let's see if counter is later than compare in which case the time has already elapsed
-            let max = self.tim.tim_arr.arr().read_bits() as u32;
+            let max = self.tim.tim_arr.arr().read_bits();
             let half_period = max / 2; // equivalent to (max + 1) / 2 as we assume max to be odd.
             counter.wrapping_sub(compare) > half_period
         } else {
@@ -146,7 +146,7 @@ macro_rules! general_tim_channel {
     ($($tim_ch:ident<$tim:ident>, $pin:ident<$pin_af:ident> -> $sel:ident;)+) => {
         $(
             impl<Int: drone_cortexm::thr::IntToken, PinType: drone_stm32f4_gpio_drv::PinTypeMap, PinPull: drone_stm32f4_gpio_drv::PinPullMap>
-                crate::IntoPinInputCaptureMode<
+                $crate::IntoPinInputCaptureMode<
                     $tim,
                     Int,
                     $tim_ch,
@@ -155,7 +155,7 @@ macro_rules! general_tim_channel {
                     PinType,
                     PinPull,
                     $sel,
-                > for GeneralTimChDrv<$tim, Int, $tim_ch, crate::shared::DontCare>
+                > for GeneralTimChDrv<$tim, Int, $tim_ch, $crate::shared::DontCare>
             {
                 fn into_input_capture_pin(
                     self,
@@ -165,7 +165,7 @@ macro_rules! general_tim_channel {
                         PinType,
                         PinPull,
                     >,
-                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, crate::InputCaptureMode<$pin, $pin_af, PinType, PinPull, $sel>> {
+                ) -> GeneralTimChDrv<$tim, Int, $tim_ch, $crate::InputCaptureMode<$pin, $pin_af, PinType, PinPull, $sel>> {
                     self.into_input_capture(pin, $sel)
                 }
             }
@@ -391,13 +391,13 @@ impl<Tim: GeneralTimMap> GeneralTimCh<Tim> for TimCh1 {
 
 impl<
         Tim: GeneralTimMap
-            + TimCcmr1OutputCc2S
-            + TimDierCc2Ie
-            + TimCcerCc2E
-            + TimSrCc2If
+            + TimCcmr1OutputCc2s
+            + TimDierCc2ie
+            + TimCcerCc2e
+            + TimSrCc2if
             + TimCcr2
-            + TimCcerCc2P
-            + TimCcerCc2Np,
+            + TimCcerCc2p
+            + TimCcerCc2np,
     > GeneralTimCh<Tim> for TimCh2
 {
     type CTimCcr = Tim::CTimCcr2;
@@ -471,12 +471,12 @@ impl<
 impl<
         Tim: GeneralTimMap
             + TimCcmr2Output
-            + TimDierCc3Ie
-            + TimCcerCc3E
-            + TimSrCc3If
+            + TimDierCc3ie
+            + TimCcerCc3e
+            + TimSrCc3if
             + TimCcr3
-            + TimCcerCc3P
-            + TimCcerCc3Np,
+            + TimCcerCc3p
+            + TimCcerCc3np,
     > GeneralTimCh<Tim> for TimCh3
 {
     type CTimCcr = Tim::CTimCcr3;
@@ -552,12 +552,12 @@ impl<
 impl<
         Tim: GeneralTimMap
             + TimCcmr2Output
-            + TimDierCc4Ie
-            + TimCcerCc4E
-            + TimSrCc4If
+            + TimDierCc4ie
+            + TimCcerCc4e
+            + TimSrCc4if
             + TimCcr4
-            + TimCcerCc4P
-            + TimCcerCc4Np,
+            + TimCcerCc4p
+            + TimCcerCc4np,
     > GeneralTimCh<Tim> for TimCh4
 {
     type CTimCcr = Tim::CTimCcr4;

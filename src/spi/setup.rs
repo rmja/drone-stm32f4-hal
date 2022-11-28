@@ -62,28 +62,28 @@ pub enum FirstBit {
 #[macro_export]
 macro_rules! spi_setup {
     ($spi:ident, $pclk:ident) => {
-        impl<SpiInt: drone_cortexm::thr::IntToken> crate::NewSpiSetup<$spi, SpiInt, $pclk>
-            for crate::SpiSetup<$spi, SpiInt, $pclk>
+        impl<SpiInt: drone_cortexm::thr::IntToken> $crate::NewSpiSetup<$spi, SpiInt, $pclk>
+            for $crate::SpiSetup<$spi, SpiInt, $pclk>
         {
             fn new(
                 spi: drone_stm32_map::periph::spi::SpiPeriph<$spi>,
                 spi_int: SpiInt,
-                _pins: crate::pins::SpiPins<
+                _pins: $crate::pins::SpiPins<
                     $spi,
-                    crate::pins::Defined,
-                    crate::pins::Defined,
-                    crate::pins::Defined,
+                    $crate::pins::Defined,
+                    $crate::pins::Defined,
+                    $crate::pins::Defined,
                 >,
                 clk: drone_stm32f4_rcc_drv::ConfiguredClk<$pclk>,
-                baud_rate: crate::BaudRate,
+                baud_rate: $crate::BaudRate,
             ) -> Self {
                 Self {
                     spi,
                     spi_int,
                     clk,
                     baud_rate,
-                    clk_pol: crate::ClkPol::Low,
-                    first_bit: crate::FirstBit::Msb,
+                    clk_pol: $crate::ClkPol::Low,
+                    first_bit: $crate::FirstBit::Msb,
                 }
             }
         }

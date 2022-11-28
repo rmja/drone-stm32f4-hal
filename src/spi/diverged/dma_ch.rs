@@ -1,14 +1,14 @@
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
 use drone_stm32_map::periph::dma::ch::{
-    CDmaCndtr, DmaChMap, DmaChPeriph, SDmaCcr, SDmaCm0Ar, SDmaCpar,
+    CDmaCndtr, DmaChMap, DmaChPeriph, SDmaCcr, SDmaCm0ar, SDmaCpar,
 };
 
 #[allow(dead_code)]
 pub(crate) struct DmaChDiverged<DmaCh: DmaChMap> {
     pub(crate) dma_ccr: DmaCh::SDmaCcr,
     pub(crate) dma_cfcr: DmaCh::SDmaCfcr,
-    pub(crate) dma_cm0ar: DmaCh::SDmaCm0Ar,
-    pub(crate) dma_cm1ar: DmaCh::SDmaCm1Ar,
+    pub(crate) dma_cm0ar: DmaCh::SDmaCm0ar,
+    pub(crate) dma_cm1ar: DmaCh::SDmaCm1ar,
     pub(crate) dma_cndtr: DmaCh::CDmaCndtr,
     pub(crate) dma_cpar: DmaCh::SDmaCpar,
     pub(crate) dma_ifcr_cdmeif: DmaCh::SDmaIfcrCdmeif,
@@ -169,13 +169,13 @@ fn handle_dma_err<DmaCh: DmaChMap>(
     dma_isr_feif: DmaCh::CDmaIsrFeif,
     dma_isr_teif: DmaCh::CDmaIsrTeif,
 ) {
-    if dma_isr_teif.read(&val) {
+    if dma_isr_teif.read(val) {
         panic!("Transfer error");
     }
-    if dma_isr_dmeif.read(&val) {
+    if dma_isr_dmeif.read(val) {
         panic!("Direct mode error");
     }
-    if dma_isr_feif.read(&val) {
+    if dma_isr_feif.read(val) {
         panic!("FIFO error");
     }
 }

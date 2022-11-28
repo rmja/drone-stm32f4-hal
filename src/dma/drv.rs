@@ -67,7 +67,7 @@ pub mod config {
 
     pub trait NewDmaChSetup<Dma: DmaMap, DmaCh: DmaChMap, DmaStCh, DmaInt: IntToken> {
         /// Initialize a dma channel setup with medium priority level.
-        fn new(ch: DmaChPeriph<DmaCh>, int: DmaInt) -> DmaChSetup<Dma, DmaCh, DmaStCh, DmaInt>;
+        fn new(ch: DmaChPeriph<DmaCh>, int: DmaInt) -> Self;
     }
 
     macro_rules! dma_setup {
@@ -89,12 +89,7 @@ pub mod config {
                 fn new(
                     ch: DmaChPeriph<drone_stm32_map::periph::dma::ch::$ch>,
                     int: DmaInt,
-                ) -> DmaChSetup<
-                    drone_stm32_map::periph::dma::$dma,
-                    drone_stm32_map::periph::dma::ch::$ch,
-                    $stch,
-                    DmaInt,
-                > {
+                ) -> Self {
                     Self {
                         dma: PhantomData,
                         stch: PhantomData,

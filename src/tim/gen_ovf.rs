@@ -3,7 +3,7 @@ use core::num::NonZeroUsize;
 use crate::{gen::GeneralTimDiverged, traits::*};
 use alloc::sync::Arc;
 use drone_core::{fib, reg::prelude::*};
-use drone_cortexm::{reg::prelude::*, thr::prelude::*};
+use drone_cortexm::thr::prelude::*;
 use drone_stm32_map::periph::tim::general::{traits::*, GeneralTimMap};
 
 pub struct GeneralTimOvfDrv<Tim: GeneralTimMap, Int: IntToken> {

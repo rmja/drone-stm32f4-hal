@@ -13,8 +13,8 @@ pub(crate) struct SpiDiverged<Spi: SpiMap> {
     pub(crate) spi_crcpr: Spi::SSpiCrcpr,
     pub(crate) spi_rxcrcr: Spi::SSpiRxcrcr,
     pub(crate) spi_txcrcr: Spi::SSpiTxcrcr,
-    pub(crate) spi_i2scfgr: Spi::SSpiI2ScfgrOpt,
-    pub(crate) spi_i2spr: Spi::SSpiI2SprOpt,
+    pub(crate) spi_i2scfgr: Spi::SSpiI2scfgrOpt,
+    pub(crate) spi_i2spr: Spi::SSpiI2sprOpt,
 }
 
 impl<Spi: SpiMap> From<SpiPeriph<Spi>> for SpiDiverged<Spi> {

@@ -285,23 +285,23 @@ macro_rules! pin_init {
     ($($head:ident, $pin:ident;)+) => {
         $(
             impl
-                crate::pin::NewPin<
+                $crate::pin::NewPin<
                     $head,
                     $pin,
-                > for crate::head::GpioHead<$head>
+                > for $crate::head::GpioHead<$head>
             {
                 fn pin(
                     &self,
                     pin: ::drone_stm32_map::periph::gpio::pin::GpioPinPeriph<
                         $pin,
                     >,
-                ) -> crate::pin::GpioPin<
+                ) -> $crate::pin::GpioPin<
                     $pin,
-                    crate::pin::DontCare,
-                    crate::pin::DontCare,
-                    crate::NoPull,
+                    $crate::pin::DontCare,
+                    $crate::pin::DontCare,
+                    $crate::NoPull,
                 > {
-                    crate::pin::GpioPin::from(alloc::sync::Arc::new(pin))
+                    $crate::pin::GpioPin::from(alloc::sync::Arc::new(pin))
                 }
             }
         )+

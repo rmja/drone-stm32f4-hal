@@ -31,6 +31,7 @@ enum SdRamCommand {
 struct SdRamModeRegister(u32);
 
 impl FmcDrv {
+    #[allow(clippy::type_complexity)]
     pub fn init_sdram<
         Sdcke0: Opt,
         Sdcke1: Opt,

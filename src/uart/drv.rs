@@ -155,6 +155,7 @@ pub trait IntoTrxDrv<
 >
 {
     /// Let the driver run in TX and RX for configured dma channels.
+    #[allow(clippy::type_complexity)]
     fn into_trx<TxDmaInt: IntToken, RxDmaInt: IntToken>(
         self,
         tx_cfg: DmaChCfg<TxDmaCh, TxDmaStCh, TxDmaInt>,
@@ -173,13 +174,13 @@ macro_rules! rx_drv_init {
                 UartInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::IntoRxDrv<
+            $crate::drv::IntoRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 $stch,
                 Clk,
-            > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
+            > for $crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
             fn into_rx<DmaRxInt: drone_cortexm::thr::IntToken, Tx>(
                 self,
@@ -188,13 +189,17 @@ macro_rules! rx_drv_init {
                     $stch,
                     DmaRxInt,
                 >,
-                _rx_pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Defined, Tx>,
-            ) -> crate::rx::UartRxDrv<
+                _rx_pins: &$crate::pins::UartPins<
+                    drone_stm32_map::periph::uart::$uart,
+                    Defined,
+                    Tx,
+                >,
+            ) -> $crate::rx::UartRxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
             > {
-                crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg)
+                $crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg)
             }
         }
     };
@@ -207,13 +212,13 @@ macro_rules! tx_drv_init {
                 UartInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::IntoTxDrv<
+            $crate::drv::IntoTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 $stch,
                 Clk,
-            > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
+            > for $crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
             fn into_tx<DmaInt: drone_cortexm::thr::IntToken, Rx>(
                 self,
@@ -222,14 +227,18 @@ macro_rules! tx_drv_init {
                     $stch,
                     DmaInt,
                 >,
-                _tx_pins: &crate::pins::UartPins<drone_stm32_map::periph::uart::$uart, Rx, Defined>,
-            ) -> crate::tx::UartTxDrv<
+                _tx_pins: &$crate::pins::UartPins<
+                    drone_stm32_map::periph::uart::$uart,
+                    Rx,
+                    Defined,
+                >,
+            ) -> $crate::tx::UartTxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$ch,
                 DmaInt,
             > {
-                crate::tx::UartTxDrv::init(self.uart, self.uart_int, tx_cfg)
+                $crate::tx::UartTxDrv::init(self.uart, self.uart_int, tx_cfg)
             }
         }
     };
@@ -242,7 +251,7 @@ macro_rules! trx_drv_init {
                 UartInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
             >
-            crate::drv::IntoTrxDrv<
+            $crate::drv::IntoTrxDrv<
                 drone_stm32_map::periph::uart::$uart,
                 UartInt,
                 drone_stm32_map::periph::dma::ch::$tx_ch,
@@ -250,7 +259,7 @@ macro_rules! trx_drv_init {
                 drone_stm32_map::periph::dma::ch::$rx_ch,
                 $rx_stch,
                 Clk,
-            > for crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
+            > for $crate::drv::UartDrv<drone_stm32_map::periph::uart::$uart, UartInt, Clk>
         {
             fn into_trx<
                 TxDmaInt: drone_cortexm::thr::IntToken,
@@ -267,26 +276,26 @@ macro_rules! trx_drv_init {
                     $rx_stch,
                     RxDmaInt,
                 >,
-                _pins: &crate::pins::UartPins<
+                _pins: &$crate::pins::UartPins<
                     drone_stm32_map::periph::uart::$uart,
                     Defined,
                     Defined,
                 >,
             ) -> (
-                crate::tx::UartTxDrv<
+                $crate::tx::UartTxDrv<
                     drone_stm32_map::periph::uart::$uart,
                     UartInt,
                     drone_stm32_map::periph::dma::ch::$tx_ch,
                     TxDmaInt,
                 >,
-                crate::rx::UartRxDrv<
+                $crate::rx::UartRxDrv<
                     drone_stm32_map::periph::uart::$uart,
                     UartInt,
                     drone_stm32_map::periph::dma::ch::$rx_ch,
                 >,
             ) {
-                let tx = crate::tx::UartTxDrv::init(self.uart.clone(), self.uart_int, tx_cfg);
-                let rx = crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg);
+                let tx = $crate::tx::UartTxDrv::init(self.uart.clone(), self.uart_int, tx_cfg);
+                let rx = $crate::rx::UartRxDrv::init(self.uart, self.uart_int, rx_cfg);
 
                 (tx, rx)
             }
@@ -334,19 +343,19 @@ fn uart_brr<Clk: PClkToken>(
 }
 
 fn handle_uart_err<Uart: UartMap>(val: &Uart::UartSrVal, sr: Uart::CUartSr) {
-    if sr.rxne().read(&val) {
+    if sr.rxne().read(val) {
         panic!("Read data register not empty");
     }
-    if sr.ore().read(&val) {
+    if sr.ore().read(val) {
         panic!("Overrun error");
     }
-    if sr.nf().read(&val) {
+    if sr.nf().read(val) {
         panic!("Noice");
     }
-    if sr.fe().read(&val) {
+    if sr.fe().read(val) {
         panic!("Framing error");
     }
-    if sr.pe().read(&val) {
+    if sr.pe().read(val) {
         panic!("Parity error");
     }
 }

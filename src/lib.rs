@@ -1,12 +1,12 @@
 //! Drone OS peripheral drivers for STM32F4 micro-controllers.
 
-#![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::doc_markdown)]
 #![no_std]
 
 pub use drone_cortexm::thr::IntToken;
 
+/// Data watchpoint trigger
 pub mod dwt;
 
 #[cfg(feature = "dma")]

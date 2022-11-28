@@ -24,7 +24,7 @@ impl<Tim: GeneralTimMap, Dir: Send + Sync> GeneralTimCntDrv<Tim, Dir> {
 
 impl<Tim: GeneralTimMap, Dir: Send + Sync> TimerCounter for GeneralTimCntDrv<Tim, Dir> {
     fn value(&self) -> u32 {
-        self.0.tim_cnt.cnt().read_bits() as u32
+        self.0.tim_cnt.cnt().read_bits()
     }
 }
 

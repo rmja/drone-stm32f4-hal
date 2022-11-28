@@ -97,16 +97,16 @@ macro_rules! exti_line {
         $(
             impl<
                 ExtiInt: drone_cortexm::thr::IntToken,
-                PinMode: crate::drv::ExtiPinModes,
-                Edge: crate::EdgeMap,
+                PinMode: $crate::drv::ExtiPinModes,
+                Edge: $crate::EdgeMap,
             >
-                crate::drv::ExtiDrvLine<
+                $crate::drv::ExtiDrvLine<
                     $exti,
                     ExtiInt,
                     $pin,
                     PinMode,
                     Edge,
-                > for crate::drv::ExtiDrv<$exti, ExtiInt, $head, Edge>
+                > for $crate::drv::ExtiDrv<$exti, ExtiInt, $head, Edge>
             {
                 fn line<
                     PinType: drone_stm32f4_gpio_drv::PinTypeMap,
@@ -119,8 +119,8 @@ macro_rules! exti_line {
                         PinType,
                         PinPull,
                     >,
-                ) -> crate::line::ExtiLine<$exti, ExtiInt, $pin, PinMode, PinType, PinPull, Edge> {
-                    crate::line::ExtiLine::init(self, pin)
+                ) -> $crate::line::ExtiLine<$exti, ExtiInt, $pin, PinMode, PinType, PinPull, Edge> {
+                    $crate::line::ExtiLine::init(self, pin)
                 }
             }
         )+
