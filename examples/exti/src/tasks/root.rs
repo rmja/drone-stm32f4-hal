@@ -1,7 +1,9 @@
 //! The root task.
 
-use crate::{thr, thr::ThrsInit, Regs};
-use drone_cortexm::{reg::prelude::*, thr::prelude::*};
+use crate::{thr, CoreRegs, Regs};
+use drone_cortexm::periph_thr;
+use drone_cortexm::reg::prelude::*;
+use drone_cortexm::thr::prelude::*;
 use drone_stm32_map::periph::{
     exti::periph_exti2,
     gpio::{
@@ -10,12 +12,12 @@ use drone_stm32_map::periph::{
     },
 };
 use drone_stm32f4_hal::{exti::{ExtiDrv, Syscfg, prelude::*,periph_syscfg}, gpio::{prelude::*, GpioHead}};
-use futures::prelude::*;
 
 /// The root task handler.
 #[inline(never)]
-pub fn handler(reg: Regs, thr_init: ThrsInit) {
-    let thr = thr::init(thr_init);
+#[export_name = "root"]
+pub fn handler(_reg: Regs, core_reg: CoreRegs, thr: thr::Init) {
+    let thr = thr.init(periph_thr!(core_reg));
 
     thr.hard_fault.add_once(|| panic!("Hard Fault"));
 
@@ -43,6 +45,10 @@ pub fn handler(reg: Regs, thr_init: ThrsInit) {
         let _ = pin.get();
     }
 
-    // Enter a sleep state on ISR exit.
-    reg.scb_scr.sleeponexit.set_bit();
+
+    // Enter the sleep state on ISR exit.
+    core_reg
+        .scb_scr
+        .into_unsync()
+        .modify(|r| r.set_sleeponexit());
 }

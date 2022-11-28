@@ -1,9 +1,8 @@
 #![feature(allocator_api)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(prelude_import)]
-#![feature(proc_macro_hygiene)]
 #![feature(slice_ptr_get)]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![feature(sync_unsafe_cell)]
+#![cfg_attr(not(feature = "host"), no_std)]
 
 extern crate alloc;
 
@@ -14,36 +13,39 @@ pub mod thr;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::heap;
+use drone_core::{heap, stream};
+use drone_cortexm::map::cortexm_reg_tokens;
 use drone_stm32_map::stm32_reg_tokens;
 
-drone_cortexm::swo::set_log!();
-
-stm32_reg_tokens! {
-    /// A set of tokens for all memory-mapped registers.
-    index => pub Regs;
-
-    exclude => {
-        dwt_cyccnt,
-        itm_tpr, itm_tcr, itm_lar,
-        tpiu_acpr, tpiu_sppr, tpiu_ffcr,
-
-        scb_ccr,
-        mpu_type, mpu_ctrl, mpu_rnr, mpu_rbar, mpu_rasr,
-    }
+stream! {
+    // Stream configuration key in `layout.toml`.
+    layout => core0;
+    /// The main Drone Stream generated from the `layout.toml`.
+    metadata => pub Stream;
+    /// The global Drone Stream.
+    instance => pub STREAM;
+    // This instance is the global Drone Stream implementation.
+    global => true;
 }
 
 heap! {
-    // Heap configuration key in `Drone.toml`.
-    config => main;
-    /// The main heap allocator generated from the `Drone.toml`.
+    // Heap configuration key in `layout.toml`.
+    layout => core0;
+    /// The main heap allocator generated from the `layout.toml`.
     metadata => pub Heap;
-    // Use this heap as the global allocator.
-    global => true;
-    // Uncomment the following line to enable heap tracing feature:
-    // trace_port => 31;
+    /// The global allocator.
+    #[cfg_attr(not(feature = "host"), global_allocator)]
+    instance => pub HEAP;
+    ////// Uncomment the following line to enable heap tracing feature:
+    // enable_trace_stream => 31;
 }
 
-/// The global allocator.
-#[cfg_attr(not(feature = "std"), global_allocator)]
-pub static HEAP: Heap = Heap::new();
+stm32_reg_tokens! {
+    /// All tokens for the MCU-level memory-mapped registers.
+    index => pub Regs;
+}
+
+cortexm_reg_tokens! {
+    /// All tokens for the core-level memory-mapped registers.
+    index => pub CoreRegs;
+}
