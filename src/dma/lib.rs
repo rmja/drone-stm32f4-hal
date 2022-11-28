@@ -7,8 +7,8 @@ pub use self::drv::{
     config, DmaCfg, DmaChCfg, DmaStCh0, DmaStCh1, DmaStCh2, DmaStCh3, DmaStCh4, DmaStCh5, DmaStCh6,
     DmaStCh7, DmaStChToken,
 };
-pub use drone_stm32_map::periph::dma::DmaMap;
 pub use drone_stm32_map::periph::dma::ch::DmaChMap;
+pub use drone_stm32_map::periph::dma::DmaMap;
 
 pub mod prelude {
     pub use crate::drv::DmaStChToken;

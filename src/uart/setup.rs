@@ -1,7 +1,7 @@
-use drone_cortexm::thr::IntToken;
-use drone_stm32f4_rcc_drv::{ConfiguredClk, clktree::PClkToken};
-use drone_stm32_map::periph::uart::UartPeriph;
 pub use crate::UartMap;
+use drone_cortexm::thr::IntToken;
+use drone_stm32_map::periph::uart::UartPeriph;
+use drone_stm32f4_rcc_drv::{clktree::PClkToken, ConfiguredClk};
 
 /// Uart setup.
 pub struct UartSetup<Uart: UartMap, UartInt: IntToken, Clk: PClkToken> {
@@ -62,16 +62,14 @@ pub enum StopBits {
 #[macro_export]
 macro_rules! uart_setup_init {
     ($uart:ident, $pclk:ident) => {
-        impl<UartInt: drone_cortexm::thr::IntToken>
-            crate::UartSetupInit<$uart, UartInt, $pclk>
+        impl<UartInt: drone_cortexm::thr::IntToken> crate::UartSetupInit<$uart, UartInt, $pclk>
             for crate::UartSetup<$uart, UartInt, $pclk>
         {
             fn init(
                 uart: drone_stm32_map::periph::uart::UartPeriph<$uart>,
                 uart_int: UartInt,
                 clk: drone_stm32f4_rcc_drv::ConfiguredClk<$pclk>,
-            ) -> crate::UartSetup<$uart, UartInt, $pclk>
-            {
+            ) -> crate::UartSetup<$uart, UartInt, $pclk> {
                 Self {
                     uart,
                     uart_int,

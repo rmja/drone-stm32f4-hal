@@ -26,9 +26,7 @@ pub enum RxError {
     Overflow,
 }
 
-impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap>
-    UartRxDrv<Uart, UartInt, DmaRx>
-{
+impl<Uart: UartMap, UartInt: IntToken, DmaRx: DmaChMap> UartRxDrv<Uart, UartInt, DmaRx> {
     pub(crate) fn init<DmaRxStCh: DmaStChToken, DmaRxInt: IntToken>(
         uart: Arc<UartDiverged<Uart>>,
         uart_int: UartInt,

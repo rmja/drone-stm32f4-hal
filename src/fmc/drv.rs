@@ -1,7 +1,7 @@
-use crate::{setup::*, periph::FmcPeriph};
+use crate::{periph::FmcPeriph, setup::*};
 use core::cmp::max;
-use drone_cortexm::reg::prelude::*;
 use drone_core::bitfield::Bitfield;
+use drone_cortexm::reg::prelude::*;
 
 pub struct FmcDrv {
     fmc: FmcPeriph,
@@ -112,19 +112,11 @@ impl FmcDrv {
 
         // Verify pin configuration.
         if bank1.is_some() {
-            assert_eq!(
-                1,
-                Sdcke0::NUM,
-                "The SDCKE pin is not configured for bank 1"
-            );
+            assert_eq!(1, Sdcke0::NUM, "The SDCKE pin is not configured for bank 1");
             assert_eq!(1, Sdne0::NUM, "The SDNE pin is not configured for bank 1");
         }
         if bank2.is_some() {
-            assert_eq!(
-                1,
-                Sdcke1::NUM,
-                "The SDCKE pin is not configured for bank 2"
-            );
+            assert_eq!(1, Sdcke1::NUM, "The SDCKE pin is not configured for bank 2");
             assert_eq!(1, Sdne1::NUM, "The SDNE pin is not configured for bank 2");
         }
 

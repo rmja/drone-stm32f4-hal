@@ -3,10 +3,9 @@ use drone_core::token::Token;
 use drone_cortexm::map::reg::dwt;
 
 /// Cycle counter stopwatch.
-pub struct Stopwatch
-{
+pub struct Stopwatch {
     last_started: Option<u32>,
-    previously_elapsed: Option<u32>
+    previously_elapsed: Option<u32>,
 }
 
 impl Stopwatch {
@@ -19,7 +18,7 @@ impl Stopwatch {
             previously_elapsed: None,
         }
     }
-    
+
     /// Start a previously stopped stopwatch.
     #[inline]
     pub fn start(&mut self) {
@@ -32,7 +31,10 @@ impl Stopwatch {
     pub fn stop(&mut self) {
         let now = cyccnt();
         let running_elapsed = now.wrapping_sub(self.last_started.expect("Not running"));
-        self.previously_elapsed = Some(self.previously_elapsed.map_or(running_elapsed, |x| x + running_elapsed));
+        self.previously_elapsed = Some(
+            self.previously_elapsed
+                .map_or(running_elapsed, |x| x + running_elapsed),
+        );
     }
 
     /// Get the total elapsed time in cpu cycles
@@ -41,7 +43,8 @@ impl Stopwatch {
     pub fn elapsed(&self) -> u32 {
         let now = cyccnt();
         let running_elapsed = self.last_started.map_or(0, |x| now.wrapping_sub(x));
-        self.previously_elapsed.map_or(running_elapsed, |x| x + running_elapsed)
+        self.previously_elapsed
+            .map_or(running_elapsed, |x| x + running_elapsed)
     }
 }
 

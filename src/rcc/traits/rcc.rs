@@ -30,9 +30,5 @@ pub trait MuxCtrl<'a, RccInt: IntToken, MuxSignal, Clk> {
     type Builder;
 
     /// Select the source clock signal of a mux.
-    fn select(
-        &'a self,
-        signal: MuxSignal,
-        clk: ConfiguredClk<Clk>,
-    ) -> Self::Builder;
+    fn select(&'a self, signal: MuxSignal, clk: ConfiguredClk<Clk>) -> Self::Builder;
 }

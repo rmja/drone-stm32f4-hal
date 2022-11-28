@@ -1,5 +1,3 @@
 mod stopwatch;
 
-pub use self::{
-    stopwatch::Stopwatch
-};
+pub use self::stopwatch::Stopwatch;

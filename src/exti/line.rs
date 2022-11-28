@@ -1,10 +1,14 @@
-use crate::{EdgeMap, ExtiDrv, ExtiMap, FallingEdge, diverged::ExtiDiverged};
-use core::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
+use crate::{diverged::ExtiDiverged, EdgeMap, ExtiDrv, ExtiMap, FallingEdge};
 use alloc::sync::Arc;
+use core::{
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use displaydoc::Display;
 use drone_core::fib::{FiberStreamPulse, TryFiberStreamPulse};
 use drone_cortexm::{fib, fib::Fiber, reg::prelude::*, thr::prelude::*};
-use drone_stm32f4_gpio_drv::{GpioPin, prelude::*, GpioHeadMap, GpioPinMap};
+use drone_stm32f4_gpio_drv::{prelude::*, GpioHeadMap, GpioPin, GpioPinMap};
 use futures::{future, prelude::*};
 
 /// EXTI stream overflow
@@ -59,9 +63,7 @@ impl<
     }
 
     /// Creates a new fallible stream of external events.
-    pub fn pulse_try_stream(
-        &self,
-    ) -> TryFiberStreamPulse<ExtiOverflow> {
+    pub fn pulse_try_stream(&self) -> TryFiberStreamPulse<ExtiOverflow> {
         self.exti_int
             .add_pulse_try_stream(|| Err(ExtiOverflow), self.new_fib())
     }
@@ -110,8 +112,7 @@ impl<
         // Only wait for falling interrupt if we are currently high
         if self.pin.get() {
             WaitFuture(Box::pin(future))
-        }
-        else {
+        } else {
             exti_imr_im.clear_bit(); // Disable interrupt
             WaitFuture(Box::pin(future::ready(())))
         }

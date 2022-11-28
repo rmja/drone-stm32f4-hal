@@ -9,17 +9,11 @@ mod setup;
 
 pub use self::drv::FmcDrv;
 pub use self::periph::*;
-pub use self::{
-    sdrampins::{
-        FmcSdRamAddressPins,
-        FmcSdRamDataPins,
-        FmcSdRamPins,
-        FmcSdRamBankPins,
-        FmcSdRamByteMaskPins,
-    }
-};
-pub use self::setup::{SdRamSetup, SdRamCfg};
 pub use self::prelude::*;
+pub use self::sdrampins::{
+    FmcSdRamAddressPins, FmcSdRamBankPins, FmcSdRamByteMaskPins, FmcSdRamDataPins, FmcSdRamPins,
+};
+pub use self::setup::{SdRamCfg, SdRamSetup};
 
 pub mod prelude {
     pub use crate::sdrampins::traits::*;

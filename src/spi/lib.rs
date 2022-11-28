@@ -7,19 +7,19 @@ mod diverged;
 mod drv;
 mod mappings;
 mod master;
-mod setup;
 mod pins;
+mod setup;
 
 pub use self::drv::SpiDrv;
 pub use self::master::SpiMasterDrv;
-pub use self::setup::{SpiSetup, BaudRate, Prescaler, ClkPol, FirstBit};
-pub use drone_stm32_map::periph::spi::SpiMap;
-pub use self::prelude::*;
 pub use self::pins::SpiPins;
+pub use self::prelude::*;
+pub use self::setup::{BaudRate, ClkPol, FirstBit, Prescaler, SpiSetup};
+pub use drone_stm32_map::periph::spi::SpiMap;
 
 pub mod prelude {
-    pub use crate::drv::IntoMaster;
     pub use super::setup::NewSpiSetup;
+    pub use crate::drv::IntoMaster;
     pub use crate::pins::traits::*;
 }
 

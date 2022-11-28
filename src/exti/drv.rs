@@ -1,11 +1,9 @@
-use crate::{diverged::ExtiDiverged, ExtiLine, Syscfg, ExtiMap};
-use core::marker::PhantomData;
+use crate::{diverged::ExtiDiverged, ExtiLine, ExtiMap, Syscfg};
 use alloc::sync::Arc;
+use core::marker::PhantomData;
 use drone_cortexm::{reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::{
-    exti::ExtiPeriph,
-};
-use drone_stm32f4_gpio_drv::{GpioHeadMap, GpioPinMap, GpioPin, prelude::*};
+use drone_stm32_map::periph::exti::ExtiPeriph;
+use drone_stm32f4_gpio_drv::{prelude::*, GpioHeadMap, GpioPin, GpioPinMap};
 
 pub trait EdgeMap: Send + Sync + 'static {}
 
@@ -21,26 +19,15 @@ impl EdgeMap for BothEdges {}
 pub struct NoEdge;
 impl EdgeMap for NoEdge {}
 
-
 /// EXTI driver.
-pub struct ExtiDrv<
-    Exti: ExtiMap,
-    ExtiInt: IntToken,
-    Head: GpioHeadMap,
-    Edge,
-> {
+pub struct ExtiDrv<Exti: ExtiMap, ExtiInt: IntToken, Head: GpioHeadMap, Edge> {
     pub(crate) exti: Arc<ExtiDiverged<Exti>>,
     pub(crate) exti_int: ExtiInt,
     head: PhantomData<Head>,
     edge: PhantomData<Edge>,
 }
 
-impl<
-        Exti: ExtiMap,
-        ExtiInt: IntToken,
-        Head: GpioHeadMap,
-    > ExtiDrv<Exti, ExtiInt, Head, NoEdge>
-{
+impl<Exti: ExtiMap, ExtiInt: IntToken, Head: GpioHeadMap> ExtiDrv<Exti, ExtiInt, Head, NoEdge> {
     /// Sets up a new [`ExtiDrv`].
     /// Syscfg is required as its clock must be enabled prior to initialization.
     pub fn new(exti: ExtiPeriph<Exti>, exti_int: ExtiInt, _syscfg: &Syscfg) -> Self {
@@ -53,12 +40,7 @@ impl<
     }
 }
 
-impl<
-        Exti: ExtiMap,
-        ExtiInt: IntToken,
-        Head: GpioHeadMap,
-    > ExtiDrv<Exti, ExtiInt, Head, NoEdge>
-{
+impl<Exti: ExtiMap, ExtiInt: IntToken, Head: GpioHeadMap> ExtiDrv<Exti, ExtiInt, Head, NoEdge> {
     pub fn into_rising_edge(self) -> ExtiDrv<Exti, ExtiInt, Head, RisingEdge> {
         self.exti.exti_rtsr_rt.set_bit(); // rising trigger enabled
         ExtiDrv {

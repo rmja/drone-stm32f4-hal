@@ -31,12 +31,7 @@ pub struct GpioPin<
     pull: PhantomData<Pull>,
 }
 
-impl<
-    Pin: GpioPinMap,
-    Mode: PinModeOrDontCare,
-    Type: PinTypeOrDontCare,
-    Pull: PinPullMap,
->
+impl<Pin: GpioPinMap, Mode: PinModeOrDontCare, Type: PinTypeOrDontCare, Pull: PinPullMap>
     From<Arc<GpioPinPeriph<Pin>>> for GpioPin<Pin, Mode, Type, Pull>
 {
     fn from(pin: Arc<GpioPinPeriph<Pin>>) -> Self {
@@ -194,9 +189,7 @@ impl PullModes for InputMode {}
 impl PullModes for OutputMode {}
 impl<Af: PinAf> PullModes for AlternateMode<Af> {}
 
-impl<Pin: GpioPinMap, Mode: PullModes>
-    GpioPin<Pin, Mode, PushPullType, NoPull>
-{
+impl<Pin: GpioPinMap, Mode: PullModes> GpioPin<Pin, Mode, PushPullType, NoPull> {
     /// No pull-up nor pull-down (this is the default).
     pub fn into_nopull(self) -> GpioPin<Pin, Mode, PushPullType, NoPull> {
         self.pin.gpio_pupdr_pupdr.write_bits(0b00);
@@ -220,12 +213,8 @@ pub trait WithSpeedModes: PinModeMap {}
 impl WithSpeedModes for OutputMode {}
 impl<Af: PinAf> WithSpeedModes for AlternateMode<Af> {}
 
-impl<
-        Pin: GpioPinMap,
-        Mode: WithSpeedModes,
-        Type: PinTypeOrDontCare,
-        Pull: PinPullMap,
-    > GpioPin<Pin, Mode, Type, Pull>
+impl<Pin: GpioPinMap, Mode: WithSpeedModes, Type: PinTypeOrDontCare, Pull: PinPullMap>
+    GpioPin<Pin, Mode, Type, Pull>
 {
     /// Set pin speed.
     pub fn with_speed(self, speed: GpioPinSpeed) -> Self {
@@ -244,12 +233,7 @@ impl PinGetMode for InputMode {}
 impl PinGetMode for OutputMode {}
 impl<Af: PinAf> PinGetMode for AlternateMode<Af> {}
 
-impl<
-    Pin: GpioPinMap,
-    Mode: PinGetMode,
-    Type: PinTypeMap,
-    Pull: PinPullMap,
->
+impl<Pin: GpioPinMap, Mode: PinGetMode, Type: PinTypeMap, Pull: PinPullMap>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Get the current pin state.
@@ -258,11 +242,7 @@ impl<
     }
 }
 
-impl<
-    Pin: GpioPinMap,
-    Type: PinTypeMap,
-    Pull: PinPullMap,
-> GpioPin<Pin, OutputMode, Type, Pull> {
+impl<Pin: GpioPinMap, Type: PinTypeMap, Pull: PinPullMap> GpioPin<Pin, OutputMode, Type, Pull> {
     /// Set output pin high.
     #[inline]
     pub fn set(&self) {
@@ -278,12 +258,7 @@ impl<
     }
 }
 
-impl<
-    Pin: GpioPinMap,
-    Mode: PinModeMap,
-    Type: PinTypeMap,
-    Pull: PinPullMap,
->
+impl<Pin: GpioPinMap, Mode: PinModeMap, Type: PinTypeMap, Pull: PinPullMap>
     GpioPin<Pin, Mode, Type, Pull>
 {
     /// Clone the pin

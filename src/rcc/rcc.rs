@@ -1,4 +1,4 @@
-use crate::{traits::*, clktree::*, diverged::RccDiverged, periph::RccPeriph};
+use crate::{clktree::*, diverged::RccDiverged, periph::RccPeriph, traits::*};
 use core::cell::RefCell;
 use core::marker::PhantomData;
 use drone_core::bitfield::Bitfield;
@@ -195,11 +195,7 @@ impl<RccInt: IntToken> ClkCtrl<PClk2> for Rcc<RccInt> {
 impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HsiClk> for Rcc<RccInt> {
     type Builder = ConfiguredClkBuilder<'a, RccInt, HsiClk>;
 
-    fn select(
-        &'a self,
-        signal: PllSrcMuxSignal,
-        _clk: ConfiguredClk<HsiClk>,
-    ) -> Self::Builder {
+    fn select(&'a self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HsiClk>) -> Self::Builder {
         assert!(matches!(signal, PllSrcMuxSignal::Hsi { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.clear_pllsrc());
         ConfiguredClkBuilder {
@@ -212,11 +208,7 @@ impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HsiClk> for Rcc<
 impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HseClk> for Rcc<RccInt> {
     type Builder = ConfiguredClkBuilder<'a, RccInt, HseClk>;
 
-    fn select(
-        &'a self,
-        signal: PllSrcMuxSignal,
-        _clk: ConfiguredClk<HseClk>,
-    ) -> Self::Builder {
+    fn select(&'a self, signal: PllSrcMuxSignal, _clk: ConfiguredClk<HseClk>) -> Self::Builder {
         assert!(matches!(signal, PllSrcMuxSignal::Hse { .. }));
         self.rcc.rcc_pllcfgr.modify(|r| r.set_pllsrc());
         ConfiguredClkBuilder {
@@ -229,11 +221,7 @@ impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, PllSrcMuxSignal, HseClk> for Rcc<
 impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, HsiClk> for Rcc<RccInt> {
     type Builder = ConfiguredClkBuilder<'a, RccInt, HsiClk>;
 
-    fn select(
-        &'a self,
-        signal: SysClkMuxSignal,
-        _clk: ConfiguredClk<HsiClk>,
-    ) -> Self::Builder {
+    fn select(&'a self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HsiClk>) -> Self::Builder {
         assert!(matches!(signal, SysClkMuxSignal::Hsi { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b00));
         ConfiguredClkBuilder {
@@ -246,11 +234,7 @@ impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, HsiClk> for Rcc<
 impl<'a, RccInt: IntToken> MuxCtrl<'a, RccInt, SysClkMuxSignal, HseClk> for Rcc<RccInt> {
     type Builder = ConfiguredClkBuilder<'a, RccInt, HseClk>;
 
-    fn select(
-        &'a self,
-        signal: SysClkMuxSignal,
-        _clk: ConfiguredClk<HseClk>,
-    ) -> Self::Builder {
+    fn select(&'a self, signal: SysClkMuxSignal, _clk: ConfiguredClk<HseClk>) -> Self::Builder {
         assert!(matches!(signal, SysClkMuxSignal::Hse { .. }));
         self.rcc.rcc_cfgr.modify(|r| r.write_sw(0b01));
         ConfiguredClkBuilder {

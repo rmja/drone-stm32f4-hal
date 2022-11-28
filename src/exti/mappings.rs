@@ -1,4 +1,4 @@
-use crate::{line::HeadNum, exti_line};
+use crate::{exti_line, line::HeadNum};
 use drone_stm32_map::periph::{exti::*, gpio::head::*, gpio::pin::*};
 
 macro_rules! head_num {

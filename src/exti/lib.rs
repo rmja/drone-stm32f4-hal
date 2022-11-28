@@ -12,20 +12,28 @@ extern crate alloc;
 
 pub use self::drv::ExtiDrv;
 pub use self::line::{ExtiLine, ExtiOverflow};
-pub use self::syscfg::Syscfg;
 pub use self::periph::*;
 pub use self::prelude::*;
+pub use self::syscfg::Syscfg;
 use drone_stm32_map::periph::exti::{
     ExtiFtsrFt, ExtiPrPif, ExtiRtsrRt, ExtiSwierSwi, SyscfgExticrExti,
 };
 
 /// A redefinition of the `ExtiMap` from the `drone-stm32-map` crate with forced
 /// availability of required registers.
-pub trait ExtiMap: drone_stm32_map::periph::exti::ExtiMap + SyscfgExticrExti + ExtiRtsrRt + ExtiFtsrFt + ExtiSwierSwi + ExtiPrPif {}
+pub trait ExtiMap:
+    drone_stm32_map::periph::exti::ExtiMap
+    + SyscfgExticrExti
+    + ExtiRtsrRt
+    + ExtiFtsrFt
+    + ExtiSwierSwi
+    + ExtiPrPif
+{
+}
 
 pub mod prelude {
     pub use crate::drv::ExtiDrvLine;
-    pub use crate::drv::{BothEdges, FallingEdge, RisingEdge, NoEdge, EdgeMap};
+    pub use crate::drv::{BothEdges, EdgeMap, FallingEdge, NoEdge, RisingEdge};
 }
 
 #[prelude_import]

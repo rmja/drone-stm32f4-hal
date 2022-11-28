@@ -1,4 +1,4 @@
-use crate::{traits::*, clktree::Freq, clktree::HClk, periph::FlashPeriph};
+use crate::{clktree::Freq, clktree::HClk, periph::FlashPeriph, traits::*};
 use drone_cortexm::reg::prelude::*;
 
 pub struct Flash {

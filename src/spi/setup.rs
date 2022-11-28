@@ -1,8 +1,8 @@
 use drone_cortexm::thr::IntToken;
-use drone_stm32f4_rcc_drv::{ConfiguredClk, clktree::PClkToken};
 use drone_stm32_map::periph::spi::SpiPeriph;
+use drone_stm32f4_rcc_drv::{clktree::PClkToken, ConfiguredClk};
 
-pub use crate::{SpiMap, pins::*};
+pub use crate::{pins::*, SpiMap};
 
 pub struct SpiSetup<Spi: SpiMap, SpiInt: IntToken, Clk: PClkToken> {
     /// Spi peripheral.
@@ -62,8 +62,7 @@ pub enum FirstBit {
 #[macro_export]
 macro_rules! spi_setup {
     ($spi:ident, $pclk:ident) => {
-        impl<SpiInt: drone_cortexm::thr::IntToken>
-            crate::NewSpiSetup<$spi, SpiInt, $pclk>
+        impl<SpiInt: drone_cortexm::thr::IntToken> crate::NewSpiSetup<$spi, SpiInt, $pclk>
             for crate::SpiSetup<$spi, SpiInt, $pclk>
         {
             fn new(

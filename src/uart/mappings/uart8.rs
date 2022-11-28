@@ -1,4 +1,7 @@
-use crate::{uart_setup_init, rx_drv_init, tx_drv_init, trx_drv_init, pins::{*, traits::*}};
+use crate::{
+    pins::{traits::*, *},
+    rx_drv_init, trx_drv_init, tx_drv_init, uart_setup_init,
+};
 use drone_stm32_map::periph::gpio::pin::*;
 use drone_stm32_map::periph::uart::Uart8;
 use drone_stm32f4_dma_drv::DmaStCh5;

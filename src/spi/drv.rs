@@ -1,10 +1,7 @@
-use crate::{setup::*, diverged::SpiDiverged, master::SpiMasterDrv, SpiMap};
+use crate::{diverged::SpiDiverged, master::SpiMasterDrv, setup::*, SpiMap};
 use core::marker::PhantomData;
 use drone_cortexm::{fib, reg::prelude::*, thr::prelude::*};
-use drone_stm32_map::periph::{
-    dma::ch::DmaChMap,
-    spi::traits::*,
-};
+use drone_stm32_map::periph::{dma::ch::DmaChMap, spi::traits::*};
 use drone_stm32f4_dma_drv::{DmaChCfg, DmaStChToken};
 use drone_stm32f4_rcc_drv::{clktree::*, ConfiguredClk};
 
@@ -92,37 +89,17 @@ macro_rules! master_drv_init {
         impl<
                 SpiInt: drone_cortexm::thr::IntToken,
                 Clk: drone_stm32f4_rcc_drv::clktree::PClkToken,
-            >
-            crate::drv::IntoMaster<
-                $spi,
-                $miso_ch,
-                $miso_stch,
-                $mosi_ch,
-                $mosi_stch,
-            > for crate::drv::SpiDrv<$spi, SpiInt, Clk>
+            > crate::drv::IntoMaster<$spi, $miso_ch, $miso_stch, $mosi_ch, $mosi_stch>
+            for crate::drv::SpiDrv<$spi, SpiInt, Clk>
         {
             fn into_master<
                 DmaRxInt: drone_cortexm::thr::IntToken,
                 DmaTxInt: drone_cortexm::thr::IntToken,
             >(
                 self,
-                miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<
-                    $miso_ch,
-                    $miso_stch,
-                    DmaRxInt,
-                >,
-                mosi_cfg: drone_stm32f4_dma_drv::DmaChCfg<
-                    $mosi_ch,
-                    $mosi_stch,
-                    DmaTxInt,
-                >,
-            ) -> crate::master::SpiMasterDrv<
-                $spi,
-                $miso_ch,
-                DmaRxInt,
-                $mosi_ch,
-                DmaTxInt,
-            > {
+                miso_cfg: drone_stm32f4_dma_drv::DmaChCfg<$miso_ch, $miso_stch, DmaRxInt>,
+                mosi_cfg: drone_stm32f4_dma_drv::DmaChCfg<$mosi_ch, $mosi_stch, DmaTxInt>,
+            ) -> crate::master::SpiMasterDrv<$spi, $miso_ch, DmaRxInt, $mosi_ch, DmaTxInt> {
                 crate::master::SpiMasterDrv::init(self.spi, miso_cfg, mosi_cfg)
             }
         }

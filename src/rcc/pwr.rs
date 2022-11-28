@@ -1,4 +1,4 @@
-use crate::{traits::*, periph::PwrPeriph};
+use crate::{periph::PwrPeriph, traits::*};
 use drone_cortexm::reg::prelude::*;
 
 pub struct Pwr {

@@ -11,9 +11,9 @@ mod traits;
 
 pub use self::flash::Flash;
 pub use self::periph::*;
+pub use self::prelude::*;
 pub use self::pwr::Pwr;
 pub use self::rcc::{Rcc, RccSetup};
-pub use self::prelude::*;
 
 pub mod prelude {
     pub use crate::traits::*;
